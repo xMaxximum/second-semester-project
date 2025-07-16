@@ -1,4 +1,8 @@
 using Server.Components;
+using Server.Data;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Events;
 
 namespace Server
 {
@@ -7,6 +11,22 @@ namespace Server
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // Configure Serilog
+            var env = builder.Environment;
+            var loggerConfig = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                .WriteTo.Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                theme: Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme.Code);
+
+            Log.Logger = loggerConfig.CreateLogger();
+
+            builder.Host.UseSerilog();
+
+            // Add Entity Framework Core
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=app.db"));
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
