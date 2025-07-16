@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Frontend", "Frontend\Frontend.csproj", "{FC96F501-4C58-45FD-A4E4-ADD0B20C3CAF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{FC96F501-4C58-45FD-A4E4-ADD0B20C3CAF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Frontend.Client", "Frontend.Client\Frontend.Client.csproj", "{2A4AD453-C97D-40A4-BC5E-4C6D3152F03E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Backend", "Backend\Backend.csproj", "{09989FFF-9D94-41C1-AE87-FEA35B239649}"
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{406165DE-45C2-455D-9B79-C09CAC2DA44F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{2A4AD453-C97D-40A4-BC5E-4C6D3152F03E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A4AD453-C97D-40A4-BC5E-4C6D3152F03E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2A4AD453-C97D-40A4-BC5E-4C6D3152F03E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{09989FFF-9D94-41C1-AE87-FEA35B239649}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{09989FFF-9D94-41C1-AE87-FEA35B239649}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{09989FFF-9D94-41C1-AE87-FEA35B239649}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{09989FFF-9D94-41C1-AE87-FEA35B239649}.Release|Any CPU.Build.0 = Release|Any CPU
+		{406165DE-45C2-455D-9B79-C09CAC2DA44F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{406165DE-45C2-455D-9B79-C09CAC2DA44F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{406165DE-45C2-455D-9B79-C09CAC2DA44F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{406165DE-45C2-455D-9B79-C09CAC2DA44F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
