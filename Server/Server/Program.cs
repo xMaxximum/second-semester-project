@@ -3,6 +3,7 @@ using Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
+using MudBlazor.Services;
 
 namespace Server
 {
@@ -27,6 +28,11 @@ namespace Server
             // Add Entity Framework Core
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=app.db"));
+            
+            // Add Mud Blazor Services
+            builder.Services.AddMudServices();
+            builder.Services.AddMudLocalization();
+
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
