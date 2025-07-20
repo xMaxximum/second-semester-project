@@ -1,9 +1,10 @@
-using Server.Components;
-using Server.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using MudBlazor.Services;
 using Serilog;
 using Serilog.Events;
-using MudBlazor.Services;
+using Server.Components;
+using Server.Data;
 
 namespace Server
 {
@@ -18,6 +19,8 @@ namespace Server
             var loggerConfig = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information) // allow normal info
                 .WriteTo.Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                 theme: Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme.Code);
 
@@ -27,8 +30,8 @@ namespace Server
 
             // Add Entity Framework Core
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=app.db"));
-            
+                options.UseSqlite("Data Source=app.db"));
+
             // Add Mud Blazor Services
             builder.Services.AddMudServices();
             builder.Services.AddLocalization();
@@ -37,13 +40,13 @@ namespace Server
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
-                .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
 
             // web api stuff
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
+
 
             var app = builder.Build();
 
@@ -60,9 +63,8 @@ namespace Server
                 app.UseHsts();
             }
 
-            app.UseAuthorization();
-
             app.MapControllers();
+
 
             app.UseHttpsRedirection();
 
@@ -70,7 +72,6 @@ namespace Server
 
             app.MapStaticAssets();
             app.MapRazorComponents<App>()
-                .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Frontend.Client._Imports).Assembly);
 

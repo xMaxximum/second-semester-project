@@ -1,29 +1,30 @@
 ﻿@inherits LayoutComponentBase
-@* Required *@
+
 <MudThemeProvider />
 <MudPopoverProvider />
-
-@* Needed for dialogs *@
 <MudDialogProvider />
-
-@* Needed for snackbars *@
 <MudSnackbarProvider />
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<MudLayout>
+    <MudAppBar>
+        <h1>Cyclone</h1>
+        <MudGrid >
+            <MudItem>
+                <MudNavLink Href="/" Match="NavLinkMatch.All">Home</MudNavLink>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+            </MudItem>
+            <MudItem>
+                <MudNavLink Href="/counter">Counter</MudNavLink>
+            </MudItem>
+            <MudItem>
+                <MudNavLink Href="/weather">Weather</MudNavLink>
+            </MudItem>
+        </MudGrid>
+    </MudAppBar>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
