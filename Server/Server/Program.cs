@@ -31,8 +31,9 @@ namespace Server
             
             // Add Mud Blazor Services
             builder.Services.AddMudServices();
-            builder.Services.AddMudLocalization();
+            builder.Services.AddLocalization();
 
+            builder.Services.AddMudLocalization();
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
