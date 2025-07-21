@@ -1,0 +1,44 @@
+@using Frontend.Client.Services
+@rendermode InteractiveWebAssembly
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+
+<AuthorizeView>
+        <Authorized>
+            <MudMenu>
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person">
+                        @context.User.Identity?.Name
+                    </MudButton>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout"
+                                 OnClick="@HandleLogout">
+                        Logout
+                    </MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        </Authorized>
+        <NotAuthorized>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Href="/login">
+                Login
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Href="/register"
+                       Class="ml-2">
+                Register
+            </MudButton>
+        </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/");
+    }
+}

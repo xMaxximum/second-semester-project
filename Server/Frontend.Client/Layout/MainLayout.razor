@@ -1,0 +1,37 @@
+@inherits LayoutComponentBase
+@rendermode InteractiveWebAssembly
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<CascadingAuthenticationState>
+    <MudLayout>
+    <MudAppBar>
+        <h1>Cyclone</h1>
+        <MudGrid>
+            <MudItem>
+                <MudNavLink Href="/" Match="NavLinkMatch.All">Home</MudNavLink>
+            </MudItem>
+            <MudItem>
+                <MudNavLink Href="/counter">Counter</MudNavLink>
+            </MudItem>
+            <MudItem>
+                <MudNavLink Href="/weather">Weather</MudNavLink>
+            </MudItem>
+        </MudGrid>
+        <MudSpacer />
+        <UserMenu />
+    </MudAppBar>
+    <MudMainContent>
+            @Body
+    </MudMainContent>
+</MudLayout>
+</CascadingAuthenticationState>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

@@ -1,7 +1,12 @@
 services:
- server:
-    image: ${DOCKER_REGISTRY-}server
+  server:
+    container_name: server
     build:
       context: .
-      dockerfile: Server/Dockerfile
-
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Release
+    restart: unless-stopped
