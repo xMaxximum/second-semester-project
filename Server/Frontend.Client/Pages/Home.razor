@@ -1,0 +1,24 @@
+@page "/"
+@rendermode InteractiveWebAssembly
+
+<PageTitle>Home</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-16">
+    <MudText Typo="Typo.h3" GutterBottom="true">Welcome to Cyclone!</MudText>
+    <CascadingAuthenticationState>
+        <AuthorizeView>
+            <Authorized>
+                <MudAlert Severity="Severity.Success" Class="mt-4">
+                    Welcome back, @context.User.Identity?.Name!
+                </MudAlert>
+            </Authorized>
+            <NotAuthorized>
+                Welcome to your new app.
+                <MudAlert Severity="Severity.Info" Class="mt-4">
+                    Please <MudLink Href="/login">login</MudLink> to access all features.
+                </MudAlert>
+            </NotAuthorized>
+        </AuthorizeView>
+
+    </CascadingAuthenticationState>
+</MudContainer>

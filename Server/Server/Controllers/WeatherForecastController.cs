@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Server;
 
 namespace Server.Controllers
@@ -20,6 +21,7 @@ namespace Server.Controllers
         }
 
         [HttpGet]
+        [Authorize] // This endpoint now requires authentication
         public IEnumerable<WeatherForecast> Get()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast

@@ -415,3 +415,5 @@ FodyWeavers.xsd
 *.msp
 
 .idea/
+app.db
+/Server/Server/appsettings.json

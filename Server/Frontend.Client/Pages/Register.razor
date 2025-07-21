@@ -1,0 +1,129 @@
+@page "/register"
+@rendermode InteractiveWebAssembly
+@using Frontend.Client.Services
+@using Shared.Models
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Register</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h4" Align="Align.Center">Create Account</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="@registerRequest" OnValidSubmit="@HandleRegister">
+                <DataAnnotationsValidator />
+                
+                <MudTextField @bind-Value="registerRequest.DisplayName"
+                              Label="Display Name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Class="mb-4" />
+                
+                <MudTextField @bind-Value="registerRequest.Email"
+                              Label="Email"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Email"
+                              Required="true"
+                              Class="mb-4" />
+                
+                <MudTextField @bind-Value="registerRequest.Password"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true"
+                              Class="mb-4" />
+                
+                <MudTextField @bind-Value="registerRequest.ConfirmPassword"
+                              Label="Confirm Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true"
+                              Class="mb-4" />
+                
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+                }
+                
+                @if (errors.Any())
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">
+                        <ul class="mb-0">
+                            @foreach (var error in errors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    </MudAlert>
+                }
+                
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ml-2">Creating account...</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Create Account</MudText>
+                    }
+                </MudButton>
+            </EditForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudText Align="Align.Center" Class="mx-auto">
+                Already have an account? 
+                <MudLink Href="/login" Color="Color.Primary">Login here</MudLink>
+            </MudText>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private RegisterRequest registerRequest = new();
+    private string errorMessage = "";
+    private List<string> errors = new();
+    private bool isLoading = false;
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = "";
+            errors.Clear();
+            
+            var response = await AuthService.RegisterAsync(registerRequest);
+            
+            if (response.IsSuccess)
+            {
+                // Redirect to login page with success message
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = response.Message;
+                errors = response.Errors;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during registration. Please try again.";
+            await JSRuntime.InvokeVoidAsync("console.error", ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
