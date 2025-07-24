@@ -9,6 +9,7 @@ using Serilog;
 using Serilog.Events;
 using Server.Data;
 using Server.Models;
+using Server.Services;
 using System.Text;
 
 namespace Server
@@ -48,6 +49,8 @@ namespace Server
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
+
+            builder.Services.AddHostedService<MqttService>();
 
             // Configure JWT Authentication
             builder.Services
