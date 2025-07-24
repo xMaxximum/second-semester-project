@@ -13,6 +13,9 @@ namespace Cyclone_ESP32
     {
         private static MqttClient client; // the client object
         private static int lastMessage; // last message that was sent (used to continue sending messages after connection is lost)
+        private bool publishEnabled;
+
+
 
         // constructor does initialization and starts the MQTT client + publishes messages directly (prototype)
         // this needs some work OOP wise obviously
@@ -75,6 +78,15 @@ namespace Cyclone_ESP32
                 PublishMessage(client, jsonPayload);
                 lastMessage = i;
                 Debug.WriteLine($"lastMessage: {lastMessage}");
+            }
+        }
+
+        public bool Publish
+        {
+            set
+            {
+                    publishEnabled = true;
+                
             }
         }
 

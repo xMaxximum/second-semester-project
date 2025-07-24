@@ -11,8 +11,13 @@ namespace Cyclone_ESP32
     {
         public static void Main()
         {
-            // App must not return.
-            Thread.Sleep(Timeout.Infinite);
+            mqttClient = new MQTT();
+
+            while (true)
+            {
+                mqttClient.Publish = true;
+                mqttClient.doWork();
+            }
         }        
     }
 }
