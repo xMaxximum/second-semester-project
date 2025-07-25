@@ -455,6 +455,82 @@ namespace Server.Controllers
             }
         }
 
+        [HttpDelete("delete-account")]
+        [Authorize]
+        public async Task<ActionResult<Shared.Models.DeleteAccountResponse>> DeleteAccount(Shared.Models.DeleteAccountRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                    return BadRequest(new Shared.Models.DeleteAccountResponse(false) 
+                    { 
+                        Message = "Validation failed", 
+                        Errors = errors 
+                    });
+                }
+
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new Shared.Models.DeleteAccountResponse(false) 
+                    { 
+                        Message = "User not found" 
+                    });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new Shared.Models.DeleteAccountResponse(false) 
+                    { 
+                        Message = "User not found" 
+                    });
+                }
+
+                // Verify current password
+                var passwordCheck = await _userManager.CheckPasswordAsync(user, request.CurrentPassword);
+                if (!passwordCheck)
+                {
+                    return BadRequest(new Shared.Models.DeleteAccountResponse(false) 
+                    { 
+                        Message = "Current password is incorrect",
+                        Errors = new List<string> { "Current password is incorrect" }
+                    });
+                }
+
+                // Delete the user
+                var result = await _userManager.DeleteAsync(user);
+
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Account deleted successfully for user {UserId}", userId);
+                    return Ok(new Shared.Models.DeleteAccountResponse(true) 
+                    { 
+                        Message = "Account deleted successfully" 
+                    });
+                }
+                else
+                {
+                    var errors = result.Errors.Select(x => x.Description).ToList();
+                    return BadRequest(new Shared.Models.DeleteAccountResponse(false) 
+                    { 
+                        Message = "Account deletion failed", 
+                        Errors = errors 
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting user account");
+                return StatusCode(500, new Shared.Models.DeleteAccountResponse(false) 
+                { 
+                    Message = "Internal server error" 
+                });
+            }
+        }
+
         private string CreateJWT(User user)
         {
             var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration.GetRequiredSection("JwtKey").Value!));

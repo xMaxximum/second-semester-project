@@ -1,10 +1,55 @@
-﻿@rendermode InteractiveWebAssembly
+﻿@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
 
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Frontend.Client._Imports).Assembly }">
         <Found Context="routeData">
-            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <div class="d-flex justify-center align-center" style="height: 100vh;">
+                            <MudPaper Class="pa-8 text-center">
+                                <MudText Typo="Typo.h6" GutterBottom="true">Authentication Required</MudText>
+                                <MudText Class="mb-4">You need to be logged in to access this page.</MudText>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/login">
+                                    Go to Login
+                                </MudButton>
+                            </MudPaper>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-center align-center" style="height: 100vh;">
+                            <MudPaper Class="pa-8 text-center">
+                                <MudText Typo="Typo.h6" Color="Color.Error">Access Denied</MudText>
+                                <MudText>You are not authorized to access this resource.</MudText>
+                            </MudPaper>
+                        </div>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="d-flex justify-center align-center" style="height: 100vh;">
+                        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="typeof(Layout.MainLayout)">
+                <div class="d-flex justify-center align-center" style="height: 100vh;">
+                    <MudPaper Class="pa-8 text-center">
+                        <MudText Typo="Typo.h6" GutterBottom="true">Page Not Found</MudText>
+                        <MudText Class="mb-4">Sorry, there's nothing at this address.</MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/">
+                            Go Home
+                        </MudButton>
+                    </MudPaper>
+                </div>
+            </LayoutView>
+        </NotFound>
     </Router>
 </CascadingAuthenticationState>

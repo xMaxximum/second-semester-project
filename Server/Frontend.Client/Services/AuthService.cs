@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Net.Http.Headers;
 using Shared.Models;
 
 namespace Frontend.Client.Services
@@ -144,6 +145,27 @@ namespace Frontend.Client.Services
             catch (Exception ex)
             {
                 return new ChangePasswordResponse(false) { Message = $"Password change error: {ex.Message}" };
+            }
+        }
+
+        public async Task<DeleteAccountResponse> DeleteAccountAsync(DeleteAccountRequest request)
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(request);
+                var content = new StringContent(json, System.Text.Encoding.UTF8, MediaTypeHeaderValue.Parse("application/json"));
+                var httpRequest = new HttpRequestMessage(HttpMethod.Delete, "api/auth/delete-account")
+                {
+                    Content = content
+                };
+                
+                var response = await _httpClient.SendAsync(httpRequest);
+                var result = await response.Content.ReadFromJsonAsync<DeleteAccountResponse>();
+                return result ?? new DeleteAccountResponse(false) { Message = "Account deletion failed" };
+            }
+            catch (Exception ex)
+            {
+                return new DeleteAccountResponse(false) { Message = $"Account deletion error: {ex.Message}" };
             }
         }
     }
