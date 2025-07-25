@@ -8,90 +8,112 @@
 
 <PageTitle>Register</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
-    <MudCard>
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h4" Align="Align.Center">Create Account</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent>
-            <EditForm Model="@registerRequest" OnValidSubmit="@HandleRegister">
-                <DataAnnotationsValidator />
-                
-                <MudTextField @bind-Value="registerRequest.UserName"
-                              Label="Username"
-                              Variant="Variant.Outlined"
-                              Required="true"
-                              Class="mb-4" />
-                
-                <MudTextField @bind-Value="registerRequest.Email"
-                              Label="Email"
-                              Variant="Variant.Outlined"
-                              InputType="InputType.Email"
-                              Required="true"
-                              Class="mb-4" />
-                
-                <MudTextField @bind-Value="registerRequest.Password"
-                              Label="Password"
-                              Variant="Variant.Outlined"
-                              InputType="InputType.Password"
-                              Required="true"
-                              Class="mb-4" />
-                
-                <MudTextField @bind-Value="registerRequest.ConfirmPassword"
-                              Label="Confirm Password"
-                              Variant="Variant.Outlined"
-                              InputType="InputType.Password"
-                              Required="true"
-                              Class="mb-4" />
-                
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
-                }
-                
-                @if (errors.Any())
-                {
-                    <MudAlert Severity="Severity.Error" Class="mb-4">
-                        <ul class="mb-0">
-                            @foreach (var error in errors)
+<MudGrid Class="h-screen">
+    <!-- Left SVG Column -->
+    <MudItem xs="12" md="6" Class="p-0 d-none d-md-flex"
+             style="position: relative; background-color: #f0f4fc; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center;">
+
+        <!-- Background Grid Pattern -->
+        <div style="position: absolute; inset: 0; opacity: 0.05;">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+                <defs>
+                    <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.5" />
+                    </pattern>
+                </defs>
+                <rect width="100" height="100" fill="url(#grid)" />
+            </svg>
+        </div>
+
+        <!-- Centered SVG Image -->
+        <div style="position: relative; z-index: 1; display: flex; align-items: center; justify-content: center;">
+            <img src="/bikeraise.svg"
+                 alt="Cyclist lifting bike"
+                 style="max-width: 70%; height: auto; opacity: 0.9;" />
+        </div>
+    </MudItem>
+
+    <!-- Right Form Column -->
+    <MudItem xs="12" md="6" Style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+        <MudContainer MaxWidth="MaxWidth.Small">
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h4" Align="Align.Center">Create Account</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <EditForm Model="@registerRequest" OnSubmit="@HandleRegister">
+                        <DataAnnotationsValidator />
+                        <MudTextField @bind-Value="registerRequest.UserName"
+                                      Label="Username"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Class="mb-4"
+                                      Autocomplete="username"/>
+                        <MudTextField @bind-Value="registerRequest.Email"
+                                      Label="Email"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Email"
+                                      Required="true"
+                                      Class="mb-4"
+                                      Autocomplete="email"/>
+                        <MudTextField @bind-Value="registerRequest.Password"
+                                      Label="Password"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Password"
+                                      Required="true"
+                                      Class="mb-4"
+                                      Autocomplete="new-password"/>
+                        <MudTextField @bind-Value="registerRequest.ConfirmPassword"
+                                      Label="Confirm Password"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Password"
+                                      Required="true"
+                                      Class="mb-4"
+                                      Autocomplete="new-password"/>
+                        @if (errors.Any())
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mb-4">
+                                @foreach (var error in errors)
+                                {
+                                    <div>@error</div>
+                                }
+                            </MudAlert>
+                        }
+
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Disabled="@isLoading">
+                            @if (isLoading)
                             {
-                                <li>@error</li>
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                <MudText Class="ml-2">Creating account...</MudText>
                             }
-                        </ul>
-                    </MudAlert>
-                }
-                
-                <MudButton ButtonType="ButtonType.Submit"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           FullWidth="true"
-                           Disabled="@isLoading">
-                    @if (isLoading)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        <MudText Class="ml-2">Creating account...</MudText>
-                    }
-                    else
-                    {
-                        <MudText>Create Account</MudText>
-                    }
-                </MudButton>
-            </EditForm>
-        </MudCardContent>
-        <MudCardActions>
-            <MudText Align="Align.Center" Class="mx-auto">
-                Already have an account? 
-                <MudLink Href="/login" Color="Color.Primary">Login here</MudLink>
-            </MudText>
-        </MudCardActions>
-    </MudCard>
-</MudContainer>
+                            else
+                            {
+                                <MudText>Create Account</MudText>
+                            }
+                        </MudButton>
+                    </EditForm>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudText Align="Align.Center" Class="mx-auto">
+                        Already have an account?
+                        <MudLink Href="/login" Color="Color.Primary">Login here</MudLink>
+                    </MudText>
+                </MudCardActions>
+            </MudCard>
+        </MudContainer>
+    </MudItem>
+</MudGrid>
+
+
 
 @code {
     private RegisterRequest registerRequest = new();
-    private string errorMessage = "";
     private List<string> errors = new();
     private bool isLoading = false;
 
@@ -100,11 +122,10 @@
         try
         {
             isLoading = true;
-            errorMessage = "";
             errors.Clear();
-            
+
             var response = await AuthService.RegisterAsync(registerRequest);
-            
+
             if (response.IsSuccess)
             {
                 // Redirect to login page with success message
@@ -112,13 +133,12 @@
             }
             else
             {
-                errorMessage = response.Message;
                 errors = response.Errors;
             }
         }
         catch (Exception ex)
         {
-            errorMessage = "An error occurred during registration. Please try again.";
+            errors = new List<string> { "An unexpected error occurred. Please try again later." };
             await JSRuntime.InvokeVoidAsync("console.error", ex.Message);
         }
         finally
