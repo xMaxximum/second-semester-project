@@ -354,6 +354,8 @@ namespace Server.Controllers
                     });
                 }
 
+                var oldEmail = user.Email;
+
                 // Update email
                 user.Email = request.NewEmail;
                 user.EmailConfirmed = true; // For simplicity, auto-confirm the email
@@ -363,7 +365,7 @@ namespace Server.Controllers
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("Email changed successfully for user {UserId} from {OldEmail} to {NewEmail}",
-                        userId, originalEmail, request.NewEmail);
+                        userId, oldEmail, request.NewEmail);
                     return Ok(new Shared.Models.ChangeEmailResponse(true)
                     {
                         Message = "Email changed successfully"
