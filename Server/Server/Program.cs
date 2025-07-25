@@ -96,7 +96,13 @@ namespace Server
                 .AddInteractiveWebAssemblyComponents();
 
             // web api stuff
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    // Disable automatic 400 responses for validation errors
+                    // so we can handle them manually in controllers
+                    options.SuppressModelStateInvalidFilter = true;
+                });
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 

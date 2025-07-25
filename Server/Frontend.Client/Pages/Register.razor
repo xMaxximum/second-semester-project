@@ -43,7 +43,7 @@
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <EditForm Model="@registerRequest" OnValidSubmit="@HandleRegister">
+                    <EditForm Model="@registerRequest" OnSubmit="@HandleRegister">
                         <DataAnnotationsValidator />
                         <MudTextField @bind-Value="registerRequest.UserName"
                                       Label="Username"
