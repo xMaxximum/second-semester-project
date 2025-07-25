@@ -135,7 +135,8 @@ namespace Server
             app.MapStaticAssets();
             app.MapRazorComponents<Components.App>()
                 .AddInteractiveWebAssemblyRenderMode()
-                .AddAdditionalAssemblies(typeof(Frontend.Client.Services.AuthService).Assembly);
+                .AddAdditionalAssemblies(typeof(Frontend.Client.Services.AuthService).Assembly)
+                .AllowAnonymous();
 
             app.Run();
         }

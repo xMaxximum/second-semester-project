@@ -13,10 +13,14 @@
                     </MudButton>
                 </ActivatorContent>
                 <ChildContent>
-                    <MudMenuItem Icon="@Icons.Material.Filled.Logout"
+                <MudMenuItem Icon="@Icons.Material.Filled.AccountBox" Href="/profile">
+                    Profile
+                </MudMenuItem>
+
+                <MudMenuItem Icon="@Icons.Material.Filled.Logout"
                                  OnClick="@HandleLogout">
                         Logout
-                    </MudMenuItem>
+                </MudMenuItem>
                 </ChildContent>
             </MudMenu>
         </Authorized>

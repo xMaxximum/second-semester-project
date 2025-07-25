@@ -13,7 +13,10 @@ namespace Frontend.Client
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
             // Add MudBlazor services
-            builder.Services.AddMudServices();
+            builder.Services.AddMudServices(config =>
+            {
+                config.SnackbarConfiguration.PositionClass = MudBlazor.Defaults.Classes.Position.BottomRight;
+            });
             builder.Services.AddLocalization();
             builder.Services.AddMudLocalization();
 

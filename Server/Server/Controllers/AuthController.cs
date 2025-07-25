@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -44,7 +45,7 @@ namespace Server.Controllers
                 var user = new User()
                 {
                     Email = request.Email,
-                    UserName = request.DisplayName,
+                    UserName = request.UserName,
                     EmailConfirmed = true
                 };
 
@@ -58,10 +59,10 @@ namespace Server.Controllers
                 else
                 {
                     var errors = result.Errors.Select(x => x.Description).ToList();
-                    return BadRequest(new Shared.Models.RegisterResponse(false) 
-                    { 
-                        Message = "Registration failed", 
-                        Errors = errors 
+                    return BadRequest(new Shared.Models.RegisterResponse(false)
+                    {
+                        Message = "Registration failed",
+                        Errors = errors
                     });
                 }
             }
@@ -92,9 +93,9 @@ namespace Server.Controllers
                         AppendRefreshTokenCookie(user, HttpContext.Response.Cookies);
 
                         _logger.LogInformation("User {Email} logged in successfully", request.Email);
-                        return Ok(new Shared.Models.LoginResponse 
-                        { 
-                            IsSuccess = true, 
+                        return Ok(new Shared.Models.LoginResponse
+                        {
+                            IsSuccess = true,
                             Token = jwt,
                             Message = "Login successful",
                             Expiration = DateTime.UtcNow.AddHours(Constants.JwtExpirationHours)
@@ -125,9 +126,9 @@ namespace Server.Controllers
                     {
                         var jwtToken = CreateJWT(user);
                         _logger.LogInformation("Token refreshed for user {Email}", user.Email);
-                        return Ok(new LoginResponse 
-                        { 
-                            IsSuccess = true, 
+                        return Ok(new LoginResponse
+                        {
+                            IsSuccess = true,
                             Token = jwtToken,
                             Message = "Token refreshed",
                             Expiration = DateTime.UtcNow.AddHours(Constants.JwtExpirationHours)
@@ -157,6 +158,376 @@ namespace Server.Controllers
             {
                 _logger.LogError(ex, "Error during logout");
                 return StatusCode(500, new { message = "Error during logout" });
+            }
+        }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<ActionResult<Shared.Models.GetProfileResponse>> GetProfile()
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new Shared.Models.GetProfileResponse
+                    {
+                        IsSuccess = false,
+                        Message = "User not found"
+                    });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new Shared.Models.GetProfileResponse
+                    {
+                        IsSuccess = false,
+                        Message = "User not found"
+                    });
+                }
+
+                var profile = new Shared.Models.UserProfile
+                {
+                    Email = user.Email ?? "",
+                    UserName = user.UserName ?? "",
+                    EmailConfirmed = user.EmailConfirmed,
+                };
+
+                return Ok(new Shared.Models.GetProfileResponse
+                {
+                    IsSuccess = true,
+                    Message = "Profile retrieved successfully",
+                    Profile = profile
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user profile");
+                return StatusCode(500, new Shared.Models.GetProfileResponse
+                {
+                    IsSuccess = false,
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        [HttpPut("profile")]
+        [Authorize]
+        public async Task<ActionResult<Shared.Models.UpdateProfileResponse>> UpdateProfile(Shared.Models.UpdateProfileRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                    return BadRequest(new Shared.Models.UpdateProfileResponse(false)
+                    {
+                        Message = "Validation failed",
+                        Errors = errors
+                    });
+                }
+
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new Shared.Models.UpdateProfileResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new Shared.Models.UpdateProfileResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                // Check if username is already taken by another user
+                var existingUser = await _userManager.FindByNameAsync(request.UserName);
+                if (existingUser != null && existingUser.Id != user.Id)
+                {
+                    return BadRequest(new Shared.Models.UpdateProfileResponse(false)
+                    {
+                        Message = "Username is already taken",
+                        Errors = new List<string> { "Username is already taken" }
+                    });
+                }
+
+                // Update user properties
+                user.UserName = request.UserName;
+
+                var result = await _userManager.UpdateAsync(user);
+
+                if (result.Succeeded)
+                {
+                    var updatedProfile = new Shared.Models.UserProfile
+                    {
+                        Email = user.Email ?? "",
+                        UserName = user.UserName ?? "",
+                        EmailConfirmed = user.EmailConfirmed,
+                    };
+
+                    _logger.LogInformation("Profile updated successfully for user {UserId}", userId);
+                    return Ok(new Shared.Models.UpdateProfileResponse(true)
+                    {
+                        Message = "Profile updated successfully",
+                        Profile = updatedProfile
+                    });
+                }
+                else
+                {
+                    var errors = result.Errors.Select(x => x.Description).ToList();
+                    return BadRequest(new Shared.Models.UpdateProfileResponse(false)
+                    {
+                        Message = "Profile update failed",
+                        Errors = errors
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating user profile");
+                return StatusCode(500, new Shared.Models.UpdateProfileResponse(false)
+                {
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        [HttpPut("change-email")]
+        [Authorize]
+        public async Task<ActionResult<Shared.Models.ChangeEmailResponse>> ChangeEmail(Shared.Models.ChangeEmailRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                    return BadRequest(new Shared.Models.ChangeEmailResponse(false)
+                    {
+                        Message = "Validation failed",
+                        Errors = errors
+                    });
+                }
+
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new Shared.Models.ChangeEmailResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new Shared.Models.ChangeEmailResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                // Verify current password
+                var passwordCheck = await _userManager.CheckPasswordAsync(user, request.CurrentPassword);
+                if (!passwordCheck)
+                {
+                    return BadRequest(new Shared.Models.ChangeEmailResponse(false)
+                    {
+                        Message = "Current password is incorrect",
+                        Errors = new List<string> { "Current password is incorrect" }
+                    });
+                }
+
+                // Check if email is already taken
+                var existingUser = await _userManager.FindByEmailAsync(request.NewEmail);
+                if (existingUser != null)
+                {
+                    return BadRequest(new Shared.Models.ChangeEmailResponse(false)
+                    {
+                        Message = "Email is already in use",
+                        Errors = new List<string> { "Email is already in use" }
+                    });
+                }
+
+                var oldEmail = user.Email;
+
+                // Update email
+                user.Email = request.NewEmail;
+                user.EmailConfirmed = true; // For simplicity, auto-confirm the email
+
+                var result = await _userManager.UpdateAsync(user);
+
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Email changed successfully for user {UserId} from {OldEmail} to {NewEmail}",
+                        userId, oldEmail, request.NewEmail);
+                    return Ok(new Shared.Models.ChangeEmailResponse(true)
+                    {
+                        Message = "Email changed successfully"
+                    });
+                }
+                else
+                {
+                    var errors = result.Errors.Select(x => x.Description).ToList();
+                    return BadRequest(new Shared.Models.ChangeEmailResponse(false)
+                    {
+                        Message = "Email change failed",
+                        Errors = errors
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing user email");
+                return StatusCode(500, new Shared.Models.ChangeEmailResponse(false)
+                {
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<ActionResult<Shared.Models.ChangePasswordResponse>> ChangePassword(Shared.Models.ChangePasswordRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                    return BadRequest(new Shared.Models.ChangePasswordResponse(false)
+                    {
+                        Message = "Validation failed",
+                        Errors = errors
+                    });
+                }
+
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new Shared.Models.ChangePasswordResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new Shared.Models.ChangePasswordResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Password changed successfully for user {UserId}", userId);
+                    return Ok(new Shared.Models.ChangePasswordResponse(true)
+                    {
+                        Message = "Password changed successfully"
+                    });
+                }
+                else
+                {
+                    var errors = result.Errors.Select(x => x.Description).ToList();
+                    return BadRequest(new Shared.Models.ChangePasswordResponse(false)
+                    {
+                        Message = "Password change failed",
+                        Errors = errors
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing user password");
+                return StatusCode(500, new Shared.Models.ChangePasswordResponse(false)
+                {
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        [HttpDelete("delete-account")]
+        [Authorize]
+        public async Task<ActionResult<Shared.Models.DeleteAccountResponse>> DeleteAccount(Shared.Models.DeleteAccountRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                    return BadRequest(new Shared.Models.DeleteAccountResponse(false)
+                    {
+                        Message = "Validation failed",
+                        Errors = errors
+                    });
+                }
+
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new Shared.Models.DeleteAccountResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new Shared.Models.DeleteAccountResponse(false)
+                    {
+                        Message = "User not found"
+                    });
+                }
+
+                // Verify current password
+                var passwordCheck = await _userManager.CheckPasswordAsync(user, request.CurrentPassword);
+                if (!passwordCheck)
+                {
+                    return BadRequest(new Shared.Models.DeleteAccountResponse(false)
+                    {
+                        Message = "Current password is incorrect",
+                        Errors = new List<string> { "Current password is incorrect" }
+                    });
+                }
+
+                // Delete the user
+                var result = await _userManager.DeleteAsync(user);
+
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Account deleted successfully for user {UserId}", userId);
+                    return Ok(new Shared.Models.DeleteAccountResponse(true)
+                    {
+                        Message = "Account deleted successfully"
+                    });
+                }
+                else
+                {
+                    var errors = result.Errors.Select(x => x.Description).ToList();
+                    return BadRequest(new Shared.Models.DeleteAccountResponse(false)
+                    {
+                        Message = "Account deletion failed",
+                        Errors = errors
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting user account");
+                return StatusCode(500, new Shared.Models.DeleteAccountResponse(false)
+                {
+                    Message = "Internal server error"
+                });
             }
         }
 
