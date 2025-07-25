@@ -72,21 +72,16 @@
                                       Required="true"
                                       Class="mb-4"
                                       Autocomplete="new-password"/>
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
-                        }
                         @if (errors.Any())
                         {
                             <MudAlert Severity="Severity.Error" Class="mb-4">
-                                <ul class="mb-0">
-                                    @foreach (var error in errors)
-                                    {
-                                        <li>@error</li>
-                                    }
-                                </ul>
+                                @foreach (var error in errors)
+                                {
+                                    <div>@error</div>
+                                }
                             </MudAlert>
                         }
+
                         <MudButton ButtonType="ButtonType.Submit"
                                    Variant="Variant.Filled"
                                    Color="Color.Primary"
@@ -119,7 +114,6 @@
 
 @code {
     private RegisterRequest registerRequest = new();
-    private string errorMessage = "";
     private List<string> errors = new();
     private bool isLoading = false;
 
@@ -128,7 +122,6 @@
         try
         {
             isLoading = true;
-            errorMessage = "";
             errors.Clear();
 
             var response = await AuthService.RegisterAsync(registerRequest);
@@ -140,13 +133,12 @@
             }
             else
             {
-                errorMessage = response.Message;
                 errors = response.Errors;
             }
         }
         catch (Exception ex)
         {
-            errorMessage = "An error occurred during registration. Please try again.";
+            errors = new List<string> { "An unexpected error occurred. Please try again later." };
             await JSRuntime.InvokeVoidAsync("console.error", ex.Message);
         }
         finally
