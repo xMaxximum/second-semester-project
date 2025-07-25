@@ -363,7 +363,7 @@ namespace Server.Controllers
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("Email changed successfully for user {UserId} from {OldEmail} to {NewEmail}",
-                        userId, user.Email, request.NewEmail);
+                        userId, originalEmail, request.NewEmail);
                     return Ok(new Shared.Models.ChangeEmailResponse(true)
                     {
                         Message = "Email changed successfully"
