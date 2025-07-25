@@ -1,0 +1,249 @@
+@page "/profile"
+@rendermode InteractiveWebAssembly
+@using Shared.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using Frontend.Client.Services
+@inject AuthService AuthService
+@inject ISnackbar Snackbar
+@attribute [Authorize]
+
+<PageTitle>Profile Settings</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-16">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" GutterBottom="true">Profile Settings</MudText>
+        
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (profile != null)
+        {
+            <MudTabs Elevation="2" Rounded="true" Color="Color.Primary">
+                <MudTabPanel Text="Profile Information">
+                    <EditForm Model="updateProfileRequest" OnValidSubmit="UpdateProfile">
+                        <DataAnnotationsValidator />
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="updateProfileRequest.UserName"
+                                              Label="Username"
+                                              Required="true"
+                                              For="@(() => updateProfileRequest.UserName)" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField Value="@profile.Email"
+                                              Label="Email"
+                                              ReadOnly="true"
+                                              HelperText="To change email, use the 'Change Email' tab" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudButton ButtonType="ButtonType.Submit"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Class="ml-auto"
+                                           Disabled="isUpdatingProfile">
+                                    @if (isUpdatingProfile)
+                                    {
+                                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                        <MudText Class="ms-2">Updating...</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>Update Profile</MudText>
+                                    }
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </EditForm>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Change Email">
+                    <EditForm Model="changeEmailRequest" OnValidSubmit="ChangeEmail">
+                        <DataAnnotationsValidator />
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudTextField Value="@profile.Email"
+                                              Label="Current Email"
+                                              ReadOnly="true" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="changeEmailRequest.NewEmail"
+                                              Label="New Email"
+                                              Required="true"
+                                              For="@(() => changeEmailRequest.NewEmail)" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="changeEmailRequest.CurrentPassword"
+                                              Label="Current Password"
+                                              InputType="InputType.Password"
+                                              Required="true"
+                                              For="@(() => changeEmailRequest.CurrentPassword)" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudButton ButtonType="ButtonType.Submit"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Class="ml-auto"
+                                           Disabled="isChangingEmail">
+                                    @if (isChangingEmail)
+                                    {
+                                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                        <MudText Class="ms-2">Changing...</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>Change Email</MudText>
+                                    }
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </EditForm>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Change Password">
+                    <EditForm Model="changePasswordRequest" OnValidSubmit="ChangePassword">
+                        <DataAnnotationsValidator />
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="changePasswordRequest.CurrentPassword"
+                                              Label="Current Password"
+                                              InputType="InputType.Password"
+                                              Required="true"
+                                              For="@(() => changePasswordRequest.CurrentPassword)" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="changePasswordRequest.NewPassword"
+                                              Label="New Password"
+                                              InputType="InputType.Password"
+                                              Required="true"
+                                              For="@(() => changePasswordRequest.NewPassword)" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="changePasswordRequest.ConfirmNewPassword"
+                                              Label="Confirm New Password"
+                                              InputType="InputType.Password"
+                                              Required="true"
+                                              For="@(() => changePasswordRequest.ConfirmNewPassword)" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudButton ButtonType="ButtonType.Submit"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Class="ml-auto"
+                                           Disabled="isChangingPassword">
+                                    @if (isChangingPassword)
+                                    {
+                                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                        <MudText Class="ms-2">Changing...</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>Change Password</MudText>
+                                    }
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </EditForm>
+                </MudTabPanel>
+            </MudTabs>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private UserProfile? profile;
+    private bool isLoading = true;
+    private bool isUpdatingProfile = false;
+    private bool isChangingEmail = false;
+    private bool isChangingPassword = false;
+
+    private UpdateProfileRequest updateProfileRequest = new();
+    private ChangeEmailRequest changeEmailRequest = new();
+    private ChangePasswordRequest changePasswordRequest = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+    }
+
+    private async Task LoadProfile()
+    {
+        isLoading = true;
+        var response = await AuthService.GetProfileAsync();
+        
+        if (response.IsSuccess && response.Profile != null)
+        {
+            profile = response.Profile;
+            updateProfileRequest.UserName = profile.UserName;
+        }
+        else
+        {
+            Snackbar.Add(response.Message, Severity.Error);
+        }
+        
+        isLoading = false;
+    }
+
+    private async Task UpdateProfile()
+    {
+        isUpdatingProfile = true;
+        var response = await AuthService.UpdateProfileAsync(updateProfileRequest);
+        
+        if (response.IsSuccess)
+        {
+            Snackbar.Add("Profile updated successfully!", Severity.Success);
+            if (response.Profile != null)
+            {
+                profile = response.Profile;
+            }
+        }
+        else
+        {
+            var errorMessage = response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message;
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        
+        isUpdatingProfile = false;
+    }
+
+    private async Task ChangeEmail()
+    {
+        isChangingEmail = true;
+        var response = await AuthService.ChangeEmailAsync(changeEmailRequest);
+        
+        if (response.IsSuccess)
+        {
+            Snackbar.Add("Email changed successfully!", Severity.Success);
+            changeEmailRequest = new(); // Clear form
+            await LoadProfile(); // Reload profile to show new email
+        }
+        else
+        {
+            var errorMessage = response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message;
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        
+        isChangingEmail = false;
+    }
+
+    private async Task ChangePassword()
+    {
+        isChangingPassword = true;
+        var response = await AuthService.ChangePasswordAsync(changePasswordRequest);
+        
+        if (response.IsSuccess)
+        {
+            Snackbar.Add("Password changed successfully!", Severity.Success);
+            changePasswordRequest = new(); // Clear form
+        }
+        else
+        {
+            var errorMessage = response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message;
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        
+        isChangingPassword = false;
+    }
+}
