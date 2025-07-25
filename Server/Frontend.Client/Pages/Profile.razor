@@ -35,10 +35,10 @@
                             <DataAnnotationsValidator />
                             <MudGrid>
                                 <MudItem xs="12" sm="6">
-                                    <MudTextField @bind-Value="updateProfileRequest.DisplayName"
-                                                  Label="Display Name"
+                                    <MudTextField @bind-Value="updateProfileRequest.UserName"
+                                                  Label="Username"
                                                   Required="true"
-                                                  For="@(() => updateProfileRequest.DisplayName)" />
+                                                  For="@(() => updateProfileRequest.UserName)" />
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
                                     <MudTextField Value="@profile.Email"
@@ -245,7 +245,7 @@
         if (response.IsSuccess && response.Profile != null)
         {
             profile = response.Profile;
-            updateProfileRequest.DisplayName = profile.DisplayName;
+            updateProfileRequest.UserName = profile.UserName;
         }
         else
         {

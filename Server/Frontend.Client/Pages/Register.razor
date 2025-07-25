@@ -19,8 +19,8 @@
             <EditForm Model="@registerRequest" OnValidSubmit="@HandleRegister">
                 <DataAnnotationsValidator />
                 
-                <MudTextField @bind-Value="registerRequest.DisplayName"
-                              Label="Display Name"
+                <MudTextField @bind-Value="registerRequest.UserName"
+                              Label="Username"
                               Variant="Variant.Outlined"
                               Required="true"
                               Class="mb-4" />

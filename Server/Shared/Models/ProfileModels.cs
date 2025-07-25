@@ -12,7 +12,7 @@ namespace Shared.Models
     public class UserProfile
     {
         public string Email { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
         public bool EmailConfirmed { get; set; }
     }
 
@@ -20,7 +20,7 @@ namespace Shared.Models
     {
         [Required]
         [StringLength(50, MinimumLength = 1)]
-        public string DisplayName { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
     }
 
     public class UpdateProfileResponse

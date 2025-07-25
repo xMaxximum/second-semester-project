@@ -11,7 +11,7 @@ namespace Frontend.Client.Services
 
         private User? _user;
 
-        public string? DisplayName => _user?.DisplayName;
+        public string? UserName => _user?.UserName;
         public bool IsLoggedIn => _user != null;
         public string? Token => _user?.Jwt;
 
@@ -21,8 +21,8 @@ namespace Frontend.Client.Services
             var identity = new ClaimsIdentity(claims, "jwt");
             var principal = new ClaimsPrincipal(identity);
             
-            var displayName = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "";
-            _user = new User(displayName, jwt, principal);
+            var userName = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "";
+            _user = new User(userName, jwt, principal);
             
             NotifyAuthenticationStateChanged(Task.FromResult(GetState()));
         }
@@ -53,13 +53,13 @@ namespace Frontend.Client.Services
 
     public class User
     {
-        public string DisplayName { get; }
+        public string UserName { get; }
         public string Jwt { get; }
         public ClaimsPrincipal ClaimsPrincipal { get; }
 
-        public User(string displayName, string jwt, ClaimsPrincipal claimsPrincipal)
+        public User(string userName, string jwt, ClaimsPrincipal claimsPrincipal)
         {
-            DisplayName = displayName;
+            UserName = userName;
             Jwt = jwt;
             ClaimsPrincipal = claimsPrincipal;
         }

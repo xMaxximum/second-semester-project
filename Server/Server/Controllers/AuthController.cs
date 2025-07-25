@@ -45,7 +45,7 @@ namespace Server.Controllers
                 var user = new User()
                 {
                     Email = request.Email,
-                    DisplayName = request.DisplayName,
+                    UserName = request.UserName,
                     EmailConfirmed = true
                 };
 
@@ -189,8 +189,8 @@ namespace Server.Controllers
 
                 var profile = new Shared.Models.UserProfile
                 {
-                    Email = user.Email!,
-                    DisplayName = user.DisplayName,
+                    Email = user.Email ?? "",
+                    UserName = user.UserName ?? "",
                     EmailConfirmed = user.EmailConfirmed,
                 };
 
@@ -246,8 +246,19 @@ namespace Server.Controllers
                     });
                 }
 
+                // Check if username is already taken by another user
+                var existingUser = await _userManager.FindByNameAsync(request.UserName);
+                if (existingUser != null && existingUser.Id != user.Id)
+                {
+                    return BadRequest(new Shared.Models.UpdateProfileResponse(false)
+                    {
+                        Message = "Username is already taken",
+                        Errors = new List<string> { "Username is already taken" }
+                    });
+                }
+
                 // Update user properties
-                user.DisplayName = request.DisplayName;
+                user.UserName = request.UserName;
 
                 var result = await _userManager.UpdateAsync(user);
 
@@ -255,8 +266,8 @@ namespace Server.Controllers
                 {
                     var updatedProfile = new Shared.Models.UserProfile
                     {
-                        Email = user.Email!,
-                        DisplayName = user.DisplayName,
+                        Email = user.Email ?? "",
+                        UserName = user.UserName ?? "",
                         EmailConfirmed = user.EmailConfirmed,
                     };
 
@@ -525,8 +536,8 @@ namespace Server.Controllers
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.Name, user.DisplayName),
-                new Claim(ClaimTypes.Email, user.Email!),
+                new Claim(ClaimTypes.Name, user.UserName ?? ""),
+                new Claim(ClaimTypes.Email, user.Email ?? ""),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
