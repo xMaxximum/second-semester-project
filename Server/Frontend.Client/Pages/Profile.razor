@@ -13,211 +13,216 @@
 
 <PageTitle>Profile Settings</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-16">
-    <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" GutterBottom="true">Profile Settings</MudText>
-        
-        @if (isLoading)
-        {
-            <MudProgressCircular Indeterminate="true" />
-        }
-        else if (profile != null)
-        {
-            <MudGrid>
-                <!-- Profile Information Section -->
-                <MudItem xs="12">
-                    <MudPaper Class="pa-4 mb-4" Elevation="2">
-                        <MudText Typo="Typo.h6" GutterBottom="true">
-                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="me-2" />
-                            Profile Information
-                        </MudText>
-                        <EditForm Model="updateProfileRequest" OnValidSubmit="UpdateProfile">
-                            <DataAnnotationsValidator />
-                            <MudGrid>
-                                <MudItem xs="12" sm="6">
-                                    <MudTextField @bind-Value="updateProfileRequest.UserName"
-                                                  Label="Username"
-                                                  Required="true"
-                                                  For="@(() => updateProfileRequest.UserName)" />
-                                </MudItem>
-                                <MudItem xs="12" sm="6">
-                                    <MudTextField Value="@profile.Email"
-                                                  Label="Email"
-                                                  ReadOnly="true"
-                                                  HelperText="To change email, use the section below" />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudButton ButtonType="ButtonType.Submit"
-                                               Variant="Variant.Filled"
-                                               Color="Color.Primary"
-                                               Disabled="isUpdatingProfile">
-                                        @if (isUpdatingProfile)
-                                        {
-                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                                            <MudText Class="ms-2">Updating...</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Filled.Save" Class="me-2" />
-                                            <MudText>Update Profile</MudText>
-                                        }
-                                    </MudButton>
-                                </MudItem>
-                            </MudGrid>
-                        </EditForm>
-                    </MudPaper>
-                </MudItem>
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+    }
 
-                <!-- Change Email Section -->
-                <MudItem xs="12">
-                    <MudPaper Class="pa-4 mb-4" Elevation="2">
-                        <MudText Typo="Typo.h6" GutterBottom="true">
-                            <MudIcon Icon="@Icons.Material.Filled.Email" Class="me-2" />
-                            Change Email
-                        </MudText>
-                        <EditForm Model="changeEmailRequest" OnValidSubmit="ChangeEmail">
-                            <DataAnnotationsValidator />
-                            <MudGrid>
-                                <MudItem xs="12" sm="6">
-                                    <MudTextField Value="@profile.Email"
-                                                  Label="Current Email"
-                                                  ReadOnly="true" />
-                                </MudItem>
-                                <MudItem xs="12" sm="6">
-                                    <MudTextField @bind-Value="changeEmailRequest.NewEmail"
-                                                  Label="New Email"
-                                                  Required="true"
-                                                  For="@(() => changeEmailRequest.NewEmail)" />
-                                </MudItem>
-                                <MudItem xs="12" sm="6">
-                                    <MudTextField @bind-Value="changeEmailRequest.CurrentPassword"
-                                                  Label="Current Password"
-                                                  InputType="InputType.Password"
-                                                  Required="true"
-                                                  For="@(() => changeEmailRequest.CurrentPassword)" />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudButton ButtonType="ButtonType.Submit"
-                                               Variant="Variant.Filled"
-                                               Color="Color.Secondary"
-                                               Disabled="isChangingEmail">
-                                        @if (isChangingEmail)
-                                        {
-                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                                            <MudText Class="ms-2">Changing...</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Filled.AlternateEmail" Class="me-2" />
-                                            <MudText>Change Email</MudText>
-                                        }
-                                    </MudButton>
-                                </MudItem>
-                            </MudGrid>
-                        </EditForm>
-                    </MudPaper>
-                </MudItem>
+    .background-grid {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.05;
+    }
 
-                <!-- Change Password Section -->
-                <MudItem xs="12">
-                    <MudPaper Class="pa-4 mb-4" Elevation="2">
-                        <MudText Typo="Typo.h6" GutterBottom="true">
-                            <MudIcon Icon="@Icons.Material.Filled.Lock" Class="me-2" />
-                            Change Password
-                        </MudText>
-                        <EditForm Model="changePasswordRequest" OnValidSubmit="ChangePassword">
-                            <DataAnnotationsValidator />
-                            <MudGrid>
-                                <MudItem xs="12" sm="4">
-                                    <MudTextField @bind-Value="changePasswordRequest.CurrentPassword"
-                                                  Label="Current Password"
-                                                  InputType="InputType.Password"
-                                                  Required="true"
-                                                  For="@(() => changePasswordRequest.CurrentPassword)" />
-                                </MudItem>
-                                <MudItem xs="12" sm="4">
-                                    <MudTextField @bind-Value="changePasswordRequest.NewPassword"
-                                                  Label="New Password"
-                                                  InputType="InputType.Password"
-                                                  Required="true"
-                                                  For="@(() => changePasswordRequest.NewPassword)" />
-                                </MudItem>
-                                <MudItem xs="12" sm="4">
-                                    <MudTextField @bind-Value="changePasswordRequest.ConfirmNewPassword"
-                                                  Label="Confirm New Password"
-                                                  InputType="InputType.Password"
-                                                  Required="true"
-                                                  For="@(() => changePasswordRequest.ConfirmNewPassword)" />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudButton ButtonType="ButtonType.Submit"
-                                               Variant="Variant.Filled"
-                                               Color="Color.Info"
-                                               Disabled="isChangingPassword">
-                                        @if (isChangingPassword)
-                                        {
-                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                                            <MudText Class="ms-2">Changing...</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Filled.VpnKey" Class="me-2" />
-                                            <MudText>Change Password</MudText>
-                                        }
-                                    </MudButton>
-                                </MudItem>
-                            </MudGrid>
-                        </EditForm>
-                    </MudPaper>
-                </MudItem>
+    .profile-wrapper {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
 
-                <!-- Delete Account Section -->
-                <MudItem xs="12">
-                    <MudPaper Class="pa-4" Elevation="2" Style="border: 2px solid var(--mud-palette-error);">
-                        <MudText Typo="Typo.h6" GutterBottom="true" Color="Color.Error">
-                            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" />
-                            Danger Zone
-                        </MudText>
-                        <MudAlert Severity="Severity.Warning" Class="mb-4">
-                            <strong>Warning:</strong> This action cannot be undone. All your data will be permanently deleted.
-                        </MudAlert>
-                        
-                        <EditForm Model="deleteAccountRequest" OnValidSubmit="ShowDeleteConfirmation">
-                            <DataAnnotationsValidator />
-                            <MudGrid>
-                                <MudItem xs="12" sm="6">
-                                    <MudTextField @bind-Value="deleteAccountRequest.CurrentPassword"
-                                                  Label="Current Password"
-                                                  InputType="InputType.Password"
-                                                  Required="true"
-                                                  For="@(() => deleteAccountRequest.CurrentPassword)"
-                                                  HelperText="Enter your password to confirm account deletion" />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudButton ButtonType="ButtonType.Submit"
-                                               Variant="Variant.Filled"
-                                               Color="Color.Error"
-                                               Disabled="isDeletingAccount">
-                                        @if (isDeletingAccount)
-                                        {
-                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                                            <MudText Class="ms-2">Deleting...</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Filled.DeleteForever" Class="me-2" />
-                                            <MudText>Delete My Account</MudText>
-                                        }
-                                    </MudButton>
-                                </MudItem>
-                            </MudGrid>
-                        </EditForm>
-                    </MudPaper>
-                </MudItem>
-            </MudGrid>
-        }
-    </MudPaper>
-</MudContainer>
+    .icon-header {
+        display: flex;
+        align-items: center;
+    }
+</style>
+
+<!-- Background Grid SVG -->
+<div class="background-grid">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+        <defs>
+            <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
+                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25" />
+            </pattern>
+        </defs>
+        <rect width="100" height="100" fill="url(#grid)" />
+    </svg>
+</div>
+
+<!-- Foreground Content -->
+<div class="profile-wrapper">
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <MudPaper Class="pa-6" Elevation="3" Style="background-color: white;">
+            <MudText Typo="Typo.h4" GutterBottom="true">Profile Settings</MudText>
+
+            @if (isLoading)
+            {
+                <MudProgressCircular Indeterminate="true" />
+            }
+            else if (profile != null)
+            {
+                <MudGrid>
+                    <!-- Profile Information -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="icon-header" GutterBottom="true">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Class="me-2" />
+                                Profile Information
+                            </MudText>
+                            <EditForm Model="updateProfileRequest" OnValidSubmit="UpdateProfile">
+                                <DataAnnotationsValidator />
+                                <MudGrid>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="updateProfileRequest.UserName"
+                                                      Label="Username"
+                                                      Required="true"
+                                                      For="@(() => updateProfileRequest.UserName)" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField Value="@profile.Email"
+                                                      Label="Email"
+                                                      ReadOnly="true"
+                                                      HelperText="To change email, use the section below" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isUpdatingProfile">
+                                            @if (isUpdatingProfile)
+                                            {
+                                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                                <MudText Class="ms-2">Updating...</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Save" Class="me-2" />
+                                                <MudText>Update Profile</MudText>
+                                            }
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+                            </EditForm>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Change Email -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="icon-header" GutterBottom="true">
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Class="me-2" />
+                                Change Email
+                            </MudText>
+                            <EditForm Model="changeEmailRequest" OnValidSubmit="ChangeEmail">
+                                <DataAnnotationsValidator />
+                                <MudGrid>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField Value="@profile.Email" Label="Current Email" ReadOnly="true" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="changeEmailRequest.NewEmail" Label="New Email" Required="true" For="@(() => changeEmailRequest.NewEmail)" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="changeEmailRequest.CurrentPassword" Label="Current Password" InputType="InputType.Password" Required="true" For="@(() => changeEmailRequest.CurrentPassword)" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isChangingEmail">
+                                            @if (isChangingEmail)
+                                            {
+                                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                                <MudText Class="ms-2">Changing...</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.AlternateEmail" Class="me-2" />
+                                                <MudText>Change Email</MudText>
+                                            }
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+                            </EditForm>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Change Password -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="icon-header" GutterBottom="true">
+                                <MudIcon Icon="@Icons.Material.Filled.Lock" Class="me-2" />
+                                Change Password
+                            </MudText>
+                            <EditForm Model="changePasswordRequest" OnValidSubmit="ChangePassword">
+                                <DataAnnotationsValidator />
+                                <MudGrid>
+                                    <MudItem xs="12" sm="4">
+                                        <MudTextField @bind-Value="changePasswordRequest.CurrentPassword" Label="Current Password" InputType="InputType.Password" Required="true" For="@(() => changePasswordRequest.CurrentPassword)" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <MudTextField @bind-Value="changePasswordRequest.NewPassword" Label="New Password" InputType="InputType.Password" Required="true" For="@(() => changePasswordRequest.NewPassword)" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <MudTextField @bind-Value="changePasswordRequest.ConfirmNewPassword" Label="Confirm New Password" InputType="InputType.Password" Required="true" For="@(() => changePasswordRequest.ConfirmNewPassword)" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isChangingPassword">
+                                            @if (isChangingPassword)
+                                            {
+                                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                                <MudText Class="ms-2">Changing...</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.VpnKey" Class="me-2" />
+                                                <MudText>Change Password</MudText>
+                                            }
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+                            </EditForm>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Delete Account -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4" Style="border: 2px solid var(--mud-palette-error);">
+                            <MudText Typo="Typo.h6" Class="icon-header" GutterBottom="true" Color="Color.Error">
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" />
+                                Danger Zone
+                            </MudText>
+                            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                <strong>Warning:</strong> This action cannot be undone. All your data will be permanently deleted.
+                            </MudAlert>
+                            <EditForm Model="deleteAccountRequest" OnValidSubmit="ShowDeleteConfirmation">
+                                <DataAnnotationsValidator />
+                                <MudGrid>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="deleteAccountRequest.CurrentPassword" Label="Current Password" InputType="InputType.Password" Required="true" For="@(() => deleteAccountRequest.CurrentPassword)" HelperText="Enter your password to confirm account deletion" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Error" Disabled="isDeletingAccount">
+                                            @if (isDeletingAccount)
+                                            {
+                                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                                <MudText Class="ms-2">Deleting...</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.DeleteForever" Class="me-2" />
+                                                <MudText>Delete My Account</MudText>
+                                            }
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+                            </EditForm>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+        </MudPaper>
+    </MudContainer>
+</div>
 
 @code {
     private UserProfile? profile;
@@ -232,16 +237,13 @@
     private ChangePasswordRequest changePasswordRequest = new();
     private DeleteAccountRequest deleteAccountRequest = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadProfile();
-    }
+    protected override async Task OnInitializedAsync() => await LoadProfile();
 
     private async Task LoadProfile()
     {
         isLoading = true;
         var response = await AuthService.GetProfileAsync();
-        
+
         if (response.IsSuccess && response.Profile != null)
         {
             profile = response.Profile;
@@ -251,7 +253,7 @@
         {
             Snackbar.Add(response.Message, Severity.Error);
         }
-        
+
         isLoading = false;
     }
 
@@ -259,25 +261,19 @@
     {
         isUpdatingProfile = true;
         var response = await AuthService.UpdateProfileAsync(updateProfileRequest);
-        
+
         if (response.IsSuccess)
         {
             Snackbar.Add("Profile updated successfully!", Severity.Success);
-            if (response.Profile != null)
-            {
-                profile = response.Profile;
-            }
-            
-            // Refresh the page to update the display name in the UI
-            await Task.Delay(1500); // Small delay to let user see the success message
-            Navigation.NavigateTo(Navigation.Uri, true); // Force reload
+            if (response.Profile != null) profile = response.Profile;
+            await Task.Delay(1500);
+            Navigation.NavigateTo(Navigation.Uri, true);
         }
         else
         {
-            var errorMessage = response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message;
-            Snackbar.Add(errorMessage, Severity.Error);
+            Snackbar.Add(response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message, Severity.Error);
         }
-        
+
         isUpdatingProfile = false;
     }
 
@@ -285,19 +281,18 @@
     {
         isChangingEmail = true;
         var response = await AuthService.ChangeEmailAsync(changeEmailRequest);
-        
+
         if (response.IsSuccess)
         {
             Snackbar.Add("Email changed successfully!", Severity.Success);
-            changeEmailRequest = new(); // Clear form
-            await LoadProfile(); // Reload profile to show new email
+            changeEmailRequest = new();
+            await LoadProfile();
         }
         else
         {
-            var errorMessage = response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message;
-            Snackbar.Add(errorMessage, Severity.Error);
+            Snackbar.Add(response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message, Severity.Error);
         }
-        
+
         isChangingEmail = false;
     }
 
@@ -305,53 +300,48 @@
     {
         isChangingPassword = true;
         var response = await AuthService.ChangePasswordAsync(changePasswordRequest);
-        
+
         if (response.IsSuccess)
         {
             Snackbar.Add("Password changed successfully!", Severity.Success);
-            changePasswordRequest = new(); // Clear form
+            changePasswordRequest = new();
         }
         else
         {
-            var errorMessage = response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message;
-            Snackbar.Add(errorMessage, Severity.Error);
+            Snackbar.Add(response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message, Severity.Error);
         }
-        
+
         isChangingPassword = false;
     }
 
     private async Task ShowDeleteConfirmation()
     {
-        bool? result = await DialogService.ShowMessageBox(
+        bool? confirmed = await DialogService.ShowMessageBox(
             "Delete Account",
             "Are you absolutely sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.",
             yesText: "Yes, Delete My Account",
             cancelText: "Cancel");
 
-        if (result == true)
-        {
+        if (confirmed == true)
             await DeleteAccount();
-        }
     }
 
     private async Task DeleteAccount()
     {
         isDeletingAccount = true;
         var response = await AuthService.DeleteAccountAsync(deleteAccountRequest);
-        
+
         if (response.IsSuccess)
         {
             Snackbar.Add("Account deleted successfully.", Severity.Success);
-            // Clear auth state and redirect to home
             await AuthService.LogoutAsync();
             Navigation.NavigateTo("/", true);
         }
         else
         {
-            var errorMessage = response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message;
-            Snackbar.Add(errorMessage, Severity.Error);
+            Snackbar.Add(response.Errors.Any() ? string.Join(", ", response.Errors) : response.Message, Severity.Error);
         }
-        
+
         isDeletingAccount = false;
     }
 }
