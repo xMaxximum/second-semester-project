@@ -12,136 +12,87 @@ namespace Cyclone_ESP32
     public class MQTT
     {
         private static MqttClient client; // the client object
-        private static int lastMessage; // last message that was sent (used to continue sending messages after connection is lost)
         private bool publishEnabled;
-
-
-
-        // constructor does initialization and starts the MQTT client + publishes messages directly (prototype)
-        // this needs some work OOP wise obviously
-        MQTT()
-        {
-            string timeSinceStart = "PT1H30M";
-            double currentTemperature = 22.5;
-            double currentSpeed = 15.0;
-            double latitude = 51.123456;
-            double longitude = 8.123456;
-            double averagedAccelerationX = 0.5;
-            double averagedAccelerationY = 0.5;
-            double averagedAccelerationZ = 0.5;
-            double peakAccelerationX = 2.0;
-            double peakAccelerationY = 2.0;
-            double peakAccelerationZ = 2.0;
-
-            // Checksumme berechnen
-            double checksum = currentTemperature + currentSpeed + latitude + longitude +
-                              averagedAccelerationX + averagedAccelerationY + averagedAccelerationZ +
-                              peakAccelerationX + peakAccelerationY + peakAccelerationZ;
-
-            // JSON manuell zusammenbauen
-            var sb = new StringBuilder();
-            sb.Append("{");
-            sb.Append("\"time_since_start\":\"").Append(timeSinceStart).Append("\",");
-            sb.Append("\"current_temperature\":").Append(currentTemperature).Append(",");
-            sb.Append("\"current_speed\":").Append(currentSpeed).Append(",");
-            sb.Append("\"current_coordinates\":{");
-            sb.Append("\"latitude\":").Append(latitude).Append(",");
-            sb.Append("\"longitude\":").Append(longitude).Append("},");
-            sb.Append("\"averaged_acceleration_x\":").Append(averagedAccelerationX).Append(",");
-            sb.Append("\"averaged_acceleration_y\":").Append(averagedAccelerationY).Append(",");
-            sb.Append("\"averaged_acceleration_z\":").Append(averagedAccelerationZ).Append(",");
-            sb.Append("\"peak_acceleration_x\":").Append(peakAccelerationX).Append(",");
-            sb.Append("\"peak_acceleration_y\":").Append(peakAccelerationY).Append(",");
-            sb.Append("\"peak_acceleration_z\":").Append(peakAccelerationZ).Append(",");
-            sb.Append("\"checksum\":").Append(checksum);
-            sb.Append("}");
-
-            string jsonPayload = sb.ToString();
-
-
-            // STEP 1: setup network
-            // You need to set Wifi connection credentials in the configuration first!
-            // Go to Device Explorer -> Edit network configuration -> Wifi proiles and set SSID and password there.
-            SetupAndConnectNetwork();
-
-            // STEP 2: connect to MQTT broker
-            // Warning: test.mosquitto.org is very slow and congested, and is only suitable for very basic validation testing.
-            // Change it to your local broker as soon as possible.
-            ConnectToBroker("test.mosquitto.org");
-            // after successful connection register connection closed event
-            client.ConnectionClosed += OnMqttConnectionClosed;
-
-
-            // Publish
-            for (int i = 0; i < 100; i++)
-            {
-                PublishMessage(client, jsonPayload);
-                lastMessage = i;
-                Debug.WriteLine($"lastMessage: {lastMessage}");
-            }
-        }
+        private string brokerHostname = "mqtt-dhbw-hdh-ai2024.duckdns.org";
 
         public bool Publish
         {
             set
             {
-                    publishEnabled = true;
-                
+                publishEnabled = value;
+            }
+        }
+
+        // constructor does initialization of state and event handlers
+        public MQTT()
+        {
+            publishEnabled = false;            
+        }
+
+
+        private void Connect()
+        {
+            // setup network
+            // TODO: set multiple credentials on the microsd and use them for the available networks.
+            // currently credentials (only one user) are saved to memory by the visual studio extension
+            SetupAndConnectNetwork();
+
+            // Connect to MQTT broker
+            ConnectToBroker(brokerHostname);
+
+            // after successful connection register connection closed event
+            client.ConnectionClosed += OnMqttConnectionClosed;
+        }
+
+        public void DoWork()
+        {
+            bool endOfFile = false; // Is true when filestream is finished
+            if (publishEnabled) // only do something if pusblishing is enabled
+            {
+                // is there a connection to the broker?
+                if (client == null || !client.IsConnected)
+                    Connect();
+
+                while (!endOfFile) // endOfFile should come from Filesystem class that knows which line is currently processed                
+                    PublishMessage("Filesystem data as one line of file in csv format");
             }
         }
 
 
-
-        private static void OnMqttConnectionClosed(object sender, EventArgs e)
+        private void OnMqttConnectionClosed(object sender, EventArgs e)
         {
-            Debug.WriteLine("MQTT connection was closed!");
-            ConnectToBroker("test.mosquitto.org");
-            Debug.WriteLine("MQTT connection is established again!");
-            // Finish publishing
-            for (int i = lastMessage; i < 100; i++)
+            if (publishEnabled)
             {
-                Debug.WriteLine($"lastMessage: {lastMessage}");
-                PublishMessage(client, "Filesystem data");
+                Connect();
+                // Finish publishing
+                DoWork();
             }
-            Debug.WriteLine("Publishing finished.");
         }
 
-        public static void PublishMessage(MqttClient client, string jsonPayload)
+        public void PublishMessage(string payload)
         {
-            if (client.IsConnected)
-            {
-                client.Publish(
-                     "nf-mqtt/basic-demo-580842750752075423750435789452",
-                     Encoding.UTF8.GetBytes(jsonPayload),
-                     null, null,
-                     MqttQoSLevel.AtLeastOnce,
-                     false);
-                Thread.Sleep(500);
-                Debug.WriteLine("Message sent!");
-            }
-            else
-            {
-                Debug.WriteLine("Client is disconnected");
-                // The client is disconnected, try to reconnect
-                ConnectToBroker("test.mosquitto.org");
-                PublishMessage(client, jsonPayload);
-            }
-
+            client.Publish(
+                 "esp32-mqtt-client/test",
+                 Encoding.UTF8.GetBytes(payload),
+                 null, null,
+                 MqttQoSLevel.AtLeastOnce, // Message with acknowledgement of retrieval
+                 false);
+            Thread.Sleep(500);
+            Debug.WriteLine("Message sent!");
         }
 
-        private static void ConnectToBroker(string hostname)
+        private void ConnectToBroker(string hostname)
         {
-            client = null;
+            client = null; // free resources from possible previous lost connection, object is invalid anyway
             bool connectSuccessful = false;
             while (!connectSuccessful)
             {
                 try
                 {
-                    client = new MqttClient("test.mosquitto.org");
+                    client = new MqttClient(hostname);
                     var clientId = Guid.NewGuid().ToString();
-                    client.Connect(clientId);
+                    client.Connect(clientId, "username", "password");
                     connectSuccessful = true;
-
                     break;
                 }
                 catch (System.Net.Sockets.SocketException ex)
@@ -168,7 +119,7 @@ namespace Cyclone_ESP32
         /// <summary>
         /// This is a helper function to pick up first available network interface and use it for communication.
         /// </summary>
-        private static void SetupAndConnectNetwork()
+        private void SetupAndConnectNetwork()
         {
             // Get the first WiFI Adapter
             var wifiAdapter = WifiAdapter.FindAllAdapters()[0];
@@ -181,33 +132,32 @@ namespace Cyclone_ESP32
             var wiFiConfiguration = Wireless80211Configuration.GetAllWireless80211Configurations()[0];
             var ipAddress = NetworkInterface.GetAllNetworkInterfaces()[0].IPv4Address;
             var needToConnect = string.IsNullOrEmpty(ipAddress) || (ipAddress == "0.0.0.0");
-            //while (needToConnect)
-            //{
-            foreach (var network in wifiAdapter.NetworkReport.AvailableNetworks)
+            while (needToConnect)
             {
-                // Show all networks found
-                Debug.WriteLine($"Net SSID :{network.Ssid},  BSSID : {network.Bsid},  rssi : {network.NetworkRssiInDecibelMilliwatts},  signal : {network.SignalBars}");
-
-                // If its our Network then try to connect
-                if (network.Ssid == wiFiConfiguration.Ssid)
+                foreach (var network in wifiAdapter.NetworkReport.AvailableNetworks)
                 {
+                    // Show all networks found
+                    Debug.WriteLine($"Net SSID :{network.Ssid},  BSSID : {network.Bsid},  rssi : {network.NetworkRssiInDecibelMilliwatts},  signal : {network.SignalBars}");
 
-                    var result = wifiAdapter.Connect(network, WifiReconnectionKind.Automatic, wiFiConfiguration.Password);
+                    // If its our Network then try to connect
+                    if (network.Ssid == wiFiConfiguration.Ssid)
+                    {
 
-                    if (result.ConnectionStatus == WifiConnectionStatus.Success)
-                    {
-                        Debug.WriteLine($"Connected to Wifi network {network.Ssid}.");
-                        needToConnect = false;
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"Error {result.ConnectionStatus} connecting to Wifi network {network.Ssid}.");
+                        var result = wifiAdapter.Connect(network, WifiReconnectionKind.Automatic, wiFiConfiguration.Password);
+
+                        if (result.ConnectionStatus == WifiConnectionStatus.Success)
+                        {
+                            Debug.WriteLine($"Connected to Wifi network {network.Ssid}.");
+                            needToConnect = false;
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"Error {result.ConnectionStatus} connecting to Wifi network {network.Ssid}.");
+                        }
                     }
                 }
+
             }
-
-            //}
-
             ipAddress = NetworkInterface.GetAllNetworkInterfaces()[0].IPv4Address;
             Debug.WriteLine($"Connected to Wifi network with IP address {ipAddress}");
         }

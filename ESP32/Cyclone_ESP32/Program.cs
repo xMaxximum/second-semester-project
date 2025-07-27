@@ -11,13 +11,16 @@ namespace Cyclone_ESP32
     {
         public static void Main()
         {
-            mqttClient = new MQTT();
+            MQTT mqttClient = new MQTT();
 
             while (true)
             {
+                // tells MQTT client to publish messages
                 mqttClient.Publish = true;
-                mqttClient.doWork();
+
+                // perform MQTT client work, which includes publishing messages
+                mqttClient.DoWork();
             }
-        }        
+        }
     }
 }
