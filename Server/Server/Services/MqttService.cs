@@ -14,10 +14,10 @@ namespace Server.Services
             _logger = logger;
             var clientOptions = new HiveMQClientOptions 
                 { 
-                    Host = "broker.hivemq.com", 
-                    Port = 1883 
-                    // _clientOptions.UserName = "BikeUser";
-                    // _clientOptions.Password = "";
+                    Host = "mqtt-dhbw-hdh-ai2024.duckdns.org", 
+                    Port = 1883,
+                    UserName = "BikeUser",
+                    Password = Environment.GetEnvironmentVariable("MQTT_Password"),
                 };
             _client = new HiveMQClient(clientOptions);
         }
@@ -32,13 +32,14 @@ namespace Server.Services
                 Console.WriteLine("Message Received: {}", args.PublishMessage.PayloadAsString);
             };
 
-            _client.SubscribeAsync("topic/test").ConfigureAwait(false);
+            // topic hier festlegen
+            await _client.SubscribeAsync("topic/test").ConfigureAwait(false);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _client.UnsubscribeAsync("topic/test");
-            _client.DisconnectAsync();
+            await _client.UnsubscribeAsync("topic/test");
+            await _client.DisconnectAsync();
         }
     }
 }
