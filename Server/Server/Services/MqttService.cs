@@ -1,6 +1,9 @@
-using HiveMQtt;
 using HiveMQtt.Client;
+using HiveMQtt.Client.Events;
 using HiveMQtt.Client.Options;
+using HiveMQtt.MQTT5.ReasonCodes;
+using Microsoft.Extensions.Options;
+using Server.Models;
 
 namespace Server.Services
 {
@@ -8,38 +11,70 @@ namespace Server.Services
     {
         private readonly ILogger<MqttService> _logger;
         private HiveMQClient _client;
+        private readonly MqttClientOptions _options;
 
-        public MqttService(ILogger<MqttService> logger)
+        public MqttService(ILogger<MqttService> logger, IOptions<MqttClientOptions> options)
         {
             _logger = logger;
+            _options = options.Value;
+            
             var clientOptions = new HiveMQClientOptions 
-                { 
-                    Host = "mqtt-dhbw-hdh-ai2024.duckdns.org", 
-                    Port = 1883,
-                    UserName = "BikeUser",
-                    Password = Environment.GetEnvironmentVariable("MQTT_Password"),
+                {
+                    Host = _options.Host,
+                    Port = _options.Port,
+                    UserName = _options.User,
+                    Password = _options.Password,
                 };
             _client = new HiveMQClient(clientOptions);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            var connectedResult = await _client.ConnectAsync().ConfigureAwait(false);
-
-            _client.OnMessageReceived += (sender, args) =>
+            try
             {
-                // Handle Message in args.PublishMessage
-                Console.WriteLine("Message Received: {}", args.PublishMessage.PayloadAsString);
-            };
+                _logger.LogInformation("trying to connect to MQTT broker at {host}:{port}", Constants.MqttHost, Constants.MqttPort);
+                var connectedResult = await _client.ConnectAsync().ConfigureAwait(false);
 
-            // topic hier festlegen
-            await _client.SubscribeAsync("topic/test").ConfigureAwait(false);
+                if (connectedResult.ReasonCode == ConnAckReasonCode.Success)
+                {
+                    _logger.LogInformation("successfully connected to MQTT broker.");
+                }
+                else
+                {
+                    _logger.LogError("failed to connect to MQTT broker: {reason}", connectedResult.ReasonCode);
+                }
+
+                _client.OnMessageReceived += OnMessageReceived;
+
+                // set topic to subscribe to 
+                await _client.SubscribeAsync(_options.Topic).ConfigureAwait(false);   
+                _logger.LogInformation("subscribed to topic: {topic}", _options.Topic);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+            }
         }
 
+        private void OnMessageReceived(object? sender, OnMessageReceivedEventArgs args)
+        {
+            var payload = args.PublishMessage.Payload;
+            var payloadString = args.PublishMessage.PayloadAsString;
+            
+            _logger.LogInformation("received message: {payload}", payloadString);
+        }
+        
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            await _client.UnsubscribeAsync("topic/test");
-            await _client.DisconnectAsync();
+            try
+            {
+                await _client.UnsubscribeAsync("topic/test");
+                await _client.DisconnectAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+            }
         }
     }
 }

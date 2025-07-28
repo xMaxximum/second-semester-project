@@ -50,6 +50,16 @@ namespace Server
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
+            // Add Mqtt Service
+            builder.Services.Configure<MqttClientOptions>(options =>
+            {
+                options.Host = Constants.MqttHost;
+                options.Port = Constants.MqttPort;
+                options.User = Constants.MqttUser;
+                options.Password = builder.Configuration.GetRequiredSection("MqttPassword").Value!;
+                // Set default topic here
+                options.Topic = "#";
+            });
             builder.Services.AddHostedService<MqttService>();
 
             // Configure JWT Authentication
