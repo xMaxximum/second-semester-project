@@ -32,23 +32,23 @@ namespace Server.Services
         {
             try
             {
-                _logger.LogInformation("trying to connect to MQTT broker at {host}:{port}", Constants.MqttHost, Constants.MqttPort);
+                _logger.LogInformation("trying to connect to MQTT broker at {host}:{port}", _options.Host, _options.Port);
                 var connectedResult = await _client.ConnectAsync().ConfigureAwait(false);
 
                 if (connectedResult.ReasonCode == ConnAckReasonCode.Success)
                 {
                     _logger.LogInformation("successfully connected to MQTT broker.");
+                    
+                    // set topic to subscribe to 
+                    await _client.SubscribeAsync(_options.Topic).ConfigureAwait(false);   
+                    _logger.LogInformation("subscribed to topic: {topic}", _options.Topic);
+                    
+                    _client.OnMessageReceived += OnMessageReceived;
                 }
                 else
                 {
                     _logger.LogError("failed to connect to MQTT broker: {reason}", connectedResult.ReasonCode);
                 }
-
-                _client.OnMessageReceived += OnMessageReceived;
-
-                // set topic to subscribe to 
-                await _client.SubscribeAsync(_options.Topic).ConfigureAwait(false);   
-                _logger.LogInformation("subscribed to topic: {topic}", _options.Topic);
             }
             catch (Exception ex)
             {

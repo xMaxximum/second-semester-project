@@ -12,10 +12,5 @@
         
         // Cookie Names
         public const string RefreshTokenCookieKey = "RefreshToken";
-        
-        // MQTT Configuration 
-        public const string MqttHost = "mqtt-dhbw-hdh-ai2024.duckdns.org";
-        public const int  MqttPort = 1883;
-        public const string MqttUser = "BikeUser";
     }
 }
