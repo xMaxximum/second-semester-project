@@ -51,7 +51,11 @@ jobs:
           # Set proper ownership and permissions
           # Make sure the directory is writable by the Docker container user
           sudo chown -R $USER:$USER ./Server/Data
-          chmod -R 755 ./Server/Data  
+          chmod -R 777 ./Server/Data  # More permissive for Docker debugging
+          
+          # List directory structure for debugging
+          echo "📋 Directory structure:"
+          ls -la ./Server/Data || echo "Data directory doesn't exist yet"  
           
           # Stop existing containers
           echo "🛑 Stopping existing containers..."
