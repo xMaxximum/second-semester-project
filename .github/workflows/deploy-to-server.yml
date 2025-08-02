@@ -1,4 +1,4 @@
-# This workflow deploys to production server when Server directory changes are pushed to main
+# This workflow deploys to production server when Server directory changes are pushed to main or when workflow file is updated.
 name: Deploy to Production Server
 
 on:
@@ -13,8 +13,10 @@ jobs:
     name: Deploy to Server
     runs-on: ubuntu-latest
     
-    # Use environment for production deployment (optional but recommended)
-    environment: production
+    # Use environment secrets for production deployment
+    environment:
+      name: production
+      url: https://mqtt-dhbw-hdh-ai2024.duckdns.org/
     
     steps:
     - name: Deploy to server via SSH
@@ -44,20 +46,46 @@ jobs:
           # Navigate to Server directory
           cd Server
           
+          # Ensure data directories exist on HOST with proper permissions
+          echo "📁 Creating host data directories..."
+          mkdir -p ./Server/Data/DataProtection-Keys
+          
+          # Set proper ownership and permissions
+          # Make sure the directory is writable by the Docker container user
+          sudo chown -R $USER:$USER ./Server/Data
+          chmod -R 777 ./Server/Data  # More permissive for Docker debugging
+          
           # Stop existing containers
           echo "🛑 Stopping existing containers..."
           docker compose down
           
-          # Build and start containers
-          echo "🔨 Building and starting containers..."
-          docker compose up -d --build
+          # Clean up old images (keep cache layers)
+          echo "🧹 Cleaning up old images..."
+          docker image prune -f
           
-          # Wait a moment for containers to start
+          # Enable BuildKit for better caching
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+          
+          # Build containers with cache optimization
+          echo "🔨 Building containers with cache..."
+          docker compose build --parallel
+          
+          # Start containers
+          echo "🚀 Starting containers..."
+          docker compose up -d
+          
+          # Wait for containers to start and SSL to initialize
+          echo "⏳ Waiting for containers to start"
           sleep 10
           
           # Check if containers are running
           echo "✅ Checking container status..."
           docker compose ps
+          
+          # Check Caddy logs for SSL certificate status
+          echo "🔒 Checking SSL certificate status..."
+          docker compose logs caddy | tail -10
           
           # Check container logs for any immediate errors
           echo "📋 Recent container logs:"

@@ -12,6 +12,7 @@ using Server.Data;
 using Server.Models;
 using Server.Services;
 using System.Text;
+using System.IO;
 
 namespace Server
 {
@@ -35,10 +36,14 @@ namespace Server
 
             builder.Host.UseSerilog();
 
+            Console.WriteLine(Directory.GetCurrentDirectory());
+
             // Add Entity Framework Core
             var connectionString = builder.Environment.IsDevelopment() 
                 ? "Data Source=../Server/Data/app.db"  // Development path
                 : "Data Source=/app/Data/app.db";      // Production/Docker path
+            
+            Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
             
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(connectionString));
@@ -123,14 +128,26 @@ namespace Server
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
+            builder.WebHost.UseWebRoot("wwwroot");
+            builder.WebHost.UseStaticWebAssets();
+
 
             var app = builder.Build();
 
             // Ensure database adds all migrations
             using (var scope = app.Services.CreateScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                context.Database.Migrate();
+                try 
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    context.Database.Migrate();
+                    Log.Information("Database migration completed successfully");
+                }
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "Database migration failed. Connection string: {ConnectionString}", connectionString);
+                    throw;
+                }
             }
 
             // Configure the HTTP request pipeline.
@@ -146,6 +163,8 @@ namespace Server
                 app.UseHsts();
             }
 
+            app.MapStaticAssets();
+
             app.MapControllers();
 
             app.UseAuthentication();
@@ -155,11 +174,13 @@ namespace Server
 
             app.UseAntiforgery();
 
-            app.MapStaticAssets();
             app.MapRazorComponents<Components.App>()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Frontend.Client.Services.AuthService).Assembly)
                 .AllowAnonymous();
+
+            app.MapFallbackToFile("index.html");
+
 
             app.Run();
         }

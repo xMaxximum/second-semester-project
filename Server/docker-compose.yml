@@ -4,11 +4,43 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      cache_from:
+        - server:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     ports:
-      - "8080:8080"
-      - "8081:8081"
+      - "5000:8080"  # Internal port only, not exposed directly
     environment:
-      - ASPNETCORE_ENVIRONMENT=Release
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
     volumes:
-      - ./Server/Data:/app/Data  # Mount local data directory to container
+      - ./Server/Data:/app/Data
+      - data-protection-keys:/app/Data/DataProtection-Keys
     restart: unless-stopped
+    networks:
+      - app-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    networks:
+      - app-network
+    depends_on:
+      - server
+
+volumes:
+  data-protection-keys:
+  caddy-data:
+  caddy-config:
+
+networks:
+  app-network:
+    driver: bridge
