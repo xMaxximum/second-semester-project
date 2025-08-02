@@ -1,0 +1,75 @@
+﻿<style>
+    .icon-header {
+        display: flex;
+        align-items: center;
+    }
+
+    .kpi-card {
+        height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-content: center;
+        align-items: center;
+    }
+</style>
+
+@foreach (var kpi in KPIs)
+{
+    <MudItem xs="6" sm="4" md="2">
+        <MudCard Class="pa-4 kpi-card" Elevation="3">
+            <MudText Typo="Typo.caption" Color="Color.Primary">@kpi.Title</MudText>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">@kpi.Value</MudText>
+            <MudText Typo="Typo.body2" Color="@kpi.TrendColor" Class="icon-header">
+                <MudIcon Icon="@kpi.TrendIcon" Size="Size.Small" Class="me-1"/>
+                @kpi.Trend
+            </MudText>
+        </MudCard>
+    </MudItem>
+}
+
+@code {
+    // TODO: Implement Connection to End Point and calculate sums for KPIs in the last week
+    private ChartOptions options = new ChartOptions();
+
+    public List<ChartSeries> Series = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Series 1", Data = new double[] { 90, 79, 72, 69, 62, 62, 55 } },
+    };
+
+    public string[] XAxisLabels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    public List<KPIModel> KPIs = new List<KPIModel>
+    {
+        new KPIModel("Activities", "3", "+12%", Icons.Material.Filled.ArrowUpward, Color.Success),
+        new KPIModel("Distance", "100,56km", "+12%", Icons.Material.Filled.ArrowUpward, Color.Success),
+        new KPIModel("Time", "3:12h", "+12%", Icons.Material.Filled.ArrowUpward, Color.Success),
+        new KPIModel("Elevation", "4000m", "-12%", Icons.Material.Filled.ArrowDownward, Color.Error),
+    };
+
+    protected override void OnInitialized()
+    {
+        options.InterpolationOption = InterpolationOption.NaturalSpline;
+        options.YAxisFormat = "0 km";
+        options.ShowLegend = false;
+    }
+
+    public class KPIModel
+    {
+        public string Title { get; set; }
+        public string Value { get; set; }
+        public string Trend { get; set; }
+        public string TrendIcon { get; set; }
+        public Color TrendColor { get; set; }
+
+        public KPIModel(string title, string value, string trend, string trendIcon, Color trendColor)
+        {
+            Title = title;
+            Value = value;
+            Trend = trend;
+            TrendIcon = trendIcon;
+            TrendColor = trendColor;
+        }
+    }
+
+}
