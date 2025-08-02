@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,8 +36,12 @@ namespace Server
             builder.Host.UseSerilog();
 
             // Add Entity Framework Core
+            var connectionString = builder.Environment.IsDevelopment() 
+                ? "Data Source=../Server/Data/app.db"  // Development path
+                : "Data Source=/app/Data/app.db";      // Production/Docker path
+            
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite("Data Source=../Server/Data/app.db"));
+                options.UseSqlite(connectionString));
 
             // Add Identity services
             builder.Services.AddIdentity<User, Role>(options =>
@@ -49,6 +54,13 @@ namespace Server
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
+
+            // Configure Data Protection to use persistent storage (production only)
+            if (!builder.Environment.IsDevelopment())
+            {
+                builder.Services.AddDataProtection()
+                    .PersistKeysToFileSystem(new DirectoryInfo("/app/Data/DataProtection-Keys"));
+            }
 
             // Add Mqtt Service
             builder.Services.Configure<MqttClientOptions>(builder.Configuration.GetRequiredSection("MQTT"));
@@ -114,11 +126,11 @@ namespace Server
 
             var app = builder.Build();
 
-            // Ensure database is created
+            // Ensure database adds all migrations
             using (var scope = app.Services.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                context.Database.EnsureCreated();
+                context.Database.Migrate();
             }
 
             // Configure the HTTP request pipeline.

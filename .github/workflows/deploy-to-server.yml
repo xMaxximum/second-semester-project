@@ -1,0 +1,66 @@
+# This workflow deploys to production server when Server directory changes are pushed to main
+name: Deploy to Production Server
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'Server/**'  # Only trigger when files in Server directory change
+      - '.github/workflows/deploy-to-server.yml'  # Also trigger if this workflow file changes
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    
+    # Use environment for production deployment (optional but recommended)
+    environment: production
+    
+    steps:
+    - name: Deploy to server via SSH
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT || 22 }}
+        script: |
+          echo "🚀 Starting deployment..."
+          
+          # Set up deploy key
+          eval $(ssh-agent -s)
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" | ssh-add -
+          
+          # Navigate to project directory
+          cd /root/second-semester-project
+
+          # Configure git to use SSH
+          git remote set-url origin git@github.com:xMaxximum/second-semester-project.git
+          
+          # Pull latest changes from main branch
+          echo "📥 Pulling latest changes..."
+          GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git pull origin main
+          
+          # Navigate to Server directory
+          cd Server
+          
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker compose down
+          
+          # Build and start containers
+          echo "🔨 Building and starting containers..."
+          docker compose up -d --build
+          
+          # Wait a moment for containers to start
+          sleep 10
+          
+          # Check if containers are running
+          echo "✅ Checking container status..."
+          docker compose ps
+          
+          # Check container logs for any immediate errors
+          echo "📋 Recent container logs:"
+          docker compose logs --tail=20
+          
+          echo "🎉 Deployment completed!"
