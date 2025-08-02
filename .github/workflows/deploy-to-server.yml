@@ -1,4 +1,4 @@
-# This workflow deploys to production server when Server directory changes are pushed to main
+# This workflow deploys to production server when Server directory changes are pushed to main or when workflow file is updated.
 name: Deploy to Production Server
 
 on:
@@ -13,7 +13,7 @@ jobs:
     name: Deploy to Server
     runs-on: ubuntu-latest
     
-    # Use environment for production deployment (optional but recommended)
+    # Use environment secrets for production deployment
     environment: production
     
     steps:
