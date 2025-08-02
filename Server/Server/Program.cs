@@ -129,8 +129,17 @@ namespace Server
             // Ensure database adds all migrations
             using (var scope = app.Services.CreateScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                context.Database.Migrate();
+                try 
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    context.Database.Migrate();
+                    Log.Information("Database migration completed successfully");
+                }
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "Database migration failed. Connection string: {ConnectionString}", connectionString);
+                    throw;
+                }
             }
 
             // Configure the HTTP request pipeline.

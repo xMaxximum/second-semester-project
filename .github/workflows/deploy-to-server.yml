@@ -44,20 +44,43 @@ jobs:
           # Navigate to Server directory
           cd Server
           
+          # Ensure data directories exist on HOST with proper permissions
+          echo "📁 Creating host data directories..."
+          mkdir -p ./Server/Data/DataProtection-Keys
+          sudo chown -R $USER:$USER ./Server/Data
+          chmod -R 755 ./Server/Data
+          
           # Stop existing containers
           echo "🛑 Stopping existing containers..."
           docker compose down
           
-          # Build and start containers
-          echo "🔨 Building and starting containers..."
-          docker compose up -d --build
+          # Clean up old images (keep cache layers)
+          echo "🧹 Cleaning up old images..."
+          docker image prune -f
           
-          # Wait a moment for containers to start
-          sleep 10
+          # Enable BuildKit for better caching
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+          
+          # Build containers with cache optimization
+          echo "🔨 Building containers with cache..."
+          docker compose build --parallel
+          
+          # Start containers
+          echo "🚀 Starting containers..."
+          docker compose up -d
+          
+          # Wait for containers to start and SSL to initialize
+          echo "⏳ Waiting for containers to start and SSL certificates..."
+          sleep 20
           
           # Check if containers are running
           echo "✅ Checking container status..."
           docker compose ps
+          
+          # Check Caddy logs for SSL certificate status
+          echo "🔒 Checking SSL certificate status..."
+          docker compose logs caddy | tail -10
           
           # Check container logs for any immediate errors
           echo "📋 Recent container logs:"
