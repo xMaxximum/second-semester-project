@@ -28,14 +28,14 @@ RUN dotnet publish "./Server.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:
 FROM base AS final
 WORKDIR /app
 
-# Create data directory for SQLite database and data protection keys with proper permissions
-RUN mkdir -p /app/Data/DataProtection-Keys && \
-    chown -R $APP_UID:$APP_UID /app/Data && \
-    chmod -R 755 /app/Data
+# Create data directory for SQLite database and data protection keys
+RUN mkdir -p /app/Data/DataProtection-Keys
 
 COPY --from=publish /app/publish .
 
-# Ensure the app user owns the application files
+# Change ownership of the entire app directory to the app user
+USER root
+RUN chown -R $APP_UID:$APP_UID /app
 USER $APP_UID
 
 ENTRYPOINT ["dotnet", "Server.dll"]

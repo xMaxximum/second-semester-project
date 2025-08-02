@@ -47,8 +47,11 @@ jobs:
           # Ensure data directories exist on HOST with proper permissions
           echo "📁 Creating host data directories..."
           mkdir -p ./Server/Data/DataProtection-Keys
+          
+          # Set proper ownership and permissions
+          # Make sure the directory is writable by the Docker container user
           sudo chown -R $USER:$USER ./Server/Data
-          chmod -R 755 ./Server/Data
+          chmod -R 755 ./Server/Data  
           
           # Stop existing containers
           echo "🛑 Stopping existing containers..."
