@@ -12,6 +12,7 @@ using Server.Data;
 using Server.Models;
 using Server.Services;
 using System.Text;
+using System.IO;
 
 namespace Server
 {
@@ -35,10 +36,12 @@ namespace Server
 
             builder.Host.UseSerilog();
 
+            Console.WriteLine(Directory.GetCurrentDirectory());
+
             // Add Entity Framework Core
             var connectionString = builder.Environment.IsDevelopment() 
                 ? "Data Source=../Server/Data/app.db"  // Development path
-                : "Data Source=/app/Data/app.db";      // Production/Docker path
+                : "Data Source=./Data/app.db";      // Production/Docker path
             
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(connectionString));
