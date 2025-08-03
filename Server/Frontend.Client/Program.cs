@@ -42,6 +42,7 @@ namespace Frontend.Client
             // Add Auth Service
             builder.Services.AddScoped<AuthService>();
 
+
             var app = builder.Build();
 
             // Try to refresh token on startup

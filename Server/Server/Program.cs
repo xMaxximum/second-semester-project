@@ -128,6 +128,9 @@ namespace Server
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
+            builder.WebHost.UseWebRoot("wwwroot");
+            builder.WebHost.UseStaticWebAssets();
+
 
             var app = builder.Build();
 
