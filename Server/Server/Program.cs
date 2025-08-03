@@ -97,7 +97,7 @@ namespace Server
             
             // Add Weather Services
             builder.Services.Configure<ApiOptions>(
-                builder.Configuration.GetSection("Apis"));
+                builder.Configuration.GetRequiredSection("Apis"));
 
             // Register HttpClient for injection
             builder.Services.AddHttpClient();
