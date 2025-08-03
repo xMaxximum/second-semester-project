@@ -94,6 +94,16 @@ namespace Server
                         ClockSkew = TimeSpan.Zero
                     };
                 });
+            
+            // Add Weather Services
+            builder.Services.Configure<ApiOptions>(
+                builder.Configuration.GetSection("Apis"));
+
+            // Register HttpClient for injection
+            builder.Services.AddHttpClient();
+
+            // Register WeatherService as singleton to keep cache alive
+            builder.Services.AddSingleton<WeatherService>();
 
             // Add Authorization
             builder.Services.AddAuthorization();
@@ -101,7 +111,6 @@ namespace Server
             // Add Mud Blazor Services
             builder.Services.AddMudServices();
             builder.Services.AddLocalization();
-
             builder.Services.AddMudLocalization();
 
             // Add HTTP Client for server-side AuthService (for prerendering)
@@ -125,12 +134,12 @@ namespace Server
                     // so we can handle them manually in controllers
                     options.SuppressModelStateInvalidFilter = true;
                 });
+
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
             builder.WebHost.UseWebRoot("wwwroot");
             builder.WebHost.UseStaticWebAssets();
-
 
             var app = builder.Build();
 
@@ -159,7 +168,6 @@ namespace Server
             else
             {
                 app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 
@@ -180,7 +188,6 @@ namespace Server
                 .AllowAnonymous();
 
             app.MapFallbackToFile("index.html");
-
 
             app.Run();
         }
