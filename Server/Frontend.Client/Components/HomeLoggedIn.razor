@@ -42,8 +42,11 @@
         <!-- Placeholder Tiles -->
         <MudItem xs="12" sm="6">
             <MudGrid>
+                @*<MudItem xs="12">
+                    <MudPaper Elevation="3" Class="pa-4" Style="height: 200px;"/> put the weather tile here
+                </MudItem>*@
                 <MudItem xs="12">
-                    <MudPaper Elevation="3" Class="pa-4" Style="height: 200px;"/>
+                    <WeatherTile />
                 </MudItem>
                 <MudItem xs="12">
                     <CarbsTile/>
