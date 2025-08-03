@@ -10,10 +10,10 @@ namespace Server.Services
         private readonly HttpClient _http;
         private readonly string _apiKey;
 
-        public WeatherService(HttpClient http, IOptions<WeatherApiOptions> options)
+        public WeatherService(HttpClient http, IOptions<ApiOptions> options)
         {
             _http = http;
-            _apiKey = options.Value.ApiKey;
+            _apiKey = options.Value.WeatherApiKey;
         }
 
         public async Task<WeatherData> GetWeatherAsync()
@@ -47,7 +47,7 @@ namespace Server.Services
                 CountryCode = weather.Sys.Country,
                 Datetime = DateTime.Now.ToString("dddd, d MMMM yyyy HH:mm", new CultureInfo("en-US")),
                 Temperature = (int)weather.Main.Temp,
-                FeelsLike = (int)weather.Main.Feels_Like,
+                FeelsLike = (int)weather.Main.FeelsLike,
                 Description = weather.Weather[0].Description,
                 WindDirection = ConvertWindDirection(weather.Wind.Deg),
                 Humidity = weather.Main.Humidity,
@@ -97,7 +97,7 @@ namespace Server.Services
             public class WeatherMain
             {
                 public double Temp { get; set; }
-                public double Feels_Like { get; set; }
+                public double FeelsLike { get; set; }
                 public int Humidity { get; set; }
             }
 
