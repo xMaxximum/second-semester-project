@@ -31,8 +31,8 @@
             Show = false // Hides the legend
         }
     };
-
-    protected override void OnInitialized()
+    
+    protected override async Task OnInitializedAsync()
     {
         Data.Add(new MyData { Category = "Mon", Distance = 12 });
         Data.Add(new MyData { Category = "Tue", Distance = 43 });

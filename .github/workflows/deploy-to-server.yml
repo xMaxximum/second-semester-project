@@ -14,7 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     
     # Use environment secrets for production deployment
-    environment: production
+    environment:
+      name: production
+      url: https://mqtt-dhbw-hdh-ai2024.duckdns.org/
     
     steps:
     - name: Deploy to server via SSH
@@ -53,10 +55,6 @@ jobs:
           sudo chown -R $USER:$USER ./Server/Data
           chmod -R 777 ./Server/Data  # More permissive for Docker debugging
           
-          # List directory structure for debugging
-          echo "📋 Directory structure:"
-          ls -la ./Server/Data || echo "Data directory doesn't exist yet"  
-          
           # Stop existing containers
           echo "🛑 Stopping existing containers..."
           docker compose down
@@ -78,8 +76,8 @@ jobs:
           docker compose up -d
           
           # Wait for containers to start and SSL to initialize
-          echo "⏳ Waiting for containers to start and SSL certificates..."
-          sleep 20
+          echo "⏳ Waiting for containers to start"
+          sleep 10
           
           # Check if containers are running
           echo "✅ Checking container status..."
