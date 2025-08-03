@@ -42,33 +42,8 @@ namespace Server
             var connectionString = builder.Environment.IsDevelopment() 
                 ? "Data Source=../Server/Data/app.db"  // Development path
                 : "Data Source=/app/Data/app.db";      // Production/Docker path
-                
-            // Ensure the database directory exists in production
-            if (!builder.Environment.IsDevelopment())
-            {
-                try 
-                {
-                    var dbDirectory = Path.GetDirectoryName("/app/Data/app.db");
-                    if (!Directory.Exists(dbDirectory))
-                    {
-                        Directory.CreateDirectory(dbDirectory!);
-                        Console.WriteLine($"Created database directory: {dbDirectory}");
-                    }
-                    
-                    // Test if we can write to the directory
-                    var testFile = Path.Combine(dbDirectory!, "test_write.tmp");
-                    File.WriteAllText(testFile, "test");
-                    File.Delete(testFile);
-                    Console.WriteLine("Database directory is writable");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Database directory setup failed: {ex.Message}");
-                    throw;
-                }
-            }
             
-            Console.WriteLine($"Using connection string: {connectionString}");
+            Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
             
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(connectionString));
