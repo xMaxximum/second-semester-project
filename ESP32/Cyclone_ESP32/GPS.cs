@@ -1,6 +1,7 @@
 ﻿using Iot.Device.Common.GnssDevice;
 using nanoFramework.Hardware.Esp32;
 using System;
+using System.Device.Gpio;
 using System.Diagnostics;
 using System.Threading;
 
@@ -9,26 +10,35 @@ namespace Cyclone_ESP32 {
     {
         private static GenericSerialGnssDevice gpsModule;
         public static void Setup()
+        {
+            try
             {
-            // Some modules like ESP32 requires to setup serial pins
-            // Configure GPIOs 16 and 17 to be used in UART2 (that's refered as COM3)
-            Configuration.SetPinFunction(16, DeviceFunction.COM2_RX);
-            Configuration.SetPinFunction(17, DeviceFunction.COM2_TX);
+                Configuration.SetPinFunction(16, DeviceFunction.COM3_RX);
+                Configuration.SetPinFunction(17, DeviceFunction.COM3_TX);
 
-            // By default baud rate is 9600
-            Nmea0183Parser.AddParser(new TxtData());
-            gpsModule = new GenericSerialGnssDevice("COM2");
-            gpsModule.FixChanged += FixChanged;
-            gpsModule.LocationChanged += LocationChanged;
-            gpsModule.OperationModeChanged += OperationModeChanged;
-            gpsModule.ParsingError += ParsingError;
-            gpsModule.ParsedMessage += ParsedMessage;
-            gpsModule.UnparsedMessage += UnparsedMessage;
+                Nmea0183Parser.AddParser(new TxtData());
 
-            gpsModule.Start();
+                gpsModule = new GenericSerialGnssDevice("COM3", 9600);
 
-            Thread.Sleep(Timeout.Infinite);
+                gpsModule.FixChanged += FixChanged;
+                gpsModule.LocationChanged += LocationChanged;
+                gpsModule.OperationModeChanged += OperationModeChanged;
+                gpsModule.ParsingError += ParsingError;
+                gpsModule.ParsedMessage += ParsedMessage;
+                gpsModule.UnparsedMessage += UnparsedMessage;
+
+                gpsModule.Start();
+
+                Console.WriteLine("GPS module started successfully.");
+
+                Thread.Sleep(Timeout.Infinite);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("GPS Setup Exception: " + ex.Message);
+            }
         }
+
 
         private static void UnparsedMessage(string message)
         {
@@ -62,11 +72,23 @@ namespace Cyclone_ESP32 {
         private static void FixChanged(Fix fix)
         {
             Console.WriteLine($"Received Fix changed: {fix}");
+            GpioController gpioController = new GpioController();
+            gpioController.OpenPin(2, PinMode.Output);
+            gpioController.Write(2, PinValue.High);
         }
         public static void TryGetCurrentPosition()
         {
-            Console.WriteLine("lattitude: " + gpsModule.Location.Latitude.ToString());
-            Console.WriteLine("longitude: " + gpsModule.Location.Longitude.ToString()); 
+            if(gpsModule.Location.Latitude == 0 || gpsModule.Location.Longitude == 0)
+            {
+                Console.WriteLine("No GPS fix available.");
+                Console.WriteLine("Sattelites: " + gpsModule.SatellitesInView);
+                Console.WriteLine("Fix: " + gpsModule.Fix);
+                Thread.Sleep(10000);
+            }
+            else
+            {
+                Console.WriteLine($"Current Position: Latitude: {gpsModule.Location.Latitude}, Longitude: {gpsModule.Location.Longitude}");
+            }
         }
     }
 

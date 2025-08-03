@@ -1,4 +1,5 @@
-﻿using System;
+﻿using nanoFramework.Hardware.Esp32;
+using System;
 using System.Text;
 using System.Threading;
 
@@ -11,15 +12,16 @@ namespace Cyclone_ESP32
             // Initialize the GPS module
             Thread gpsThread = new Thread(gps.Setup)
             {
-                Priority = ThreadPriority.BelowNormal    // ensures the thread will not block process exit
+                
+                Priority = ThreadPriority.AboveNormal    // ensures the thread will not block process exit
             };
             gpsThread.Start();
             // Keep the application running
             Console.WriteLine("Press any key to exit...");
             while (true)
             {
-                Thread.Sleep(4000);
                 gps.TryGetCurrentPosition();
+                Thread.Sleep(5000); // Sleep for 1 second to avoid busy waiting
             }
             
         }
