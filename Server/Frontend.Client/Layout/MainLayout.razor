@@ -1,5 +1,10 @@
 @inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 @rendermode InteractiveWebAssembly
+
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Frontend.Client.Components
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -7,31 +12,89 @@
 <MudSnackbarProvider />
 
 <CascadingAuthenticationState>
-    <MudLayout>
-    <MudAppBar>
-        <h1>Cyclone</h1>
-        <MudGrid>
-            <MudItem>
-                <MudNavLink Href="/" Match="NavLinkMatch.All">Home</MudNavLink>
-            </MudItem>
-            <MudItem>
-                <MudNavLink Href="/counter">Counter</MudNavLink>
-            </MudItem>
-            <MudItem>
-                <MudNavLink Href="/weather">Weather</MudNavLink>
-            </MudItem>
-        </MudGrid>
-        <MudSpacer />
-        <UserMenu />
+  <MudLayout>
+
+    <!-- HEADER -->
+    <MudAppBar Elevation="4" Color="Color.Primary">
+      <MudContainer Fluid="true" Style="position:relative; height:64px;">
+
+        <!-- 1) Hamburger ganz links -->
+        <MudIconButton
+          Icon="@Icons.Material.Filled.Menu"
+          Color="Color.Inherit"
+          OnClick="ToggleDrawer"
+          Style="position:absolute; left:16px; top:50%; transform:translateY(-50%);"
+          AriaLabel="Menu" />
+
+        <!-- 2) Titel absolut zentriert -->
+        <MudText Typo="Typo.h6"
+                 Class="text-uppercase mb-0"
+                 Style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); cursor:pointer;"
+                 @onclick="GoHome">
+          CYCLONE
+        </MudText>
+
+        <!-- 3) Logo ganz rechts -->
+        <MudIconButton
+          Icon="@Icons.Material.Filled.DirectionsBike"
+          Color="Color.Inherit"
+          OnClick="GoHome"
+          Style="position:absolute; right:16px; top:50%; transform:translateY(-50%);"
+          AriaLabel="Home" />
+
+      </MudContainer>
     </MudAppBar>
-    <MudMainContent>
-            @Body
-    </MudMainContent>
-</MudLayout>
+
+
+    <!-- DRAWER + MAIN CONTENT -->
+    <MudDrawerContainer>
+
+      <MudDrawer @bind-Open="_drawerOpen"
+                 Variant="DrawerVariant.Temporary"
+                 ClipMode="DrawerClipMode.Never"
+                 Elevation="1">
+
+        <MudNavMenu>
+          <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+          <MudNavLink Href="/counter" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
+          <MudNavLink Href="/weather" Icon="@Icons.Material.Filled.WbSunny">Weather</MudNavLink>
+          <MudDivider Class="my-2" />
+
+          <AuthorizeView>
+            <Authorized>
+              <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">Profile</MudNavLink>
+              <MudNavLink Href="/logout" Icon="@Icons.Material.Filled.ExitToApp">Logout</MudNavLink>
+            </Authorized>
+            <NotAuthorized>
+              <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
+              <MudNavLink Href="/register" Icon="@Icons.Material.Filled.AppRegistration">Register</MudNavLink>
+            </NotAuthorized>
+          </AuthorizeView>
+        </MudNavMenu>
+
+      </MudDrawer>
+
+      <MudMainContent>
+        @Body
+      </MudMainContent>
+    </MudDrawerContainer>
+
+    <!-- FOOTER -->
+    <Footer />
+
+
+  </MudLayout>
 </CascadingAuthenticationState>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+  An unhandled error has occurred.
+  <a href="." class="reload">Reload</a>
+  <span class="dismiss">🗙</span>
 </div>
+
+@code {
+  private bool _drawerOpen;
+
+  void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+  void GoHome()        => NavigationManager.NavigateTo("/");
+}

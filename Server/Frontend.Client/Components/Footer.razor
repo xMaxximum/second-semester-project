@@ -1,0 +1,93 @@
+﻿@using MudBlazor
+
+<style>
+  .site-footer {
+    background-color: #594AE2;
+    color: #EEE;
+    padding: 3rem 1rem;
+    position: sticky;
+    bottom: 0;
+  }
+  .site-footer a {
+    color: #EEE;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .site-footer a:hover {
+    color: #FFFFFF;
+  }
+  .site-footer .footer-header {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #FFF;
+  }
+  .site-footer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    line-height: 1.6;
+  }
+  .site-footer ul li {
+    margin-bottom: 0.5rem;
+    margin-left: 1rem
+  }
+  .site-footer .footer-bottom {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #AAA;
+  }
+</style>
+
+<MudPaper Class="site-footer" Elevation="0" Square="true">
+  <MudContainer MaxWidth="MaxWidth.Large">
+    <MudGrid GutterSize="3">
+
+      <!-- Features -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Features</div>
+        <ul>
+          <li>Dark/Light Mode</li>
+          <li>Logo & Branding</li>
+          <li>Responsive Layout</li>
+          <li>Reusable Components</li>
+          <li>Privacy & Impressum</li>
+        </ul>
+      </MudItem>
+
+      <!-- Quick Links -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Quick Links</div>
+        <ul>
+          <li><MudNavLink Href="/">Home</MudNavLink></li>
+          <li><MudNavLink Href="/counter">Counter</MudNavLink></li>
+          <li><MudNavLink Href="/weather">Weather</MudNavLink></li>
+          <li><MudNavLink Href="/profile">Profile</MudNavLink></li>
+        </ul>
+      </MudItem>
+
+      <!-- Legal -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Legal</div>
+        <ul>
+          <li><MudNavLink Href="/impressum">Impressum</MudNavLink></li>
+          <li><MudNavLink Href="/datenschutz">Datenschutz</MudNavLink></li>
+          <li><MudNavLink Href="/agb">AGB</MudNavLink></li>
+        </ul>
+      </MudItem>
+
+      <!-- Contact -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Contact</div>
+        <MudText Typo="Typo.body2">support@cyclone.com</MudText><br />
+        <MudText Typo="Typo.body2">+49 123 456789</MudText>
+      </MudItem>
+
+    </MudGrid>
+
+    <!-- Bottom -->
+    <div class="footer-bottom">
+      &copy; @DateTime.Now.Year Cyclone, Inc. — All rights reserved.
+    </div>
+  </MudContainer>
+</MudPaper>
