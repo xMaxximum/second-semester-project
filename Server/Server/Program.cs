@@ -163,6 +163,8 @@ namespace Server
                 app.UseHsts();
             }
 
+            app.MapStaticAssets();
+
             app.MapControllers();
 
             app.UseAuthentication();
@@ -172,11 +174,13 @@ namespace Server
 
             app.UseAntiforgery();
 
-            app.MapStaticAssets();
             app.MapRazorComponents<Components.App>()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Frontend.Client.Services.AuthService).Assembly)
                 .AllowAnonymous();
+
+            app.MapFallbackToFile("index.html");
+
 
             app.Run();
         }

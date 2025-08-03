@@ -1,16 +1,14 @@
-mqtt-dhbw-hdh-ai2024.duckdns.org/ {
+mqtt-dhbw-hdh-ai2024.duckdns.org {
     # Automatic HTTPS with Let's Encrypt
     
     # Reverse proxy to ASP.NET Core app
     reverse_proxy server:8080 {
         # Pass real IP and protocol headers
-        header_up Host {upstream_hostport}
+        header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
-    
-    encode gzip
     
     header {
         # Remove server info
