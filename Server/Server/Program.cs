@@ -122,7 +122,6 @@ namespace Server
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
                 provider.GetRequiredService<Frontend.Client.Services.JwtAuthenticationStateProvider>());
 
-            // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveWebAssemblyComponents();
 
