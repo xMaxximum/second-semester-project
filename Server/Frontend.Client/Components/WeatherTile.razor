@@ -104,14 +104,14 @@ else
     {
         try
         {
-            var geo = await Http.GetFromJsonAsync<LocationRequest>("http://ip-api.com/json/");
+            var geo = await Http.GetFromJsonAsync<LocationRequest>("https://ipapi.co/json/");
 
             if (geo != null)
             {
                 var response = await Http.PostAsJsonAsync("api/weather", new LocationRequest
                 {
-                    Lat = geo.Lat,
-                    Lon = geo.Lon,
+                    Latitude = geo.Latitude,
+                    Longitude = geo.Longitude,
                     City = geo.City
                 });
 
@@ -141,3 +141,5 @@ else
         _ => Icons.Material.Filled.Cloud
     };
 }
+
+

@@ -20,7 +20,7 @@ namespace Server.Controllers
         {
             try
             {
-                var data = await _weatherService.GetWeatherAsync(location.Lat, location.Lon, location.City);
+                var data = await _weatherService.GetWeatherAsync(location.Latitude, location.Longitude, location.City);
                 return Ok(data);
             }
             catch (Exception ex)
