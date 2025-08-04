@@ -104,7 +104,7 @@ else
     {
         try
         {
-            var geo = await Http.GetFromJsonAsync<GeoLocation>("http://ip-api.com/json/");
+            var geo = await Http.GetFromJsonAsync<LocationRequest>("http://ip-api.com/json/");
 
             if (geo != null)
             {
@@ -140,12 +140,4 @@ else
         WeatherCondition.PartlyCloudy => Icons.Material.Filled.Cloud,
         _ => Icons.Material.Filled.Cloud
     };
-
-    public class GeoLocation
-    {
-        public double Lat { get; set; }
-        public double Lon { get; set; }
-        public string City { get; set; } = string.Empty;
-    }
-    
 }

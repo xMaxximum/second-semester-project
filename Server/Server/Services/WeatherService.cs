@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using Shared.Models;
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace Server.Services
 {
@@ -79,7 +80,9 @@ namespace Server.Services
 
             public class WeatherMain
             {
-                public double Temp { get; set; }
+                public double Temp { get; set; }            
+                
+                [JsonPropertyName(("feels_like"))]
                 public double FeelsLike { get; set; }
                 public int Humidity { get; set; }
             }

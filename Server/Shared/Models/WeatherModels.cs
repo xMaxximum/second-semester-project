@@ -1,4 +1,6 @@
-﻿namespace Shared.Models
+﻿using System.Text.Json.Serialization;
+
+namespace Shared.Models
 {
     public enum WeatherCondition
     {
@@ -14,6 +16,8 @@
         public string CountryCode { get; set; }
         public string Datetime { get; set; }
         public int Temperature { get; set; }
+        
+        [JsonPropertyName(("feels_like"))]
         public int FeelsLike { get; set; }
         public string Description { get; set; }
         public string WindDirection { get; set; }

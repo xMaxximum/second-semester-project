@@ -15,13 +15,6 @@ namespace Server.Controllers
             _weatherService = weatherService;
         }
 
-        public class LocationRequest
-        {
-            public double Lat { get; set; }
-            public double Lon { get; set; }
-            public string City { get; set; } = string.Empty;
-        }
-
         [HttpPost]
         public async Task<ActionResult<WeatherData>> GetWeather([FromBody] LocationRequest location)
         {
