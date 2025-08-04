@@ -1,0 +1,26 @@
+﻿@using Heron.MudCalendar
+
+<style>
+    .mud-cal-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    @@media (max-width: 600px) {
+        .mud-popover {
+            position: fixed !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+        }
+    }
+</style>
+
+<MudCalendar T="CalendarItem"
+             Elevation="3"
+             Class="pa-4"
+             Height="475"
+             ShowDropdownViewSelector="true"
+             ShowDatePicker="true"/>
