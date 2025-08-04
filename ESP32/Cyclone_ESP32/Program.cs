@@ -2,17 +2,13 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Threading;
+using Cyclone_ESP32;
 
-
-namespace Cyclone_ESP32
+public class Program
 {
-    public class Program
+    public static void Main()
     {
-        public static void Main()
-        {
-            // App must not return.
-            Thread.Sleep(Timeout.Infinite);
-        }        
+        var fs = new Filesystem();
+        fs.ReadFile(@"\test.txt");
     }
 }
