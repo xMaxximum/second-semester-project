@@ -68,13 +68,6 @@ namespace Server.Services
             _ => WeatherCondition.PartlyCloudy
         };
 
-        private class GeoLocation
-        {
-            public double Lat { get; set; }
-            public double Lon { get; set; }
-            public string City { get; set; }
-        }
-
         private class OpenWeatherResponse
         {
             public WeatherMain Main { get; set; } = null!;
