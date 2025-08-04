@@ -1,0 +1,52 @@
+﻿@using ApexCharts
+
+<ApexChart TItem="MyData"
+           Options="chartOptions" Height="150">
+
+    <ApexPointSeries TItem="MyData"
+                     Items="Data"
+                     Name="Distance"
+                     SeriesType="SeriesType.Line"
+                     XValue="e => e.Category"
+                     YValue="e => e.Distance"
+                     Color="#685ce4"
+    />
+</ApexChart>
+
+@code {
+    // TODO: Implement Connection to End Point and fetch the distance data for every weekday
+    private List<MyData> Data { get; set; } = new();
+
+    private ApexChartOptions<MyData> chartOptions = new()
+    {
+        Chart = new Chart
+        {
+            Toolbar = new Toolbar
+            {
+                Show = false // Hides the download/export options
+            },
+        },
+        Legend = new Legend
+        {
+            Show = false // Hides the legend
+        }
+    };
+    
+    protected override async Task OnInitializedAsync()
+    {
+        Data.Add(new MyData { Category = "Mon", Distance = 12 });
+        Data.Add(new MyData { Category = "Tue", Distance = 43 });
+        Data.Add(new MyData { Category = "Wed", Distance = 112 });
+        Data.Add(new MyData { Category = "Thu", Distance = 0 });
+        Data.Add(new MyData { Category = "Fri", Distance = 112 });
+        Data.Add(new MyData { Category = "Sat", Distance = 22 });
+        Data.Add(new MyData { Category = "Sun", Distance = 112 });
+    }
+
+    public class MyData
+    {
+        public string Category { get; set; }
+        public int Distance { get; set; }
+    }
+
+}

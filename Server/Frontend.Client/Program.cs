@@ -1,8 +1,9 @@
+using Frontend.Client.Services;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Http;
 using MudBlazor.Services;
-using Frontend.Client.Services;
 
 namespace Frontend.Client
 {
@@ -41,6 +42,7 @@ namespace Frontend.Client
 
             // Add Auth Service
             builder.Services.AddScoped<AuthService>();
+
 
             var app = builder.Build();
 

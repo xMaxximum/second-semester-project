@@ -1,0 +1,66 @@
+﻿<style>
+    .background-grid {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.05;
+    }
+
+    .chart-card {
+        height: 150px;
+        align-items: center;
+        align-content: center;
+    }
+</style>
+
+<!-- Background Grid SVG -->
+<div class="background-grid">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+        <defs>
+            <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
+                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25"/>
+            </pattern>
+        </defs>
+        <rect width="100" height="100" fill="url(#grid)"/>
+    </svg>
+</div>
+
+<MudContainer Class="mt-16 px-8 mb-16" MaxWidth="MaxWidth.False">
+    <MudGrid RowSpacing="3" ColumnSpacing="3">
+        <!-- KPI Tiles -->
+        <KpiTiles/>
+
+        <!-- Chart Tile -->
+        <MudItem xs="12" sm="8" md="4">
+            <MudCard Class="pa-4 chart-card" Elevation="3">
+                <div style="margin-top: -20px">
+                    <WeeklyChart/>
+                </div>
+            </MudCard>
+        </MudItem>
+
+        <!-- Placeholder Tiles -->
+        <MudItem xs="12" sm="6">
+            <MudGrid>
+                @*<MudItem xs="12">
+                    <MudPaper Elevation="3" Class="pa-4" Style="height: 200px;"/> put the weather tile here
+                </MudItem>*@
+                <MudItem xs="12">
+                    <WeatherTile />
+                </MudItem>
+                <MudItem xs="12">
+                    <CarbsTile/>
+                </MudItem>
+            </MudGrid>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+                <MudPaper Elevation="3" Class="pa-4" Style="height: 100%;"/>
+        </MudItem>
+
+        <!-- Activity Table -->
+        <MudItem xs="12" sm="12" md="12">
+            <ActivityTable></ActivityTable>
+        </MudItem>
+
+    </MudGrid>
+</MudContainer>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +10,9 @@ using Serilog;
 using Serilog.Events;
 using Server.Data;
 using Server.Models;
+using Server.Services;
 using System.Text;
+using System.IO;
 
 namespace Server
 {
@@ -33,9 +36,17 @@ namespace Server
 
             builder.Host.UseSerilog();
 
+            Console.WriteLine(Directory.GetCurrentDirectory());
+
             // Add Entity Framework Core
+            var connectionString = builder.Environment.IsDevelopment() 
+                ? "Data Source=../Server/Data/app.db"  // Development path
+                : "Data Source=/app/Data/app.db";      // Production/Docker path
+            
+            Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
+            
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite("Data Source=../Server/Data/app.db"));
+                options.UseSqlite(connectionString));
 
             // Add Identity services
             builder.Services.AddIdentity<User, Role>(options =>
@@ -48,6 +59,17 @@ namespace Server
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
+
+            // Configure Data Protection to use persistent storage (production only)
+            if (!builder.Environment.IsDevelopment())
+            {
+                builder.Services.AddDataProtection()
+                    .PersistKeysToFileSystem(new DirectoryInfo("/app/Data/DataProtection-Keys"));
+            }
+
+            // Add Mqtt Service
+            builder.Services.Configure<MqttClientOptions>(builder.Configuration.GetRequiredSection("MQTT"));
+            builder.Services.AddHostedService<MqttService>();
 
             // Configure JWT Authentication
             builder.Services
@@ -72,6 +94,16 @@ namespace Server
                         ClockSkew = TimeSpan.Zero
                     };
                 });
+            
+            // Add Weather Services
+            builder.Services.Configure<ApiOptions>(
+                builder.Configuration.GetRequiredSection("Apis"));
+
+            // Register HttpClient for injection
+            builder.Services.AddHttpClient();
+
+            // Register WeatherService as singleton to keep cache alive
+            builder.Services.AddSingleton<WeatherService>();
 
             // Add Authorization
             builder.Services.AddAuthorization();
@@ -79,7 +111,6 @@ namespace Server
             // Add Mud Blazor Services
             builder.Services.AddMudServices();
             builder.Services.AddLocalization();
-
             builder.Services.AddMudLocalization();
 
             // Add HTTP Client for server-side AuthService (for prerendering)
@@ -91,7 +122,6 @@ namespace Server
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
                 provider.GetRequiredService<Frontend.Client.Services.JwtAuthenticationStateProvider>());
 
-            // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveWebAssemblyComponents();
 
@@ -103,17 +133,29 @@ namespace Server
                     // so we can handle them manually in controllers
                     options.SuppressModelStateInvalidFilter = true;
                 });
+
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
+            builder.WebHost.UseWebRoot("wwwroot");
+            builder.WebHost.UseStaticWebAssets();
 
             var app = builder.Build();
 
-            // Ensure database is created
+            // Ensure database adds all migrations
             using (var scope = app.Services.CreateScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                context.Database.EnsureCreated();
+                try 
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    context.Database.Migrate();
+                    Log.Information("Database migration completed successfully");
+                }
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "Database migration failed. Connection string: {ConnectionString}", connectionString);
+                    throw;
+                }
             }
 
             // Configure the HTTP request pipeline.
@@ -125,9 +167,10 @@ namespace Server
             else
             {
                 app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
+
+            app.MapStaticAssets();
 
             app.MapControllers();
 
@@ -138,11 +181,12 @@ namespace Server
 
             app.UseAntiforgery();
 
-            app.MapStaticAssets();
             app.MapRazorComponents<Components.App>()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Frontend.Client.Services.AuthService).Assembly)
                 .AllowAnonymous();
+
+            app.MapFallbackToFile("index.html");
 
             app.Run();
         }

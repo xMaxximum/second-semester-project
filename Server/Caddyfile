@@ -1,0 +1,34 @@
+mqtt-dhbw-hdh-ai2024.duckdns.org {
+    # Automatic HTTPS with Let's Encrypt
+    
+    # Reverse proxy to ASP.NET Core app
+    reverse_proxy server:8080 {
+        # Pass real IP and protocol headers
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    
+    header {
+        # Remove server info
+        -Server
+        
+        # Security headers
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+    
+
+    # log {
+    #     output file /var/log/caddy/access.log
+    #     format json
+    # }
+}
+
+# Redirect www to non-www
+www.mqtt-dhbw-hdh-ai2024.duckdns.org {
+    redir https://mqtt-dhbw-hdh-ai2024.duckdns.org{uri} permanent
+}

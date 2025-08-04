@@ -1,0 +1,86 @@
+﻿@using Frontend.Client.Model
+
+<MudTable T="Element" Elevation="3" Items="@Elements" Dense="@dense" Hover="@hover"
+          Bordered="@bordered" Striped="@striped" @bind-SelectedItem="selectedItem1"
+          Filter="new Func<Element,bool>(FilterFunc1)">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Recent Activities</MudText>
+        <MudSpacer/>
+        <MudTextField @bind-Value="searchString1" Placeholder="Search"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                      Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Date</MudTh>
+        <MudTh>Distance (km)</MudTh>
+        <MudTh>Duration</MudTh>
+        <MudTh>Avg Speed (km/h)</MudTh>
+        <MudTh>Elevation Gain (m)</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="element">
+        <MudTd DataLabel="Nr">@element.Date</MudTd>
+        <MudTd DataLabel="Sign">@element.Distance</MudTd>
+        <MudTd DataLabel="Name">@element.Duration</MudTd>
+        <MudTd DataLabel="Position">@element.AverageSpeed</MudTd>
+        <MudTd DataLabel="Molar mass">@element.ElevationGain</MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager/>
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool dense = false;
+    private bool hover = true;
+    private bool striped = true;
+    private bool bordered = false;
+    private string searchString1 = "";
+    private Element selectedItem1 = null;
+    private HashSet<Element> selectedItems = new HashSet<Element>();
+
+    private IEnumerable<Element> Elements = new List<Element>();
+    private IEnumerable<Element> FilteredElements = new List<Element>();
+
+    private bool FilterFunc1(Element element) => FilterFunc(element, searchString1);
+
+    private bool FilterFunc(Element activity, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+
+        searchString = searchString.Trim();
+
+        if (activity.Date.ToString("yyyy-MM-dd").Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (activity.Distance.ToString("F2").Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (activity.Duration.ToString(@"hh\:mm\:ss").Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (activity.AverageSpeed.ToString("F2").Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (activity.ElevationGain.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    // TODO: Implement Connection to End Point with Activity Data
+    protected override async Task OnInitializedAsync()
+    {
+        Elements = new List<Element>
+        {
+            new Element { Date = DateTime.Now.AddDays(-5), Distance = 45.5, Duration = TimeSpan.FromMinutes(120), AverageSpeed = 22.75, ElevationGain = 500 },
+            new Element { Date = DateTime.Now.AddDays(-4), Distance = 30.2, Duration = TimeSpan.FromMinutes(80), AverageSpeed = 22.65, ElevationGain = 300 },
+            new Element { Date = DateTime.Now.AddDays(-3), Distance = 60.1, Duration = TimeSpan.FromMinutes(150), AverageSpeed = 24.04, ElevationGain = 700 },
+            new Element { Date = DateTime.Now.AddDays(-2), Distance = 25.0, Duration = TimeSpan.FromMinutes(70), AverageSpeed = 21.43, ElevationGain = 250 },
+            new Element { Date = DateTime.Now.AddDays(-1), Distance = 40.0, Duration = TimeSpan.FromMinutes(110), AverageSpeed = 21.82, ElevationGain = 400 }
+        };
+        FilteredElements = Elements;
+    }
+
+}

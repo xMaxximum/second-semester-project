@@ -6,3 +6,4 @@
 /Server/Server/Data/app.db-shm
 /Server/Server/Data/app.db-wal
 
+/Server/Server/Data/DataProtection-Keys
