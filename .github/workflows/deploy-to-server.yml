@@ -29,19 +29,27 @@ jobs:
         script: |
           echo "🚀 Starting deployment..."
           
-          # Set up deploy key
-          eval $(ssh-agent -s)
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" | ssh-add -
-          
-          # Navigate to project directory
+          # Navigate to project directory first
           cd /root/second-semester-project
 
           # Configure git to use SSH
           git remote set-url origin git@github.com:xMaxximum/second-semester-project.git
           
+          # Set up the deploy key properly
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          # Configure git to use the deploy key and handle divergent branches
+          git config core.sshCommand "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          git config pull.rebase false
+          
           # Pull latest changes from main branch
           echo "📥 Pulling latest changes..."
-          GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git pull origin main
+          git pull origin main
+          
+          # Clean up the deploy key
+          rm -f ~/.ssh/deploy_key
           
           # Navigate to Server directory
           cd Server

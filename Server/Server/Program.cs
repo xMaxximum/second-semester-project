@@ -97,7 +97,7 @@ namespace Server
             
             // Add Weather Services
             builder.Services.Configure<ApiOptions>(
-                builder.Configuration.GetSection("Apis"));
+                builder.Configuration.GetRequiredSection("Apis"));
 
             // Register HttpClient for injection
             builder.Services.AddHttpClient();
@@ -122,7 +122,6 @@ namespace Server
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
                 provider.GetRequiredService<Frontend.Client.Services.JwtAuthenticationStateProvider>());
 
-            // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveWebAssemblyComponents();
 
