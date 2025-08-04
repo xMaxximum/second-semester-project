@@ -1,6 +1,6 @@
 ﻿@using Frontend.Client.Model
 
-<MudTable T="Element" Elevation="3" Items="@Elements" Dense="@dense" Hover="@hover"
+<MudTable T="Element" Elevation="3" Items="@Elements" Dense="@dense" Hover="@hover" Class="pa-4"
           Bordered="@bordered" Striped="@striped" @bind-SelectedItem="selectedItem1"
           Filter="new Func<Element,bool>(FilterFunc1)">
     <ToolBarContent>

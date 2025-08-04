@@ -1,40 +1,84 @@
 ﻿@using Shared.Models
 
 @inject HttpClient Http
+<style>
+    .centered-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .responsive-divider {
+        background-color: rgba(0, 0, 0, 0.12);
+        width: 100%;
+        height: 0.0625rem;
+    }
+
+    .divider-container {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0;
+    }
+
+    .left-pane,
+    .right-pane {
+        padding: 0.5rem 0;
+        border: none;
+    }
+
+    @@media (min-width: 60rem) {
+    .responsive-grid {
+        display: flex;
+        flex-wrap: nowrap;
+        margin-top: auto;
+    }
+
+    .left-pane {
+        border-right: 0.0625rem solid rgba(0, 0, 0, 0.12);
+        padding-right: 0;
+        flex: 1;
+    }
+
+    .right-pane {
+        padding-left: 0;
+        flex: 1;
+    }
+
+    .divider-container {
+        display: none;
+    }
+    }
+</style>
 
 @if (isLoading)
 {
-    <MudPaper Elevation="3" Style="padding: 24px; height: auto;">
+    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
         <MudText>Loading weather data...</MudText>
     </MudPaper>
 }
 else if (data is null)
 {
-    <MudPaper Elevation="3" Style="padding: 24px; height: auto;">
+    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
         <MudText Color="Color.Error">Failed to load weather data.</MudText>
     </MudPaper>
 }
 else
 {
-    <MudPaper Elevation="3" Style="padding: 24px; height: auto;">
-        <MudStack Row="true">
+    <MudPaper Elevation="3" Style="padding: 1.5rem;">
+        <MudGrid Class="responsive-grid">
             <!-- Left Column -->
-            <MudItem xs="12" md="6"
-                     Style="
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    border-right: 1px solid rgba(0, 0, 0, 0.12);
-                    padding-right: 16px;">
-                <MudStack Spacing="2" Style="align-items: center; justify-content: center; text-align: center;">
-                    <MudText Typo="Typo.subtitle1" Color="Color.Dark">
-                        Current Weather for <br/>
+            <MudItem xs="12" md="6" Class="left-pane">
+                <MudStack Spacing="2" Class="centered-content">
+                    <MudText Typo="Typo.subtitle1" Color="Color.Dark" Align="Align.Center">
+                        Current Weather for <br />
                         @data.City, @data.CountryCode
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Dark">@data.Datetime</MudText>
 
-                    <MudStack Style="align-items: center; justify-content: center;" Row="true" Spacing="3">
-                        <MudIcon Icon="@GetIcon(data.Condition)" Size="Size.Large" Color="Color.Primary"/>
+                    <MudStack Row="true" Spacing="3" Class="centered-content">
+                        <MudIcon Icon="@GetIcon(data.Condition)" Size="Size.Large" Color="Color.Primary" />
                         <MudStack Spacing="0" Style="align-items: flex-start;">
                             <MudText Typo="Typo.h4">@data.Temperature°C</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Dark">@data.Description @data.WindDirection</MudText>
@@ -43,10 +87,15 @@ else
                 </MudStack>
             </MudItem>
 
+            <!-- Responsive Divider - only shows on mobile -->
+            <MudItem xs="12" Class="divider-container">
+                <div class="responsive-divider"></div>
+            </MudItem>
+
             <!-- Right Column -->
-            <MudItem xs="12" md="6" Style="padding-left: 16px; padding-right: 16px;">
-                <MudStack Spacing="2" Style="width: 100%;">
-                    <MudGrid Style="display: flex; align-items: center">
+            <MudItem xs="12" md="6" Class="right-pane">
+                <MudStack Spacing="2">
+                    <MudGrid>
                         <MudItem xs="6">
                             <MudText Color="Color.Dark">Feels Like:</MudText>
                         </MudItem>
@@ -55,10 +104,10 @@ else
                         </MudItem>
                     </MudGrid>
 
-                    <MudGrid Style="display: flex; align-items: center">
+                    <MudGrid>
                         <MudItem xs="6">
                             <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small" Color="Color.Info"/>
+                                <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small" Color="Color.Info" />
                                 <MudText Color="Color.Dark">Humidity:</MudText>
                             </MudStack>
                         </MudItem>
@@ -67,10 +116,10 @@ else
                         </MudItem>
                     </MudGrid>
 
-                    <MudGrid Style="display: flex; align-items: center">
+                    <MudGrid>
                         <MudItem xs="6">
                             <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default"/>
+                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" />
                                 <MudText Color="Color.Dark">Cloud Coverage:</MudText>
                             </MudStack>
                         </MudItem>
@@ -79,10 +128,10 @@ else
                         </MudItem>
                     </MudGrid>
 
-                    <MudGrid Style="display: flex; align-items: center">
+                    <MudGrid>
                         <MudItem xs="6">
                             <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success"/>
+                                <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success" />
                                 <MudText Color="Color.Dark">Wind Speed:</MudText>
                             </MudStack>
                         </MudItem>
@@ -92,7 +141,7 @@ else
                     </MudGrid>
                 </MudStack>
             </MudItem>
-        </MudStack>
+        </MudGrid>
     </MudPaper>
 }
 
@@ -141,5 +190,3 @@ else
         _ => Icons.Material.Filled.Cloud
     };
 }
-
-
