@@ -16,28 +16,19 @@ namespace Server.Services
             _apiKey = options.Value.WeatherApiKey;
         }
 
-        public async Task<WeatherData> GetWeatherAsync()
+        public async Task<WeatherData> GetWeatherAsync(double lat, double lon, string city)
         {
-            // Get user geolocation by IP
-            var geo = await _http.GetFromJsonAsync<GeoLocation>("http://ip-api.com/json/");
-            if (geo == null) throw new Exception("Geo API failed");
-
-            // Check if data for location has already been cached in the last 10 minutes
-            if (cachedWeatherData.ContainsKey(geo.City))
+            if (cachedWeatherData.ContainsKey(city) &&
+                cachedWeatherData.TryGetValue(city, out WeatherData cachedData))
             {
-                if (cachedWeatherData.TryGetValue(geo.City, out WeatherData weatherData))
+                long nowMillis = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                if (nowMillis - cachedData.timestamp < 1000 * 60 * 10)
                 {
-                    long millisnow = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                    if (millisnow - weatherData.timestamp < 1000 * 60 * 10)
-                    {
-                        return weatherData;
-                    }
+                    return cachedData;
                 }
             }
-            
-            
-            // Call OpenWeatherMap API with lat/lon and API key
-            var url = $"https://api.openweathermap.org/data/2.5/weather?lat={geo.Lat}&lon={geo.Lon}&appid={_apiKey}&units=metric";
+
+            var url = $"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={_apiKey}&units=metric";
             var weather = await _http.GetFromJsonAsync<OpenWeatherResponse>(url);
             if (weather == null) throw new Exception("Weather API failed");
 
@@ -55,10 +46,9 @@ namespace Server.Services
                 WindSpeed = (int)weather.Wind.Speed,
                 Condition = MapCondition(weather.Weather[0].Main),
                 timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond
-
             };
-            cachedWeatherData[geo.City] = data;
-                
+
+            cachedWeatherData[city] = data;
             return data;
         }
 

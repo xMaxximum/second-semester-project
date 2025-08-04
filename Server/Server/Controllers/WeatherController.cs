@@ -1,33 +1,39 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Shared.Models;
 using Server.Services;
-using Microsoft.AspNetCore.Authorization;
 
-namespace Server.Controllers{
-[ApiController]
-[Route("api/[controller]")]
-public class WeatherController : ControllerBase
+namespace Server.Controllers
 {
-    private readonly WeatherService _weatherService;
-
-    public WeatherController(WeatherService weatherService)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class WeatherController : ControllerBase
     {
-        _weatherService = weatherService;
-    }
+        private readonly WeatherService _weatherService;
 
-    [HttpGet]
-    [Authorize]
-    public async Task<ActionResult<WeatherData>> Get()
-    {
-        try
+        public WeatherController(WeatherService weatherService)
         {
-            var data = await _weatherService.GetWeatherAsync();
-            return Ok(data);
+            _weatherService = weatherService;
         }
-        catch (Exception ex)
+
+        public class LocationRequest
         {
-            return BadRequest(ex.Message);
+            public double Lat { get; set; }
+            public double Lon { get; set; }
+            public string City { get; set; } = string.Empty;
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<WeatherData>> GetWeather([FromBody] LocationRequest location)
+        {
+            try
+            {
+                var data = await _weatherService.GetWeatherAsync(location.Lat, location.Lon, location.City);
+                return Ok(data);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
-}
 }

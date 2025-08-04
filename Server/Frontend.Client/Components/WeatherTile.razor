@@ -104,7 +104,22 @@ else
     {
         try
         {
-            data = await Http.GetFromJsonAsync<WeatherData>("api/weather");
+            var geo = await Http.GetFromJsonAsync<GeoLocation>("http://ip-api.com/json/");
+
+            if (geo != null)
+            {
+                var response = await Http.PostAsJsonAsync("api/weather", new LocationRequest
+                {
+                    Lat = geo.Lat,
+                    Lon = geo.Lon,
+                    City = geo.City
+                });
+
+                if (response.IsSuccessStatusCode)
+                {
+                    data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -125,4 +140,18 @@ else
         WeatherCondition.PartlyCloudy => Icons.Material.Filled.Cloud,
         _ => Icons.Material.Filled.Cloud
     };
+
+    public class GeoLocation
+    {
+        public double Lat { get; set; }
+        public double Lon { get; set; }
+        public string City { get; set; } = string.Empty;
+    }
+
+    public class LocationRequest
+    {
+        public double Lat { get; set; }
+        public double Lon { get; set; }
+        public string City { get; set; } = string.Empty;
+    }
 }
