@@ -1,24 +1,70 @@
 @page "/"
 @rendermode InteractiveWebAssembly
 
+@using Frontend.Client.Components
+
 <PageTitle>Home</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-16">
-    <MudText Typo="Typo.h3" GutterBottom="true">Welcome to Cyclone!</MudText>
+<style>
+    
+    
+    html, body, #app {
+        margin: 0; padding: 0; overflow-x: hidden;
+    }
+    
+    .hero-banner { position: relative; left:50%; margin-left:-50vw; width:100vw; height:100vh; overflow:hidden; }
+    .video-wrapper { position:absolute; inset:0; z-index:-1; overflow:hidden; }
+    .video-wrapper iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:100vw; height:100vh; object-fit: cover; pointer-events:none; }
+    .hero-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#fff; padding:2rem; max-width:600px; }
+    .hero-overlay h1 { font-size:3rem; margin-bottom:1rem; }
+    .hero-overlay p  { font-size:1.25rem; margin-bottom:1.5rem; }
+    @@media (max-width:768px) { .hero-banner { height:60vh; } .hero-overlay h1 { font-size:2.5rem; } .hero-overlay p  { font-size:1rem; } }
+    @@media (max-width:480px) { .hero-banner { height:50vh; } .hero-overlay h1 { font-size:2rem; } .hero-overlay p  { font-size:0.9rem; } }
+   
+    
+    .section { padding:6rem 2rem; max-width:1200px; margin:auto; }
+    .section h2 { text-align:center; margin-bottom:2rem; }
+    .feature-card { padding:2rem; text-align:center; border-radius:8px; }
+    
+    
+    .testimonial-header { display:flex; align-items:center; gap:1rem; }
+    
+    
+    .plan-card { border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1); transition:transform .3s ease; }
+    .plan-card:hover { transform:translateY(-6px); }
+    .plan-header { text-align:center; padding:1.5rem 1rem; background:#fff; }
+    .plan-content { background:#fafafa; padding:1rem 1.5rem; display:flex; flex-direction:column; align-items:center; gap:1rem; }
+    .plan-avatar { border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+    .plan-features { list-style:none; padding:0; margin:0; width:100%; }
+    .plan-features li { position:relative; padding-left:1.5rem; margin-bottom:.75rem; }
+    .plan-features li::before { content:""; position:absolute; left:0; top:.5rem; width:.5rem; height:.5rem; background:#673AB7; border-radius:50%; }
+    
+    
+    .cta-footer {
+        background: #594AE2;
+        color: #fff;
+        text-align: center;
+        padding: 4rem 2rem;
+        
+        
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+        width: 100vw;
+    }
+</style>
+
     <CascadingAuthenticationState>
         <AuthorizeView>
             <Authorized>
-                <MudAlert Severity="Severity.Success" Class="mt-4">
-                    Welcome back, @context.User.Identity?.Name!
-                </MudAlert>
+                <HomeLoggedIn/>
             </Authorized>
+            
             <NotAuthorized>
-                Welcome to your new app.
-                <MudAlert Severity="Severity.Info" Class="mt-4">
-                    Please <MudLink Href="/login">login</MudLink> to access all features.
-                </MudAlert>
+                <HomeLoggedOut/>
             </NotAuthorized>
         </AuthorizeView>
 
     </CascadingAuthenticationState>
-</MudContainer>

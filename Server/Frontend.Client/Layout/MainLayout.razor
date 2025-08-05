@@ -5,6 +5,8 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
 @using Frontend.Client.Components
+@inject NavigationManager Navigation
+@inject AuthService AuthService
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -63,7 +65,10 @@
           <AuthorizeView>
             <Authorized>
               <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">Profile</MudNavLink>
-              <MudNavLink Href="/logout" Icon="@Icons.Material.Filled.ExitToApp">Logout</MudNavLink>
+              <MudMenuItem Icon="@Icons.Material.Filled.Logout"
+                           OnClick="@HandleLogout">
+              Logout
+              </MudMenuItem>
             </Authorized>
             <NotAuthorized>
               <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
@@ -97,4 +102,11 @@
 
   void ToggleDrawer() => _drawerOpen = !_drawerOpen;
   void GoHome()        => NavigationManager.NavigateTo("/");
+  
+  private async Task HandleLogout()
+    {
+      await AuthService.LogoutAsync();
+      Navigation.NavigateTo("/");
+    }
+  }
 }
