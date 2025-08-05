@@ -11,8 +11,7 @@ namespace Cyclone_ESP32
     {
         public static void Main()
         {
-            // App must not return.
-            Thread.Sleep(Timeout.Infinite);
+            MPU6050 accel_gyro = new MPU6050();
         }        
     }
 }
