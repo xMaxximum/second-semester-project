@@ -12,7 +12,7 @@ namespace Cyclone_ESP32
             GPS gpsModule = new GPS();
             while(true)
             { 
-                Console.WriteLine(gpsModule.CurrentPosition); 
+                Console.WriteLine($"Latitude: {gpsModule.CurrentPosition.Latitude} Longitude: {gpsModule.CurrentPosition.Longitude}"); 
             }
             
 

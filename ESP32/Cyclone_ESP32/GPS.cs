@@ -89,7 +89,7 @@ namespace Cyclone_ESP32 {
                 }
                 else
                 {
-                    return $"Current Position: Latitude: {gpsModule.Location.Latitude}, Longitude: {gpsModule.Location.Longitude}";
+                    return gpsModule.Location;
                 }
             }
         }
