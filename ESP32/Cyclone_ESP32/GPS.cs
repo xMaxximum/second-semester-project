@@ -6,11 +6,11 @@ using System.Diagnostics;
 using System.Threading;
 
 namespace Cyclone_ESP32 { 
-    public class gps
+    public class GPS
     {
-        private static GenericSerialGnssDevice gpsModule;
-        private static Location newestPosition;
-        public static void Setup()
+        private GenericSerialGnssDevice gpsModule;
+        private Location newestPosition;
+        public GPS()
         {
             try
             {
@@ -76,21 +76,24 @@ namespace Cyclone_ESP32 {
             Console.WriteLine($"Received Fix changed: {fix}");
             
         }
-        public static Location TryGetCurrentPosition()
-        { //null if no location, location if availible
-            if(gpsModule.Location.Latitude == 0 || gpsModule.Location.Longitude == 0)
+        public Location CurrentPosition
+        {
+            get
             {
-                Console.WriteLine("No GPS fix available.");
-                Console.WriteLine("Sattelites: " + gpsModule.SatellitesInView);
-                Console.WriteLine("Fix: " + gpsModule.Fix);
-                return null;
-            }
-            else
-            {
-                Console.WriteLine($"Current Position: Latitude: {gpsModule.Location.Latitude}, Longitude: {gpsModule.Location.Longitude}");
-                return newestPosition;
+                if (gpsModule.Location.Latitude == 0 || gpsModule.Location.Longitude == 0)
+                {
+                    Console.WriteLine("No GPS fix available.");
+                    Console.WriteLine("Sattelites: " + gpsModule.SatellitesInView);
+                    Console.WriteLine("Fix: " + gpsModule.Fix);
+                    return null;
+                }
+                else
+                {
+                    return $"Current Position: Latitude: {gpsModule.Location.Latitude}, Longitude: {gpsModule.Location.Longitude}";
+                }
             }
         }
+
     }
 
 }

@@ -9,7 +9,13 @@ namespace Cyclone_ESP32
     {
         public static void Main(string[] args)
         {
+            GPS gpsModule = new GPS();
+            while(true)
+            { 
+                Console.WriteLine(gpsModule.CurrentPosition); 
+            }
             
+
         }
     }
 }
