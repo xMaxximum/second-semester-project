@@ -9,6 +9,7 @@ namespace Cyclone_ESP32 {
     public class gps
     {
         private static GenericSerialGnssDevice gpsModule;
+        private static Location newestPosition;
         public static void Setup()
         {
             try
@@ -67,27 +68,27 @@ namespace Cyclone_ESP32 {
         private static void LocationChanged(Location position)
         {
             Console.WriteLine($"Received position changed: {position.Latitude},{position.Longitude}");
+            newestPosition = position;
         }
 
         private static void FixChanged(Fix fix)
         {
             Console.WriteLine($"Received Fix changed: {fix}");
-            GpioController gpioController = new GpioController();
-            gpioController.OpenPin(2, PinMode.Output);
-            gpioController.Write(2, PinValue.High);
+            
         }
-        public static void TryGetCurrentPosition()
-        {
+        public static Location TryGetCurrentPosition()
+        { //null if no location, location if availible
             if(gpsModule.Location.Latitude == 0 || gpsModule.Location.Longitude == 0)
             {
                 Console.WriteLine("No GPS fix available.");
                 Console.WriteLine("Sattelites: " + gpsModule.SatellitesInView);
                 Console.WriteLine("Fix: " + gpsModule.Fix);
-                Thread.Sleep(10000);
+                return null;
             }
             else
             {
                 Console.WriteLine($"Current Position: Latitude: {gpsModule.Location.Latitude}, Longitude: {gpsModule.Location.Longitude}");
+                return newestPosition;
             }
         }
     }
