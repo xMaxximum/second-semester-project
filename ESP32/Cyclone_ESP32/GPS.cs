@@ -31,7 +31,7 @@ namespace Cyclone_ESP32 {
                 gpsModule.Start();
 
                 Console.WriteLine("GPS module started successfully.");
-
+                
                 Thread.Sleep(Timeout.Infinite);
             }
             catch (Exception ex)
@@ -53,6 +53,7 @@ namespace Cyclone_ESP32 {
             {
                 Console.WriteLine($"Received TXT message: {txtData.Text}, severity: {txtData.Severity}");
             }
+            
         }
 
         private static void ParsingError(Exception exception)
