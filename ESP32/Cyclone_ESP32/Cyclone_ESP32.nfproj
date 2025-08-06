@@ -23,6 +23,7 @@
   <Import Project="$(NanoFrameworkProjectSystemPath)NFProjectSystem.props" Condition="Exists('$(NanoFrameworkProjectSystemPath)NFProjectSystem.props')" />
   <ItemGroup>
     <Compile Include="GPS.cs" />
+    <Compile Include="HTTPClient.cs" />
     <Compile Include="MessageSeverity.cs" />
     <Compile Include="MQTT.cs" />
     <Compile Include="Program.cs" />
