@@ -26,6 +26,7 @@
     <Compile Include="HTTPClient.cs" />
     <Compile Include="MessageSeverity.cs" />
     <Compile Include="MQTT.cs" />
+    <Compile Include="NetworkHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TxtData.cs" />
@@ -33,6 +34,9 @@
   <ItemGroup>
     <Reference Include="Iot.Device.Common.GnssDevice">
       <HintPath>packages\nanoFramework.Iot.Device.Common.GnssDevice.1.0.281\lib\Iot.Device.Common.GnssDevice.dll</HintPath>
+    </Reference>
+    <Reference Include="MakoIoT.Device.Utilities.String">
+      <HintPath>packages\MakoIoT.Device.Utilities.String.1.0.43.34490\lib\MakoIoT.Device.Utilities.String.dll</HintPath>
     </Reference>
     <Reference Include="mscorlib, Version=1.17.11.0, Culture=neutral, PublicKeyToken=c07d481e9758c731">
       <HintPath>packages\nanoFramework.CoreLibrary.1.17.11\lib\mscorlib.dll</HintPath>
@@ -85,6 +89,9 @@
     <Reference Include="System.Net, Version=1.11.43.0, Culture=neutral, PublicKeyToken=c07d481e9758c731">
       <HintPath>packages\nanoFramework.System.Net.1.11.43\lib\System.Net.dll</HintPath>
       <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net.Http">
+      <HintPath>packages\nanoFramework.System.Net.Http.Client.1.5.196\lib\System.Net.Http.dll</HintPath>
     </Reference>
     <Reference Include="System.Threading, Version=1.1.52.34401, Culture=neutral, PublicKeyToken=c07d481e9758c731">
       <HintPath>packages\nanoFramework.System.Threading.1.1.52\lib\System.Threading.dll</HintPath>
