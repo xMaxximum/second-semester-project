@@ -6,6 +6,7 @@
 void writeSensorDataBlock();
 // setup sdcard connection over SPI bus
 void setupFileSystem();
+void getSpeed();
 
 #define CUSTOM_MOSI 16
 #define CUSTOM_MISO 4
@@ -14,6 +15,10 @@ void setupFileSystem();
 #define RAM_ARR 24000 // 2000 sensorData packets (2000 * 12 count of sensor values is 24000)
 // 24000 * 4 bytes for a float is 96kB of RAM
 #define SENSOR_DATA_SIZE 12
+
+// magnet sensor
+#define PIN_MAGNET 17
+#define WHEEL_DIAMETER 0.6 // 26 inch wheel
 
 // data specific
 // this is the address to where the sensor data is stored in the heap (96kB of RAM)
@@ -25,6 +30,13 @@ uint timeBeforeWrite, timeAfterWrite;
 // the object for the sdcard file
 File file;
 
+// helper variables
+// magnet sensor positive flank recognition (rpm)
+int lastState = LOW, currentState, flankCount = 0, rpm, speed;
+
+// only get data every 200ms
+unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dtTo1000ms = 0, dtTo200ms = 0;
+
 void setup()
 {
   Serial.begin(115200);
@@ -35,22 +47,65 @@ void setup()
 
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
+
+  // digital input for rpm sensor (magnet sensor)
+  pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
 }
 
 void loop()
 {
+  currentTime = millis();
 
-  // every 200ms the sensor data is put into the array
-  // bufferCount++;
-  // sensorData[bufferCount * SENSOR_DATA_SIZE] = temperature
-  // sensorData[bufferCount * SENSOR_DATA_SIZE + 1] = current speed
-  // sensorData[bufferCount * SENSOR_DATA_SIZE + 2] = latitude
-  // ...
-  // sensorData[bufferCount * SENSOR_DATA_SIZE + 11] = checksum
+  getSpeed();
+
+  dtTo200ms = currentTime - lastReadTime200ms;
+  if (dtTo200ms >= 200)
+  {
+    bufferCount++;
+    sensorData[bufferCount * SENSOR_DATA_SIZE] = 0; // temperature
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 1] = (float)speed;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 2] = 0; // latitude
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 3] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 4] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 5] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 6] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 7] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 8] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 9] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 10] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 11] = speed;
+    lastReadTime200ms = currentTime;
+  }
 
   // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
   if (bufferCount == 2000)
     writeSensorDataBlock();
+}
+
+void getSpeed()
+{
+  currentState = digitalRead(PIN_MAGNET);
+
+  dtTo1000ms = currentTime - lastReadTime1000ms;
+  // Check for negative flank
+  if (lastState == HIGH && currentState == LOW)
+    flankCount++;
+
+  lastState = currentState;
+
+  // negative flanks / second (rpm is flanks per minute)
+  if (dtTo1000ms >= 1000)
+  {
+    lastReadTime1000ms = currentTime;
+    rpm = flankCount * 60;
+    speed = (rpm * PI * WHEEL_DIAMETER) / 60 * 3.6;
+    Serial.print("Speed (RPM): ");
+    Serial.println(rpm);
+    Serial.print("Speed: ");
+    Serial.print(speed);
+    Serial.println(" km/h");
+    flankCount = 0;
+  }
 }
 
 void setupFileSystem()
