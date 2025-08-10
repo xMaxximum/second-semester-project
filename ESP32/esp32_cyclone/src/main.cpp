@@ -1,12 +1,15 @@
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
+#include <WiFi.h>
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
 // setup sdcard connection over SPI bus
 void setupFileSystem();
 void getSpeed();
+// setup wlan connection with sdcard credentials
+void setupWlan();
 
 #define CUSTOM_MOSI 16
 #define CUSTOM_MISO 4
@@ -126,6 +129,38 @@ void setupFileSystem()
   Serial.printf("SD Card Size: %lluMB\n", cardSize);
   Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
   Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+}
+
+void setupWlan()
+{
+  File file = SD.open("credentials.txt", FILE_READ);
+  if (!file)
+  {
+    Serial.println("File not found");
+    return;
+  }
+
+  // read the file contents into a buffer and convert it to a char buffer
+  uint8_t buffer[100];
+  file.read(buffer, 100);
+  char *content = (char *)buffer;
+  Serial.println(content);
+
+  file.close();
+
+  // the second call to strtok gives the next string after the delimiter
+  char *ssid = strtok(content, ",");
+  char *password = strtok(NULL, ",");
+
+  Serial.println("Connecting");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.print("Connected to WiFi network with IP Address: ");
+  Serial.println(WiFi.localIP());
 }
 
 void writeSensorDataBlock()
