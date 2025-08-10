@@ -73,13 +73,16 @@ void loop()
     sensorData[bufferCount * SENSOR_DATA_SIZE + 8] = 0;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 9] = 0;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 10] = 0;
-    sensorData[bufferCount * SENSOR_DATA_SIZE + 11] = speed;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 11] = speed; // checksum is only speed right now
     lastReadTime200ms = currentTime;
   }
 
   // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
   if (bufferCount == 2000)
+  {
+    bufferCount = 0; // reset buffer size because ram is free after save to sdcard
     writeSensorDataBlock();
+  }
 }
 
 void getSpeed()
@@ -98,6 +101,7 @@ void getSpeed()
   {
     lastReadTime1000ms = currentTime;
     rpm = flankCount * 60;
+    // calculate the speed
     speed = (rpm * PI * WHEEL_DIAMETER) / 60 * 3.6;
     Serial.print("Speed (RPM): ");
     Serial.println(rpm);
