@@ -1,0 +1,171 @@
+@rendermode InteractiveWebAssembly
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+
+<PageTitle>Home</PageTitle>
+
+<style>
+
+    .hero-banner{
+        position:relative;
+        width:100%;
+        height:100vh;
+        overflow:hidden;
+    }
+
+    .video-wrapper{
+        position:absolute;
+        inset:0;
+    }
+
+    .video-wrapper iframe{
+        position:absolute;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+        width:177.78vh;      /* 16:9 cover */
+        height:100vh;
+        min-width:100vw;
+        min-height:56.25vw;  /* 16:9 cover */
+        border:0;
+        pointer-events:none;
+    }
+
+    .hero-overlay{
+        position:absolute;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+        width:min(960px, 100% - 32px);
+        text-align:center;
+        color:#fff;
+        display:grid;
+        gap:12px;
+    }
+
+    .hero-overlay h1{
+        margin:0;
+        font-weight:700;
+        font-size:clamp(28px, 5vw, 56px);
+    }
+
+    .hero-overlay p{
+        margin:0;
+        opacity:.92;
+        font-size:clamp(14px, 2.2vw, 18px);
+    }
+
+    .hero-overlay .mud-button-root{
+        width:auto !important;
+        min-width:160px;
+        margin:.25rem;
+    }
+
+    @@media (max-width:600px){
+    .hero-overlay .mud-button-root{ min-width:140px; }
+    }
+
+
+</style>
+<!-- Hero Banner -->
+<section class="hero-banner">
+    <div class="video-wrapper">
+        <iframe
+            src="https://player.vimeo.com/video/964455070?background=1&autoplay=1&loop=1&muted=1&autopause=0&playsinline=1"
+            frameborder="0"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+
+    <div class="hero-overlay">
+        <h1>Track every Turn.</h1>
+        <p>Your cycling data at your fingertips. Anywhere. Anytime.</p>
+        <MudStack Direction="Row" Spacing="2" Justify="Justify.Center" Class="hero-cta">
+            <MudButton Variant="@Variant.Filled" Color="@Color.Primary" Href="/register">Get Started</MudButton>
+            <MudButton Variant="@Variant.Outlined" Color="@Color.Secondary" Href="/login">Login</MudButton>
+        </MudStack>
+
+    </div>
+</section>
+
+<MudContainer MaxWidth="@MaxWidth.False" Class="p-0">
+
+    <!-- Features -->
+    <section class="section">
+        <div class="reveal" style="--delay:200ms"><h2>Our Features</h2></div>
+
+        <MudGrid Spacing="3">
+            @for(int i = 0; i < FeatureList.Count; i++)
+            {
+                var f = FeatureList[i];
+                <MudItem xs="12" sm="4">
+                    <div class="reveal" style="--delay:@(200 + i * 200)ms">
+                        <MudPaper Class="feature-card" Elevation="1">
+                            <MudText Typo="@Typo.h6" GutterBottom="true">@f.Title</MudText>
+                            <MudText Typo="@Typo.body2">@f.Description</MudText>
+                        </MudPaper>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="section">
+        <div class="reveal" style="--delay:600ms"><h2>What Our Riders Say</h2></div>
+
+        <MudExpansionPanels Multiple="true">
+            @foreach(var t in Testimonials)
+            {
+                <MudExpansionPanel Text="@t.Name"
+                                   ExpandedIcon="Icons.Material.Filled.ExpandLess"
+                                   CollapsedIcon="Icons.Material.Filled.ExpandMore">
+                    <MudGrid>
+                        <MudItem xs="2">
+                            <MudAvatar Image="@t.ImgUrl" Size="Size.Medium" />
+                        </MudItem>
+                        <MudItem xs="10">
+                            <MudText Typo="@Typo.body1">“@t.Text”</MudText>
+                            <MudText Typo="@Typo.caption">– @t.Name, @t.Role</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    </section>
+
+    <!-- Call to Action Footer -->
+    <div class="reveal" style="--delay:1200ms">
+        <section class="cta-footer">
+            <MudText Typo="@Typo.h4" Class="mb-3">Ready to Ride?</MudText>
+            <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Size="Size.Large" Href="/register">
+                Join Cyclone Now
+            </MudButton>
+        </section>
+    </div>
+
+</MudContainer>
+
+@code {
+    class Feature { public string Title { get; set; } = ""; public string Description { get; set; } = ""; }
+    class Testimonial { public string Name { get; set; } = ""; public string ImgUrl { get; set; } = ""; public string Text { get; set; } = ""; public string Role { get; set; } = ""; }
+    class Plan { public string Title { get; set; } = ""; public string Price { get; set; } = ""; public string Avatar { get; set; } = ""; public List<string> Features { get; set; } = new(); }
+
+    private List<Feature> FeatureList = new()
+    {
+        new Feature { Title="Live Tracking", Description="Receive real-time speed, distance, elevation, and performance alerts." },
+        new Feature { Title="Analytics",    Description="Analyze sessions with AI-driven charts and export detailed reports." },
+        new Feature { Title="Community",    Description="Join challenges, share routes, earn badges, and compete." }
+    };
+
+    private List<Testimonial> Testimonials = new()
+    {
+        new Testimonial { Name="Alex Rider",  ImgUrl="https://img.freepik.com/fotos-kostenlos/smiley-mann-der-sich-draussen-entspannt_23-2148739334.jpg", Text="Boosted my performance!", Role="Competitive Cyclist" },
+        new Testimonial { Name="Maria Wheels",ImgUrl="https://images.bravo.de/das-verrat-dein-profilbild-uber-dich-selfie,id=e8f96e08,b=bravo,w=1600,rm=sk.jpeg", Text="Community keeps me motivated.", Role="Fitness Enthusiast" },
+        new Testimonial { Name="John Trail",  ImgUrl="https://i.pinimg.com/236x/b1/e9/88/b1e988b2e1295930db530b1d257a5a31.jpg", Text="Discovering new routes is amazing.", Role="Adventure Seeker" },
+        new Testimonial { Name="Sarah Pace",  ImgUrl="https://www.businessinsider.de/wp-content/uploads/2017/04/5eaa81c1981b7.jpg", Text="Intuitive dashboard & real-time stats.", Role="Weekend Rider" }
+    };
+
+    private List<Plan> Plans = new() { };
+}

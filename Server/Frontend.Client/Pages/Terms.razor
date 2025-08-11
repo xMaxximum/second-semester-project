@@ -1,0 +1,73 @@
+﻿@page "/terms"
+@using MudBlazor
+
+<PageTitle>Terms of Use – Cyclone</PageTitle>
+
+<MudContainer Class="mt-6 mb-8">
+  <MudPaper Elevation="1" Class="p-6 legal-card">
+
+    <MudText Typo="Typo.h4" GutterBottom>Terms of Use</MudText>
+
+    <MudText Typo="Typo.subtitle2" Class="mt-2">1. Scope</MudText>
+    <MudText Typo="Typo.body1">
+      These Terms govern the non-commercial use of the Cyclone project. The service is provided by students for educational purposes.
+    </MudText>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">2. Accounts</MudText>
+    <MudText Typo="Typo.body1">
+      You are responsible for the accuracy of your data and for keeping your login credentials confidential. We may suspend or terminate accounts that violate these Terms or applicable law.
+    </MudText>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">3. Acceptable Use</MudText>
+    <ul class="legal-list">
+      <li>No unlawful, abusive, or harmful use</li>
+      <li>No attempts to disrupt, reverse engineer, or overload the service</li>
+      <li>No infringement of third-party rights</li>
+    </ul>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">4. Availability</MudText>
+    <MudText Typo="Typo.body1">
+      We strive for a stable service but do not guarantee uninterrupted availability. Maintenance and outages may occur.
+    </MudText>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">5. Intellectual Property</MudText>
+    <MudText Typo="Typo.body1">
+      The Cyclone name, UI, and content are protected by applicable law. You receive a limited, non-exclusive right to use the service for personal purposes.
+    </MudText>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">6. Warranty & Liability</MudText>
+    <MudText Typo="Typo.body1">
+      The service is provided “as is” without warranties. Liability is limited to intent and gross negligence. For slight negligence, liability is limited to essential duties.
+    </MudText>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">7. Changes</MudText>
+    <MudText Typo="Typo.body1">
+      We may update these Terms. Continued use after changes constitutes acceptance of the updated Terms.
+    </MudText>
+
+    <MudText Typo="Typo.caption" Align="Align.Center" Class="mt-4">
+      Last updated: @DateTime.Now.ToString("MMMM yyyy")
+    </MudText>
+
+  </MudPaper>
+</MudContainer>
+
+<style>
+  .legal-card { max-width: 960px; margin: 0 auto; }
+  .legal-list { margin: .5rem 0 0 1rem; padding: 0; line-height: 1.6; }
+  .legal-card .mt-2 { margin-top: .5rem; }
+  .legal-card .mt-4 { margin-top: 1rem; }
+  .legal-card .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
+</style>
