@@ -3,6 +3,7 @@
 #include "SPI.h"
 #include <WiFi.h>
 #include "SD_MMC.h"
+#include <HTTPClient.h>
 #include "string.h"
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
@@ -12,6 +13,9 @@ void setupFileSystem();
 void getSpeed();
 // setup wlan connection with sdcard credentials
 void setupWlan();
+// unified function for opening files depending on the SDMMC or SPI connection type
+void openFile(const char *filename, const char *mode);
+void testRead();
 
 // interface used for sdcard (false is SPI)
 #define SDMMC true
@@ -43,6 +47,9 @@ int lastState = LOW, currentState, flankCount = 0, rpm, speed;
 
 // only get data every 200ms
 unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dtTo1000ms = 0, dtTo200ms = 0;
+
+// http client to send data to rest api with post
+HTTPClient http;
 
 void setup()
 {
@@ -92,6 +99,9 @@ void loop()
     bufferCount = 0; // reset buffer size because ram is free after save to sdcard
     writeSensorDataBlock();
   }
+
+  testRead();
+  delay(5000);
 }
 
 void getSpeed()
@@ -155,12 +165,7 @@ void setupFileSystem()
 
 void setupWlan()
 {
-  File file = SD_MMC.open("/credentials.txt", FILE_READ);
-  if (!file)
-  {
-    Serial.println("File not found");
-    return;
-  }
+  openFile("/credentials.txt", FILE_READ);
 
   String buffer = file.readString();
   file.close();
@@ -181,12 +186,15 @@ void setupWlan()
     Serial.println("Invalid format for the credentials on the sdcard. Must be ssid,pass");
   }
   Serial.println("Connecting");
+  
+  
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
   }
+  
   Serial.println("");
   Serial.print("Connected to WiFi network with IP Address: ");
   Serial.println(WiFi.localIP());
@@ -196,20 +204,16 @@ void writeSensorDataBlock()
 {
 
   // open the file where the array data is streamed into
-  file = SD.open("/sensorData.bin", FILE_WRITE);
-  if (!file)
-  {
-    Serial.println("Error opening file");
-    return;
-  }
+  openFile("/sensorData.bin", FILE_WRITE);
 
   timeBeforeWrite = millis();
   // write the array to the file
   file.write((uint8_t *)sensorData, RAM_ARR * sizeof(float));
+  file.close();
   timeAfterWrite = millis();
   Serial.print("Writetime: ");
   Serial.println(timeAfterWrite - timeBeforeWrite);
-  file.close();
+  
 
   // the space of the array can now be used again
   free(sensorData);
@@ -221,22 +225,65 @@ void writeSensorDataBlock()
 // http rest api client reads data and sends it to the backend
 void testRead()
 {
-  file = SD.open("/sensorData.bin", FILE_READ);
-  if (!file)
-  {
-    Serial.println("Error opening file");
-    return;
-  }
   // allocate the needed ram for the sensor data
-  float *sensorDataRead = (float *)malloc(RAM_ARR * sizeof(float));
-  // sensorDataRead contains the actual data of the sdcard now
-  file.read((uint8_t *)sensorDataRead, RAM_ARR * sizeof(float));
+  float *sensorData1 = (float *)malloc(2 * sizeof(float));
+  float *sensorData2 = (float *)malloc(2 * sizeof(float));
+  float *sensorDataRead1 = (float *)malloc(2 * sizeof(float));
+  float *sensorDataRead2 = (float *)malloc(2 * sizeof(float));
+  // some test sensor data
+  sensorData1[0] = 1337.1337;
+  sensorData1[1] = 31337.31337;
+  for (size_t i = 2; i < 12; i++)
+    sensorData1[i] = i;
+
+  // another buffer with test sensor data
+  sensorData2[0] = 1234.0;
+  sensorData2[1] = 50.3;
+  for (size_t i = 2; i < 12; i++)
+    sensorData1[i] = i;
+
+  // open the file where the array data is streamed into
+  openFile("/sensorData.bin", FILE_WRITE);
+  //file = SD_MMC.open("/sensorData.bin", FILE_WRITE);
+
+  // write the buffers to the file
+  file.write((uint8_t *)sensorData1, 2 * sizeof(float));
+  file.write((uint8_t *)sensorData2, 2 * sizeof(float));
   file.close();
 
-  Serial.println("This is the file content:");
-  for (int i = 0; i < 100; i++)
+  // sensorDataRead contains the actual data of the sdcard now
+  openFile("/sensorData.bin", FILE_READ);
+  // file = SD_MMC.open("/sensorData.bin", FILE_READ);
+
+  // we want to upload the data to the backend now
+  file.read((uint8_t *)sensorDataRead1, 2 * sizeof(float));
+  file.read((uint8_t *)sensorDataRead2, 2 * sizeof(float));
+  file.close();
+
+  Serial.println("sensorDataRead1:");
+  for (int i = 0; i < 2; i++)
+    Serial.println(sensorDataRead1[i]);
+  Serial.println("sensorDataRead2:");
+  for (int i = 0; i < 2; i++)
+    Serial.println(sensorDataRead2[i]);
+}
+
+void openFile(const char *filename, const char *mode)
+{
+  Serial.print("Opening a file named ");
+  Serial.print(filename);
+  Serial.print(" to ");
+  Serial.println(mode);
+  if (SDMMC)
+    file = SD_MMC.open(filename, mode);
+  else
+    file = SD.open(filename, mode);
+
+  if (!file)
   {
-    Serial.println(sensorDataRead[i]);
+    Serial.print("Error opening file: ");
+    Serial.println(filename);
+    setupFileSystem();
+    openFile(filename, mode);
   }
-  free(sensorDataRead);
 }
