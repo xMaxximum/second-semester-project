@@ -1,53 +1,4 @@
-﻿@using MudBlazor
-
-<style>
-  html, body { height: 100%; }
-  .mud-layout { min-height: 100dvh; display: flex; flex-direction: column; }
-  .mud-drawer-container { flex: 1 0 auto; display: flex; flex-direction: column; min-height: 0; }
-  .mud-main-content { flex: 1 0 auto; min-height: 0; }
-  .site-footer { flex: 0 0 auto; margin-top: auto; position: static; }
-
-  .site-footer {
-    background-color: #594AE2;
-    color: #FFF;
-    padding: 3rem 1rem;
-  }
-  .site-footer a {
-    color: #FFF;
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-  .site-footer a:hover {
-    color: #FFF;
-  }
-  .site-footer .footer-header {
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: #FFF;
-  }
-  .site-footer ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    line-height: 1.6;
-  }
-  .site-footer ul li {
-    margin-bottom: 0.5rem;
-    margin-left: 1rem;
-  }
-  .site-footer .footer-bottom {
-    margin-top: 2rem;
-    text-align: center;
-    font-size: 0.875rem;
-    color: #AAA;
-  }
-
-  @@media (max-width: 600px) {
-  .site-footer { padding: 2rem 1rem; }
-  }
-</style>
-
-<MudPaper Class="site-footer" Elevation="0" Square="true">
+﻿<MudPaper Class="site-footer" Elevation="0" Square="true">
   <MudContainer MaxWidth="MaxWidth.False" Class="p-0">
     <MudGrid GutterSize="3">
 
@@ -67,8 +18,8 @@
       <MudItem xs="12" sm="6" md="3">
         <div class="footer-header">Quick Links</div>
         <ul>
-          <li><MudNavLink Href="/">Home</MudNavLink></li>
-          <li><MudNavLink Href="/profile">Profile</MudNavLink></li>
+          <li><a href="/">Home</a></li>
+          <li><a href="/profile">Profile</a></li>
         </ul>
       </MudItem>
 
@@ -76,17 +27,19 @@
       <MudItem xs="12" sm="6" md="3">
         <div class="footer-header">Legal</div>
         <ul>
-          <li><MudNavLink Href="/legal">Legal Notice</MudNavLink></li>
-          <li><MudNavLink Href="/privacy">Privacy Policy</MudNavLink></li>
-          <li><MudNavLink Href="/terms">Terms and Conditions</MudNavLink></li>
+          <li><a href="/legal">Legal Notice</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/terms">Terms and Conditions</a></li>
         </ul>
       </MudItem>
 
       <!-- Contact -->
       <MudItem xs="12" sm="6" md="3">
         <div class="footer-header">Contact</div>
-        <MudText Typo="Typo.body2">Scharfl.tin24@student.dhbw-heidenheim.de</MudText><br />
-        <MudText Typo="Typo.body2">+49 123 456789</MudText>
+        <ul>
+          <li>scharfl.tin24@student.dhbw-heidenheim.de</li>
+          <li>+49 123 456789</li>
+        </ul>
       </MudItem>
 
     </MudGrid>
@@ -97,3 +50,64 @@
     </div>
   </MudContainer>
 </MudPaper>
+
+<style>
+  html, body { height: 100%; }
+  .site-footer { flex: 0 0 auto; margin-top: auto; position: static; }
+
+  .site-footer {
+    background-color: #594AE2;
+    color: #FFF;
+    padding: 3rem 1rem;
+  }
+
+  /* Category headings */
+  .site-footer .footer-header {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #FFF;
+  }
+
+  /* List reset and alignment */
+  .site-footer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    line-height: 2;
+    padding-left: 1rem;
+  }
+  .site-footer ul li {
+    margin: 0;
+  }
+
+  /* Footer link styles */
+  .site-footer a {
+    color: #FFF;
+    text-decoration: none;
+    font-weight: 400;
+    transition: color 0.2s, text-decoration 0.2s;
+  }
+  .site-footer a:hover,
+  .site-footer a:focus {
+    color: #DDD;
+    text-decoration: underline;
+    outline: none;
+  }
+
+  /* Add spacing between contact subtext lines */
+  .site-footer .mud-typography-body2 {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Bottom area */
+  .site-footer .footer-bottom {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #AAA;
+  }
+
+  @@media (max-width: 600px) {
+  .site-footer { padding: 2rem 1rem; }
+  }
+</style>
