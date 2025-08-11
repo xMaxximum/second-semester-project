@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.Models;
 using Shared.Models;
+using System.Security.Claims;
 
 namespace Server.Controllers
 {
@@ -18,12 +19,9 @@ namespace Server.Controllers
             _context = context;
             _logger = logger;
         }
-
-        [HttpPost("activities/{activityId}/data")]
-        public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData(
-            long activityId,
-            [FromBody] SensorDataPacketRequest requestData,
-            [FromHeader(Name = "Devide-ID")] string? deviceId = null)
+        
+        [HttpPost("start-activity")]
+        public async Task<ActionResult<ApiResponse<ActivityResponse>>> CreateActivity(ActivityCreateRequest request)
         {
             try
             {
@@ -32,97 +30,187 @@ namespace Server.Controllers
                     var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
                     return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
                 }
-                
-                var activity = await _context.Activities.FindAsync(activityId);
 
-                if (activity == null)
-                {
-                    _logger.LogError($"Activity with id {activityId} not found");
-                    return NotFound(ApiResponse<SensorDataPacketResponse>.Failure("Activity with id {activityId} not found"));
-                }
-                
-                // check if a device belongs to the userId
-                if (!string.IsNullOrEmpty(deviceId))
-                {
-                    var device = await _context.Devices.
-                        FirstOrDefaultAsync(d => d.DeviceId == deviceId && d.UserId == activity.UserId);
-                    
-                    if (device == null)
-                    {
-                        _logger.LogWarning("Device {DeviceId} attempted to add data to activity {ActivityId} but doesn't belong to the same user", 
-                            deviceId, activityId);
-                        return Unauthorized(ApiResponse<SensorDataPacketResponse>.Failure("Device not authorized for this activity"));
-                    }
-                }
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized(ApiResponse<ActivityResponse>.Failure("User not found"));
 
-                var sensorData = new SensorDataPacket
+                var activity = new Activity
                 {
-                    ActivityId = activityId,
-                    Timestamp = DateTime.UtcNow,
-                    TimeSinceStart = requestData.TimeSinceStart,
-                    CurrentTemperature = requestData.CurrentTemperature,
-                    CurrentSpeed = requestData.CurrentSpeed,
-                    Latitude = requestData.Latitude,
-                    Longitude = requestData.Longitude,
-                    AveragedAccelerationX = requestData.AveragedAccelerationX,
-                    AveragedAccelerationY = requestData.AveragedAccelerationY,
-                    AveragedAccelerationZ = requestData.AveragedAccelerationZ,
-                    PeakAccelerationX = requestData.PeakAccelerationX,
-                    PeakAccelerationY = requestData.PeakAccelerationY,
-                    PeakAccelerationZ = requestData.PeakAccelerationZ,
-                    Checksum = requestData.Checksum,
-                    DeviceId = deviceId,
+                    UserId = userId.Value,
+                    Name = request.Name,
+                    Description = request.Description,
+                    StartTime = request.StartTime ?? DateTime.UtcNow,
+                    Status = ActivityStatus.InProgress,
                     CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
-                
-                // validate checksum of package 
-                sensorData.IsChecksumValid = sensorData.ValidateChecksum();
 
-                if (!sensorData.IsChecksumValid)
-                {
-                    _logger.LogWarning("Invalid checksum received for activity {ActivityId} from device {DeviceId}. Expected: {Expected}, Received: {Received}", 
-                        activityId, deviceId, sensorData.Checksum, requestData.Checksum);
-                }
-                
-                // add to database and update database
-                _context.SensorDataPackets.Add(sensorData); 
-                activity.UpdatedAt = DateTime.UtcNow;
+                _context.Activities.Add(activity);
                 await _context.SaveChangesAsync();
-                
-                // Create response
-                var response = new SensorDataPacketResponse
+
+                var response = new ActivityResponse
                 {
-                    Id = sensorData.Id,
-                    ActivityId = sensorData.ActivityId,
-                    Timestamp = sensorData.Timestamp,
-                    TimeSinceStart = sensorData.TimeSinceStart,
-                    CurrentTemperature = sensorData.CurrentTemperature,
-                    CurrentSpeed = sensorData.CurrentSpeed,
-                    Latitude = sensorData.Latitude,
-                    Longitude = sensorData.Longitude,
-                    AveragedAccelerationX = sensorData.AveragedAccelerationX,
-                    AveragedAccelerationY = sensorData.AveragedAccelerationY,
-                    AveragedAccelerationZ = sensorData.AveragedAccelerationZ,
-                    PeakAccelerationX = sensorData.PeakAccelerationX,
-                    PeakAccelerationY = sensorData.PeakAccelerationY,
-                    PeakAccelerationZ = sensorData.PeakAccelerationZ,
-                    Checksum = sensorData.Checksum,
-                    IsChecksumValid = sensorData.IsChecksumValid,
-                    DeviceId = sensorData.DeviceId,
-                    TotalAcceleration = sensorData.TotalAcceleration,
-                    TotalPeakAcceleration = sensorData.TotalPeakAcceleration
+                    Id = activity.Id,
+                    Name = activity.Name,
+                    Description = activity.Description,
+                    StartTime = activity.StartTime,
+                    EndTime = activity.EndTime,
+                    Status = activity.Status,
+                    Duration = activity.Duration,
+                    IsActive = activity.IsActive,
+                    DataPacketCount = 0,
+                    CreatedAt = activity.CreatedAt,
+                    UpdatedAt = activity.UpdatedAt
                 };
 
-                _logger.LogDebug("Sensor data added to activity {ActivityId} from device {DeviceId}. Checksum valid: {IsValid}", 
-                    activityId, deviceId ?? "unknown", sensorData.IsChecksumValid);
-
-                return Ok(ApiResponse<SensorDataPacketResponse>.Success(response, "Sensor data added successfully"));
+                _logger.LogInformation("Activity {ActivityId} created for user {UserId}", activity.Id, userId);
+                return Ok(ApiResponse<ActivityResponse>.Success(response, "Activity created successfully"));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding sensor data to activity {ActivityId} from device {DeviceId}", activityId, deviceId);
-                return StatusCode(500, ApiResponse<SensorDataPacketResponse>.Failure("Internal server error"));
+                _logger.LogError(ex, "Error creating activity");
+                return StatusCode(500, ApiResponse<ActivityResponse>.Failure("Internal server error"));
             }
+        }
+
+        [HttpPost("data")]
+        public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData(
+            long activityId,
+            [FromBody] SensorDataPacketRequest requestData,
+            [FromBody] string? deviceId = null)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                    return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
+                }
+
+              // Verify activity exists and is active
+                var activity = await _context.Activities
+                    .FirstOrDefaultAsync(a => a.Id == requestData.ActivityId);
+
+                if (activity == null)
+                    return NotFound(ApiResponse<string>.Failure("Activity not found"));
+
+                if (activity.Status != ActivityStatus.InProgress)
+                    return BadRequest(ApiResponse<string>.Failure("Activity is not in progress"));
+
+                // Parse CSV data
+                var sensorDataPackets = new List<SensorDataPacket>();
+                var lines = requestData.CsvData.Split('\n');
+                
+                var validPackets = 0;
+                var totalPackets = 0;
+
+                foreach (var line in lines)
+                {
+                    var trimmedLine = line.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmedLine)) continue;
+
+                    var dataPoint = ParseCsvLine(trimmedLine);
+                    if (dataPoint == null)
+                    {
+                        _logger.LogWarning("Failed to parse CSV line: {Line}", trimmedLine);
+                        continue;
+                    }
+
+                    totalPackets++;
+                    
+                    var sensorPacket = new SensorDataPacket
+                    {
+                        ActivityId = requestData.ActivityId,
+                        Timestamp = DateTime.UtcNow,
+                        TimeSinceStart = "PT0S",  // need to figure this out
+                        CurrentTemperature = dataPoint.CurrentTemperature,
+                        CurrentSpeed = dataPoint.CurrentSpeed,
+                        Latitude = dataPoint.Latitude,
+                        Longitude = dataPoint.Longitude,
+                        ElevationGain = dataPoint.ElevationGain,
+                        AccelerationX = dataPoint.AccelerationX,
+                        AccelerationY = dataPoint.AccelerationY,
+                        AccelerationZ = dataPoint.AccelerationZ,
+                        Checksum = dataPoint.Checksum,
+                        DeviceId = requestData.DeviceId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    sensorPacket.IsChecksumValid = sensorPacket.ValidateChecksum();
+                    if (sensorPacket.IsChecksumValid)
+                    {
+                        sensorDataPackets.Add(sensorPacket);
+                        validPackets++;
+                    }
+                }
+
+                if (sensorDataPackets.Count == 0)
+                {
+                    return BadRequest(ApiResponse<string>.Failure("No valid data points found in CSV"));
+                }
+
+                // Add all packets to database
+                _context.SensorDataPackets.AddRange(sensorDataPackets);
+                
+                // Update activity timestamp
+                activity.UpdatedAt = DateTime.UtcNow;
+                
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "Processed {TotalLines} CSV lines, created {TotalPackets} sensor data packets for activity {ActivityId}, {ValidPackets} valid checksums", 
+                    lines.Length, sensorDataPackets.Count, requestData.ActivityId, validPackets);
+
+                var message = validPackets == sensorDataPackets.Count 
+                    ? $"Successfully processed {sensorDataPackets.Count} data packets"
+                    : $"Processed {sensorDataPackets.Count} packets, {validPackets} with valid checksums";
+
+                return Ok(ApiResponse<string>.Success("CSV data received", message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing CSV sensor data for activity {ActivityId}", requestData.ActivityId);
+                return StatusCode(500, ApiResponse<string>.Failure("Internal server error"));
+            }
+        }
+        
+        //method for parsing csv lines
+        private CsvDataPoint? ParseCsvLine(string csvLine)
+        {
+            try
+            {
+                var fields = csvLine.Split(',');
+                
+                if (fields.Length < 9)
+                {
+                    _logger.LogWarning("CSV line has insufficient fields: {Line}", csvLine);
+                    return null;
+                }
+
+                return new CsvDataPoint
+                {
+                    CurrentTemperature = double.Parse(fields[0].Trim()),
+                    CurrentSpeed = double.Parse(fields[1].Trim()),
+                    Latitude = double.Parse(fields[2].Trim()),
+                    Longitude = double.Parse(fields[3].Trim()),
+                    ElevationGain = double.Parse(fields[4].Trim()), 
+                    AccelerationX = double.Parse(fields[5].Trim()),
+                    AccelerationY = double.Parse(fields[6].Trim()),
+                    AccelerationZ = double.Parse(fields[7].Trim()),
+                    Checksum = double.Parse(fields[8].Trim())
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing CSV line: {Line}", csvLine);
+                return null;
+            }
+        }
+        
+        private long? GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return long.TryParse(userIdClaim, out var userId) ? userId : null;
         }
     }
 }
