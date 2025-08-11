@@ -3,6 +3,7 @@
 #include "SPI.h"
 #include <WiFi.h>
 #include "SD_MMC.h"
+#include "string.h"
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
@@ -122,6 +123,7 @@ void getSpeed()
 
 void setupFileSystem()
 {
+  uint64_t cardSize;
   Serial.println("Setting up sdcard...");
   if (SDMMC)
   {
@@ -129,8 +131,10 @@ void setupFileSystem()
     if (!SD_MMC.begin("/sdcard", true))
     {
       Serial.println("Failed to mount SD card");
-      return;
+      delay(1000);
+      setupFileSystem();
     }
+    cardSize = SD_MMC.cardSize() / (1024 * 1024);
   }
   else
   {
@@ -138,11 +142,12 @@ void setupFileSystem()
     if (!SD.begin())
     {
       Serial.println("Card Mount Failed");
-      return;
+      delay(1000);
+      setupFileSystem();
     }
+    cardSize = SD.cardSize() / (1024 * 1024);
   }
 
-  uint64_t cardSize = SD.cardSize() / (1024 * 1024);
   Serial.printf("SD Card Size: %lluMB\n", cardSize);
   Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
   Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
@@ -150,26 +155,33 @@ void setupFileSystem()
 
 void setupWlan()
 {
-  File file = SD_MMC.open("credentials.txt", FILE_READ);
+  File file = SD_MMC.open("/credentials.txt", FILE_READ);
   if (!file)
   {
     Serial.println("File not found");
     return;
   }
 
-  // read the file contents into a buffer and convert it to a char buffer
-  uint8_t buffer[100];
-  file.read(buffer, 100);
-  char *content = (char *)buffer;
-  Serial.println(content);
-
+  String buffer = file.readString();
   file.close();
 
-  // the second call to strtok gives the next string after the delimiter
-  char *ssid = strtok(content, ",");
-  char *password = strtok(NULL, ",");
+  String ssid, password;
+  // get the index of the comma char
+  int commaIndex = buffer.indexOf(',');
+  if (commaIndex != -1)
+  {
+    ssid = buffer.substring(0, commaIndex);
+    password = buffer.substring(commaIndex + 1);
 
+    // remove any newline character from the password if one is there
+    password.trim();
+  }
+  else
+  {
+    Serial.println("Invalid format for the credentials on the sdcard. Must be ssid,pass");
+  }
   Serial.println("Connecting");
+  WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
