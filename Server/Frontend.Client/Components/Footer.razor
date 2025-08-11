@@ -1,20 +1,24 @@
 ﻿@using MudBlazor
 
 <style>
+  html, body { height: 100%; }
+  .mud-layout { min-height: 100dvh; display: flex; flex-direction: column; }
+  .mud-drawer-container { flex: 1 0 auto; display: flex; flex-direction: column; min-height: 0; }
+  .mud-main-content { flex: 1 0 auto; min-height: 0; }
+  .site-footer { flex: 0 0 auto; margin-top: auto; position: static; }
+
   .site-footer {
     background-color: #594AE2;
-    color: #EEE;
+    color: #FFF;
     padding: 3rem 1rem;
-    position: sticky;
-    bottom: 0;
   }
   .site-footer a {
-    color: #EEE;
+    color: #FFF;
     text-decoration: none;
     transition: color 0.2s;
   }
   .site-footer a:hover {
-    color: #FFFFFF;
+    color: #FFF;
   }
   .site-footer .footer-header {
     font-weight: 600;
@@ -37,10 +41,14 @@
     font-size: 0.875rem;
     color: #AAA;
   }
+
+  @@media (max-width: 600px) {
+  .site-footer { padding: 2rem 1rem; }
+  }
 </style>
 
 <MudPaper Class="site-footer" Elevation="0" Square="true">
-  <MudContainer MaxWidth="MaxWidth.Large">
+  <MudContainer MaxWidth="MaxWidth.False" Class="p-0">
     <MudGrid GutterSize="3">
 
       <!-- Features -->
@@ -79,7 +87,7 @@
       <!-- Contact -->
       <MudItem xs="12" sm="6" md="3">
         <div class="footer-header">Contact</div>
-        <MudText Typo="Typo.body2">support@cyclone.com</MudText><br />
+        <MudText Typo="Typo.body2">Scharfl.tin24@student.dhbw-heidenheim.de</MudText><br />
         <MudText Typo="Typo.body2">+49 123 456789</MudText>
       </MudItem>
 

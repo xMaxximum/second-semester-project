@@ -20,24 +20,11 @@
     .hero-overlay p  { font-size:1.25rem; margin-bottom:1.5rem; }
     @@media (max-width:768px) { .hero-banner { height:60vh; } .hero-overlay h1 { font-size:2.5rem; } .hero-overlay p  { font-size:1rem; } }
     @@media (max-width:480px) { .hero-banner { height:50vh; } .hero-overlay h1 { font-size:2rem; } .hero-overlay p  { font-size:0.9rem; } }
-   
-    
     .section { padding:6rem 2rem; max-width:1200px; margin:auto; }
     .section h2 { text-align:center; margin-bottom:2rem; }
     .feature-card { padding:2rem; text-align:center; border-radius:8px; }
-    
-    
     .testimonial-header { display:flex; align-items:center; gap:1rem; }
     
-    
-    .plan-card { border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1); transition:transform .3s ease; }
-    .plan-card:hover { transform:translateY(-6px); }
-    .plan-header { text-align:center; padding:1.5rem 1rem; background:#fff; }
-    .plan-content { background:#fafafa; padding:1rem 1.5rem; display:flex; flex-direction:column; align-items:center; gap:1rem; }
-    .plan-avatar { border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
-    .plan-features { list-style:none; padding:0; margin:0; width:100%; }
-    .plan-features li { position:relative; padding-left:1.5rem; margin-bottom:.75rem; }
-    .plan-features li::before { content:""; position:absolute; left:0; top:.5rem; width:.5rem; height:.5rem; background:#673AB7; border-radius:50%; }
     
     
     .cta-footer {
@@ -63,7 +50,9 @@
             </Authorized>
             
             <NotAuthorized>
+                
                 <HomeLoggedOut/>
+                
             </NotAuthorized>
         </AuthorizeView>
 

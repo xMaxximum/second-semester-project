@@ -1,41 +1,63 @@
 ﻿@page "/legal"
 @using MudBlazor
 
-<PageTitle>Legal</PageTitle>
+<PageTitle>Legal Notice</PageTitle>
 
-<MudContainer Class="mt-6">
-    <MudText Typo="Typo.h4" GutterBottom>Legal</MudText>
-    <MudText Typo="Typo.body1">
-        Cyclone GmbH<br />
-        Musterstraße 1<br />
-        12345 Musterstadt<br />
-        Germany
-    </MudText>
+<MudContainer Class="mt-6 mb-8">
+    <MudPaper Elevation="1" Class="p-6 legal-card">
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">Managing Director:</MudText>
-    <MudText Typo="Typo.body1">Max Mustermann</MudText>
+        <MudText Typo="Typo.h4" GutterBottom>Legal Notice</MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">Contact:</MudText>
-    <MudText Typo="Typo.body1">
-        Phone: +49 123 456789<br />
-        E-Mail: support@cyclone.com
-    </MudText>
-
-    <MudText Typo="Typo.subtitle2" Class="mt-4">Project Information:</MudText>
-    <MudPaper Class="d-flex align-center pa-2" Style="gap: 1rem;">
+        <MudText Typo="Typo.subtitle2" Class="mt-4">Information according to § 5 TMG</MudText>
         <MudText Typo="Typo.body1">
-            This website is part of a university project at DHBW Heidenheim. It has been created by students as part of their coursework and exists solely for educational purposes.
+            Name: Leon Scharf
         </MudText>
-        <img src="https://jobs.b-ite.com/api/v1/assets/02b99bb5-ccfb-4e16-8f03-c8bc6031dd03.png" alt="DHBW Logo" style="height: 40px; width: auto;" />
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4">Contact</MudText>
+        <MudText Typo="Typo.body1">
+            E-mail:
+            <MudLink Href="mailto:Scharfl.tin24@student.dhbw-heidenheim.de">
+                Scharfl.tin24@student.dhbw-heidenheim.de
+            </MudLink>
+        </MudText>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4">Type of Project</MudText>
+        <MudText Typo="Typo.body1">Non-commercial hobby project</MudText>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4">Project Information</MudText>
+        <MudPaper Class="d-flex align-center pa-2" Style="gap: 1rem;">
+            <MudText Typo="Typo.body1">
+                This website is part of a non-commercial hobby project by students of DHBW Heidenheim.
+                It was created solely for educational purposes and is not intended for commercial use.
+            </MudText>
+            <img src="https://jobs.b-ite.com/api/v1/assets/02b99bb5-ccfb-4e16-8f03-c8bc6031dd03.png"
+                 alt="DHBW Logo" style="height: 40px; width: auto;" />
+        </MudPaper>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4">Disclaimer</MudText>
+        <MudText Typo="Typo.body1">
+            <strong>Content of the Online Offer:</strong> The operator assumes no liability for the topicality, correctness,
+            or completeness of the information provided. Claims for liability against the operator relating to material or
+            immaterial damage caused by the use or non-use of the information provided, or by the use of incorrect or incomplete
+            information, are excluded unless there is proven intent or gross negligence by the operator.
+        </MudText>
+
+        <MudText Typo="Typo.body1" Class="mt-2">
+            <strong>External Links:</strong> This website contains links to third-party websites (“external links”). The operator
+            has no influence on their content. The respective provider or operator is always responsible for the content of linked pages.
+        </MudText>
+
+        <MudText Typo="Typo.body1" Class="mt-2">
+            <strong>Copyright:</strong> Content and works created by the site operator are subject to German copyright law.
+            Any use beyond statutory limits requires prior written consent of the respective author/creator.
+        </MudText>
+
     </MudPaper>
-
-    <MudText Typo="Typo.subtitle2" Class="mt-4">Disclaimer:</MudText>
-    <MudText Typo="Typo.body1">
-        Despite careful content control, we assume no liability for the content of external links. The operators of linked pages are solely responsible for their content.
-    </MudText>
-
-    <MudText Typo="Typo.subtitle2" Class="mt-4">Further Inquiries:</MudText>
-    <MudText Typo="Typo.body1">
-        For further questions, please contact <a href="mailto:kiticm.tin24@student.dhbw-heidenheim.de">kiticm.tin24@student.dhbw-heidenheim.de</a>.
-    </MudText>
 </MudContainer>
+
+<style>
+    .legal-card { max-width: 960px; margin: 0 auto; }
+    .legal-card .mt-2 { margin-top: .5rem; }
+    .legal-card .mt-4 { margin-top: 1rem; }
+    .legal-card .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
+</style>

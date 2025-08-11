@@ -1,65 +1,73 @@
 ﻿@page "/terms"
 @using MudBlazor
 
-<PageTitle>Terms and Conditions – Cyclone</PageTitle>
+<PageTitle>Terms of Use – Cyclone</PageTitle>
 
-<MudContainer Class="mt-6 mb-6">
+<MudContainer Class="mt-6 mb-8">
   <MudPaper Elevation="1" Class="p-6 legal-card">
 
-    <MudText Typo="Typo.h4" GutterBottom>Terms and Conditions</MudText>
+    <MudText Typo="Typo.h4" GutterBottom>Terms of Use</MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">1. Scope</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
-      These terms and conditions apply to the use of the Cyclone web application, operated by Cyclone GmbH,
-      Musterstraße 1, 12345 Musterstadt, Email: support@cyclone.com, Phone: +49 123 456789.
-      The application is intended for private and professional users who wish to track cycling data for personal analysis or performance purposes.
+    <MudText Typo="Typo.subtitle2" Class="mt-2">1. Scope</MudText>
+    <MudText Typo="Typo.body1">
+      These Terms govern the non-commercial use of the Cyclone project. The service is provided by students for educational purposes.
     </MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">2. Conclusion of Contract</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
-      (1) Accessing or registering on the Cyclone platform does not constitute a binding contract. <br />
-      (2) A contractual relationship arises only when the user creates an account and agrees to these terms and the privacy policy. <br />
-      (3) Cyclone GmbH reserves the right to reject registrations without stating reasons.
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">2. Accounts</MudText>
+    <MudText Typo="Typo.body1">
+      You are responsible for the accuracy of your data and for keeping your login credentials confidential. We may suspend or terminate accounts that violate these Terms or applicable law.
     </MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">3. Pricing and Payment</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
-      (1) The basic version of Cyclone is free of charge. Optional premium features may be offered in the future. <br />
-      (2) If paid features are introduced, users will be clearly informed before any cost is incurred. <br />
-      (3) Payment methods and terms will be communicated transparently in the application interface.
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">3. Acceptable Use</MudText>
+    <ul class="legal-list">
+      <li>No unlawful, abusive, or harmful use</li>
+      <li>No attempts to disrupt, reverse engineer, or overload the service</li>
+      <li>No infringement of third-party rights</li>
+    </ul>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">4. Availability</MudText>
+    <MudText Typo="Typo.body1">
+      We strive for a stable service but do not guarantee uninterrupted availability. Maintenance and outages may occur.
     </MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">4. Availability and Use</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
-      (1) We strive to ensure high availability of our service but cannot guarantee uninterrupted access. <br />
-      (2) Temporary disruptions due to maintenance, updates, or technical issues may occur. <br />
-      (3) Users are responsible for securing their login credentials and using the service only in accordance with applicable law.
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">5. Intellectual Property</MudText>
+    <MudText Typo="Typo.body1">
+      The Cyclone name, UI, and content are protected by applicable law. You receive a limited, non-exclusive right to use the service for personal purposes.
     </MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">5. Right of Withdrawal</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
-      Consumers have a statutory right of withdrawal for paid services. As Cyclone is currently offered free of charge,
-      no withdrawal rights apply at this time. Should paid options be introduced, a detailed withdrawal policy will be provided.
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">6. Warranty & Liability</MudText>
+    <MudText Typo="Typo.body1">
+      The service is provided “as is” without warranties. Liability is limited to intent and gross negligence. For slight negligence, liability is limited to essential duties.
     </MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">6. Warranty and Liability</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
-      (1) The Cyclone platform is provided "as is" without warranty of any kind. <br />
-      (2) Cyclone GmbH shall only be liable for damages caused intentionally or through gross negligence.
-      Liability for slight negligence is limited to essential contractual obligations (cardinal duties).
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2">7. Changes</MudText>
+    <MudText Typo="Typo.body1">
+      We may update these Terms. Continued use after changes constitutes acceptance of the updated Terms.
     </MudText>
 
-    <MudText Typo="Typo.subtitle2" Class="mt-4">7. Final Provisions</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
-      (1) German law applies, excluding the UN Convention on Contracts for the International Sale of Goods. <br />
-      (2) The place of jurisdiction is our registered office in Musterstadt, if the user is a merchant,
-      a legal entity under public law, or a special fund under public law. <br />
-      (3) If individual provisions of these terms are invalid, the remaining provisions shall remain unaffected.
-    </MudText>
-
-    <MudText Typo="Typo.caption" Align="Align.Center" Class="mt-6">
-      Last updated: August 2025
+    <MudText Typo="Typo.caption" Align="Align.Center" Class="mt-4">
+      Last updated: @DateTime.Now.ToString("MMMM yyyy")
     </MudText>
 
   </MudPaper>
 </MudContainer>
+
+<style>
+  .legal-card { max-width: 960px; margin: 0 auto; }
+  .legal-list { margin: .5rem 0 0 1rem; padding: 0; line-height: 1.6; }
+  .legal-card .mt-2 { margin-top: .5rem; }
+  .legal-card .mt-4 { margin-top: 1rem; }
+  .legal-card .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
+</style>

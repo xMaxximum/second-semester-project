@@ -4,6 +4,7 @@
 
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
 @using Frontend.Client.Components
 @inject NavigationManager Navigation
 @inject AuthService AuthService
@@ -16,77 +17,49 @@
 <CascadingAuthenticationState>
   <MudLayout>
 
-    <!-- HEADER -->
-    <MudAppBar Elevation="4" Color="Color.Primary">
+    <MudAppBar Elevation="4" Color="Color.Primary" Fixed="true" Class="nav-appbar">
       <MudContainer Fluid="true" Style="position:relative; height:64px;">
-
-        <!-- 1) Hamburger-Menu on the left -->
-        <MudIconButton
-          Icon="@Icons.Material.Filled.Menu"
-          Color="Color.Inherit"
-          OnClick="ToggleDrawer"
-          Style="position:absolute; left:16px; top:50%; transform:translateY(-50%);"
-          AriaLabel="Menu" />
-
-        <!-- 2) Title absolutely central -->
-        <MudText Typo="Typo.h6"
-                 Class="text-uppercase mb-0"
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="ToggleDrawer"
+                       Style="position:absolute; left:16px; top:50%; transform:translateY(-50%);" AriaLabel="Menu" />
+        <MudText Typo="Typo.h6" Class="text-uppercase mb-0"
                  Style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); cursor:pointer;"
-                 @onclick="GoHome">
-          CYCLONE
-        </MudText>
-
-        <!-- 3) Logo on the right -->
-        <MudIconButton
-          Icon="@Icons.Material.Filled.DirectionsBike"
-          Color="Color.Inherit"
-          OnClick="GoHome"
-          Style="position:absolute; right:16px; top:50%; transform:translateY(-50%);"
-          AriaLabel="Home" />
-
+                 @onclick="GoHome">CYCLONE</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.DirectionsBike" Color="Color.Inherit" OnClick="GoHome"
+                       Style="position:absolute; right:16px; top:50%; transform:translateY(-50%);" AriaLabel="Home" />
       </MudContainer>
     </MudAppBar>
 
-
-    <!-- DRAWER + MAIN CONTENT -->
     <MudDrawerContainer>
 
       <MudDrawer @bind-Open="_drawerOpen"
                  Variant="DrawerVariant.Temporary"
-                 ClipMode="DrawerClipMode.Never"
-                 Elevation="1">
-
-        <MudNavMenu>
-          <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-          <MudNavLink Href="/counter" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
-          <MudNavLink Href="/weather" Icon="@Icons.Material.Filled.WbSunny">Weather</MudNavLink>
+                 Anchor="Anchor.Left"
+                 Elevation="2"
+                 Class="app-drawer">
+        <MudNavMenu Class="drawer-menu">
+          <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" OnClick="CloseDrawer">Home</MudNavLink>
+          <MudNavLink Href="/counter" Icon="@Icons.Material.Filled.Add" OnClick="CloseDrawer">Counter</MudNavLink>
+          <MudNavLink Href="/weather" Icon="@Icons.Material.Filled.WbSunny" OnClick="CloseDrawer">Weather</MudNavLink>
           <MudDivider Class="my-2" />
-
           <AuthorizeView>
             <Authorized>
-              <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">Profile</MudNavLink>
-              <MudMenuItem Icon="@Icons.Material.Filled.Logout"
-                           OnClick="@HandleLogout">
-              Logout
-              </MudMenuItem>
+              <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle" OnClick="CloseDrawer">Profile</MudNavLink>
+              <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="@HandleLogout">Logout</MudMenuItem>
             </Authorized>
             <NotAuthorized>
-              <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
-              <MudNavLink Href="/register" Icon="@Icons.Material.Filled.AppRegistration">Register</MudNavLink>
+              <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login" OnClick="CloseDrawer">Login</MudNavLink>
+              <MudNavLink Href="/register" Icon="@Icons.Material.Filled.AppRegistration" OnClick="CloseDrawer">Register</MudNavLink>
             </NotAuthorized>
           </AuthorizeView>
         </MudNavMenu>
-
       </MudDrawer>
 
-      <MudMainContent>
+      <MudMainContent Class="app-main">
         @Body
       </MudMainContent>
     </MudDrawerContainer>
 
-    <!-- FOOTER -->
     <Footer />
-
 
   </MudLayout>
 </CascadingAuthenticationState>
@@ -97,16 +70,65 @@
   <span class="dismiss">🗙</span>
 </div>
 
+<style>
+  .app-main { padding-top: 64px; }
+
+  .app-drawer{
+    position: fixed !important;
+    top: 64px;
+    left: 0;
+    height: calc(100vh - 64px);
+    width: 320px;
+    max-width: 90vw;
+    overflow: hidden;
+    z-index: 1300;
+  }
+
+  .drawer-menu{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 8px 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .drawer-menu .mud-nav-link,
+  .drawer-menu .mud-menu-item{
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 16px;
+    font-size: 1.05rem;
+  }
+
+  @@media (max-width: 600px){
+  .app-main { padding-top: 56px; }
+  .app-drawer{
+    top: 56px;
+    height: calc(100vh - 56px);
+    width: 100vw;
+    max-width: 100vw;
+  }
+  }
+
+</style>
+
 @code {
   private bool _drawerOpen;
 
   void ToggleDrawer() => _drawerOpen = !_drawerOpen;
-  void GoHome()        => NavigationManager.NavigateTo("/");
-  
+  void CloseDrawer() => _drawerOpen = false;
+  void GoHome() => NavigationManager.NavigateTo("/");
+
   private async Task HandleLogout()
-    {
-      await AuthService.LogoutAsync();
-      Navigation.NavigateTo("/");
-    }
+  {
+    await AuthService.LogoutAsync();
+    _drawerOpen = false;
+    Navigation.NavigateTo("/");
+  }
+
+  protected override void OnInitialized()
+  {
+    Navigation.LocationChanged += (_, __) => { _drawerOpen = false; InvokeAsync(StateHasChanged); };
   }
 }
