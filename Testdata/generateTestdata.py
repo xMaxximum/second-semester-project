@@ -45,7 +45,7 @@ def generate_data_point(t, last_coords, coord_update_counter, last_speed):
     # Calculate checksum as sum of all numeric values
     checksum = (
         temperature + speed +
-        coords['latitude'] + coords['longitude'] + coords['hight'] +
+        coords['latitude'] + coords['longitude'] + coords['height'] +
         sum(avg_acc) + sum(peak_acc)
     )
 
@@ -66,7 +66,7 @@ def generate_data_point(t, last_coords, coord_update_counter, last_speed):
 
 def main():
     data = []
-    coords = {"latitude": 51.123456, "longitude": 8.123456, "hight": 455}
+    coords = {"latitude": 51.123456, "longitude": 8.123456, "height": 455}
     coord_update_counter = 0
     speed = 0.0
     
@@ -74,7 +74,7 @@ def main():
         point, coords, coord_update_counter, speed = generate_data_point(t, coords, coord_update_counter, speed)
         data.append(point)
 
-    with open("testdata.json", "w") as f:
+    with open("./testdata.json", "w") as f:
         json.dump(data, f, indent=4)
 
 if __name__ == "__main__":
