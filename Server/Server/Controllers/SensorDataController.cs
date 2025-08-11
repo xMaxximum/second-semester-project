@@ -99,9 +99,13 @@ namespace Server.Controllers
                     return BadRequest(ApiResponse<string>.Failure("Activity is not in progress"));
 
                 // Parse CSV data
-                var sensorDataPackets = new List<SensorDataPacket>();
-                var lines = requestData.CsvData.Split('\n');
+                var lines = requestData.CsvData
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(line => line.Trim())
+                    .Where(line => !string.IsNullOrWhiteSpace(line))
+                    .ToList();
                 
+                var sensorDataPackets = new List<SensorDataPacket>();
                 var validPackets = 0;
                 var totalPackets = 0;
 
@@ -149,17 +153,14 @@ namespace Server.Controllers
                     return BadRequest(ApiResponse<string>.Failure("No valid data points found in CSV"));
                 }
 
-                // Add all packets to database
+                // add all packets to database
                 _context.SensorDataPackets.AddRange(sensorDataPackets);
-                
-                // Update activity timestamp
                 activity.UpdatedAt = DateTime.UtcNow;
-                
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation(
                     "Processed {TotalLines} CSV lines, created {TotalPackets} sensor data packets for activity {ActivityId}, {ValidPackets} valid checksums", 
-                    lines.Length, sensorDataPackets.Count, requestData.ActivityId, validPackets);
+                    lines.Count, sensorDataPackets.Count, requestData.ActivityId, validPackets);
 
                 var message = validPackets == sensorDataPackets.Count 
                     ? $"Successfully processed {sensorDataPackets.Count} data packets"
@@ -205,6 +206,38 @@ namespace Server.Controllers
                 _logger.LogError(ex, "Error parsing CSV line: {Line}", csvLine);
                 return null;
             }
+        }
+        
+        private async Task<Activity> GetOrCreateActiveActivity(string deviceId)
+        {
+            // First, try to find an existing active activity for this device
+            var existingActivity = await _context.Activities
+                .Where(a => a.Status == ActivityStatus.InProgress)
+                .Include(a => a.SensorDataPackets)
+                .FirstOrDefaultAsync(a => a.SensorDataPackets.Any(s => s.DeviceId == deviceId));
+
+            if (existingActivity != null)
+            {
+                return existingActivity;
+            }
+
+            // Create new activity
+            var newActivity = new Activity
+            {
+                UserId = 1, // Default user - you might want to implement device-user mapping
+                Name = $"Cycling Session {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
+                Description = $"Automatic session from device {deviceId}",
+                StartTime = DateTime.UtcNow,
+                Status = ActivityStatus.InProgress,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Activities.Add(newActivity);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Created new activity {ActivityId} for device {DeviceId}", newActivity.Id, deviceId);
+            return newActivity;
         }
         
         private long? GetCurrentUserId()
