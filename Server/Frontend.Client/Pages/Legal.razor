@@ -1,10 +1,39 @@
 ﻿@page "/legal"
-@using MudBlazor
+
+<style>
+    .background-grid {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.05;
+    }
+
+    .legal-card {
+        max-width: 960px;
+        margin: 2rem auto;
+        padding: 2rem;
+    }
+
+    .legal-card .mt-2 { margin-top: .5rem; }
+    .legal-card .mt-4 { margin-top: 1rem; }
+</style>
+
+<!-- Background Grid SVG -->
+<div class="background-grid">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+        <defs>
+            <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
+                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25"/>
+            </pattern>
+        </defs>
+        <rect width="100" height="100" fill="url(#grid)"/>
+    </svg>
+</div>
 
 <PageTitle>Legal Notice</PageTitle>
 
 <MudContainer Class="mt-6 mb-8">
-    <MudPaper Elevation="1" Class="p-6 legal-card">
+    <MudPaper Elevation="3" Class="legal-card">
 
         <MudText Typo="Typo.h4" GutterBottom>Legal Notice</MudText>
 
@@ -25,14 +54,12 @@
         <MudText Typo="Typo.body1">Non-commercial hobby project</MudText>
 
         <MudText Typo="Typo.subtitle2" Class="mt-4">Project Information</MudText>
-        <MudPaper Class="d-flex align-center pa-2" Style="gap: 1rem;">
-            <MudText Typo="Typo.body1">
-                This website is part of a non-commercial hobby project by students of DHBW Heidenheim.
-                It was created solely for educational purposes and is not intended for commercial use.
-            </MudText>
+        <MudText Typo="Typo.body1" Class="d-flex align-center" Style="gap: 1rem;">
+            This website is part of a non-commercial hobby project by students of DHBW Heidenheim.
+            It was created solely for educational purposes and is not intended for commercial use.
             <img src="https://jobs.b-ite.com/api/v1/assets/02b99bb5-ccfb-4e16-8f03-c8bc6031dd03.png"
                  alt="DHBW Logo" style="height: 40px; width: auto;" />
-        </MudPaper>
+        </MudText>
 
         <MudText Typo="Typo.subtitle2" Class="mt-4">Disclaimer</MudText>
         <MudText Typo="Typo.body1">
@@ -54,10 +81,3 @@
 
     </MudPaper>
 </MudContainer>
-
-<style>
-    .legal-card { max-width: 960px; margin: 0 auto; }
-    .legal-card .mt-2 { margin-top: .5rem; }
-    .legal-card .mt-4 { margin-top: 1rem; }
-    .legal-card .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
-</style>
