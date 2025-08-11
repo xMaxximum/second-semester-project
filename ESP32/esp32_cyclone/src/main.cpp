@@ -4,6 +4,10 @@
 #include <WiFi.h>
 #include "SD_MMC.h"
 #include "string.h"
+#include "TinyGPS++.h"
+#include <Arduino.h>
+
+
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
@@ -16,6 +20,14 @@ void setupWlan();
 // interface used for sdcard (false is SPI)
 #define SDMMC true
 #define CUSTOM_MOSI 16
+// setup GPS serial connection
+void setupGPS();
+void readGPSData();
+void displayInfo();
+
+#define CUSTOM_TX_GPS 17
+#define CUSTOM_RX_GPS 16
+#define CUSTOM_MOSI 18
 #define CUSTOM_MISO 4
 #define CUSTOM_SCK 15
 #define CUSTOM_CS 2
@@ -43,22 +55,35 @@ int lastState = LOW, currentState, flankCount = 0, rpm, speed;
 
 // only get data every 200ms
 unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dtTo1000ms = 0, dtTo200ms = 0;
+ // GPS Serial
+TinyGPSPlus gps;
+
+struct gpsData{
+  double latitude;
+  double longitude;
+  double height;
+  time_t time;
+};
+gpsData gpsdata;
+
 
 void setup()
 {
   Serial.begin(115200);
   // wait for serial monitor to connect
-  delay(3000);
-  Serial.println("test");
+  delay(8000);
 
   setupFileSystem();
-  setupWlan();
+  setupGPS();
+
+
+  Serial.println("Setup complete. Starting main loop...");
 
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
+  pinMode(2, OUTPUT);
+  digitalWrite(2, HIGH);
 
-  // digital input for rpm sensor (magnet sensor)
-  pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
 }
 
 void loop()
@@ -239,4 +264,43 @@ void testRead()
     Serial.println(sensorDataRead[i]);
   }
   free(sensorDataRead);
+}
+
+
+void setupGPS(){
+  Serial2.begin(9600);
+  Serial.println("GPS Serial started");
+}
+
+void readGPSData() {
+    while (Serial2.available() > 0) { 
+      if (gps.encode(Serial2.read())) { 
+        displayInfo(); 
+      }
+  }
+}
+
+void displayInfo() { 
+  // Displaying Google Maps link with latitude and longitude information if GPS location is valid 
+  if (gps.location.isValid()) { 
+    Serial.print("http://www.google.com/maps/place/"); 
+    Serial.print(gps.location.lat(), 6); 
+    Serial.print(F(",")); 
+    Serial.println(gps.location.lng(), 6); } else { Serial.print(F("INVALID"));
+  } // Displaying date and time information if valid 
+  if (gps.date.isValid()) { 
+
+    // Displaying date in MM/DD/YYYY format // If the date is invalid, it prints "INVALID" 
+  } else 
+  { 
+    Serial.print(F("INVALID")); 
+  } // Displaying time in HH:MM:SS format if valid // If the time is invalid, it prints "INVALID" 
+  updateAllData();
+}
+
+void updateAllData(){
+  gpsdata.latitude = gps.location.lat();
+  gpsdata.longitude = gps.location.lng();
+  gpsdata.height = gps.altitude.meters();
+  gpsdata.time = gps.time.value();
 }
