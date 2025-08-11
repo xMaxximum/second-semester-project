@@ -16,6 +16,7 @@ void setupWlan();
 // unified function for opening files depending on the SDMMC or SPI connection type
 void openFile(const char *filename, const char *mode);
 void testRead();
+char *convertBufferToCSV(float *sensorData, int length);
 
 // interface used for sdcard (false is SPI)
 #define SDMMC true
@@ -56,13 +57,17 @@ void setup()
   Serial.begin(115200);
   // wait for serial monitor to connect
   delay(3000);
-  Serial.println("test");
 
   setupFileSystem();
-  setupWlan();
+  // wifi.begin is a huge problem right now in relation to sdmmc.open function
+  setupWlan(); // only use wlan when it is needed because memory management of wifi library fucks up sdmmc library memory access (LoadProhibited error after call of SD_MMC.open after wifi.begin call)
 
+  Serial.print("Free heap: ");
+  Serial.println(ESP.getFreeHeap());
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
+  Serial.print("Free heap: ");
+  Serial.println(ESP.getFreeHeap());
 
   // digital input for rpm sensor (magnet sensor)
   pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
@@ -165,10 +170,12 @@ void setupFileSystem()
 
 void setupWlan()
 {
-  openFile("/credentials.txt", FILE_READ);
+  File fileForWlanCredentials;
+  // openFile("/credentials.txt", FILE_READ);
+  fileForWlanCredentials = SD_MMC.open("/credentials.txt", FILE_READ);
 
-  String buffer = file.readString();
-  file.close();
+  String buffer = fileForWlanCredentials.readString();
+  fileForWlanCredentials.close();
 
   String ssid, password;
   // get the index of the comma char
@@ -186,18 +193,25 @@ void setupWlan()
     Serial.println("Invalid format for the credentials on the sdcard. Must be ssid,pass");
   }
   Serial.println("Connecting");
-  
-  
-  WiFi.begin(ssid, password);
+
+  Serial.print("Free heap before wifi.begin: ");
+  Serial.println(ESP.getFreeHeap());
+  /*WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
-  }
-  
+  }*/
+  Serial.print("Free heap after wifi.begin: ");
+  Serial.println(ESP.getFreeHeap());
+
   Serial.println("");
   Serial.print("Connected to WiFi network with IP Address: ");
   Serial.println(WiFi.localIP());
+  WiFi.mode(WIFI_OFF);
+  Serial.print("Free heap after wifi.mode (off) ");
+  Serial.println(ESP.getFreeHeap());
+  Serial.println("This frees some memory but sdmmc will fail from here on......");
 }
 
 void writeSensorDataBlock()
@@ -213,7 +227,6 @@ void writeSensorDataBlock()
   timeAfterWrite = millis();
   Serial.print("Writetime: ");
   Serial.println(timeAfterWrite - timeBeforeWrite);
-  
 
   // the space of the array can now be used again
   free(sensorData);
@@ -223,49 +236,73 @@ void writeSensorDataBlock()
 
 // TEST: read the file from sdcard into a different array for testing
 // http rest api client reads data and sends it to the backend
+// function fills two ram buffers -> saves them to sdcard -> reads one and prints data as csv -> reads the next and prints data as csv
+// difference to function in loop() is that this buffer there fills until 96kB of RAM and not only two 48 Byte buffers like in here
 void testRead()
 {
+  int testSizeOfBuffer = 90;
   // allocate the needed ram for the sensor data
-  float *sensorData1 = (float *)malloc(2 * sizeof(float));
-  float *sensorData2 = (float *)malloc(2 * sizeof(float));
-  float *sensorDataRead1 = (float *)malloc(2 * sizeof(float));
-  float *sensorDataRead2 = (float *)malloc(2 * sizeof(float));
+  float *sensorData1 = (float *)malloc(testSizeOfBuffer * sizeof(float));
+  float *sensorData2 = (float *)malloc(testSizeOfBuffer * sizeof(float));
+  float *sensorDataRead1 = (float *)malloc(testSizeOfBuffer * sizeof(float));
+  float *sensorDataRead2 = (float *)malloc(testSizeOfBuffer * sizeof(float));
   // some test sensor data
   sensorData1[0] = 1337.1337;
-  sensorData1[1] = 31337.31337;
-  for (size_t i = 2; i < 12; i++)
+  sensorData1[1] = -31337.31337;
+  for (size_t i = 2; i < testSizeOfBuffer; i++)
     sensorData1[i] = i;
 
   // another buffer with test sensor data
-  sensorData2[0] = 1234.0;
+  sensorData2[0] = 123456789.12345;
   sensorData2[1] = 50.3;
-  for (size_t i = 2; i < 12; i++)
-    sensorData1[i] = i;
+  for (size_t i = 2; i < testSizeOfBuffer; i++)
+    sensorData2[i] = i;
 
   // open the file where the array data is streamed into
   openFile("/sensorData.bin", FILE_WRITE);
-  //file = SD_MMC.open("/sensorData.bin", FILE_WRITE);
 
   // write the buffers to the file
-  file.write((uint8_t *)sensorData1, 2 * sizeof(float));
-  file.write((uint8_t *)sensorData2, 2 * sizeof(float));
+  file.write((uint8_t *)sensorData1, testSizeOfBuffer * sizeof(float));
+  file.write((uint8_t *)sensorData2, testSizeOfBuffer * sizeof(float));
   file.close();
 
   // sensorDataRead contains the actual data of the sdcard now
   openFile("/sensorData.bin", FILE_READ);
-  // file = SD_MMC.open("/sensorData.bin", FILE_READ);
 
   // we want to upload the data to the backend now
-  file.read((uint8_t *)sensorDataRead1, 2 * sizeof(float));
-  file.read((uint8_t *)sensorDataRead2, 2 * sizeof(float));
+  file.read((uint8_t *)sensorDataRead1, testSizeOfBuffer * sizeof(float));
+  file.read((uint8_t *)sensorDataRead2, testSizeOfBuffer * sizeof(float));
   file.close();
 
   Serial.println("sensorDataRead1:");
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < testSizeOfBuffer; i++)
     Serial.println(sensorDataRead1[i]);
   Serial.println("sensorDataRead2:");
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < testSizeOfBuffer; i++)
     Serial.println(sensorDataRead2[i]);
+
+  Serial.println(convertBufferToCSV(sensorDataRead1, testSizeOfBuffer));
+  Serial.println(convertBufferToCSV(sensorDataRead2, testSizeOfBuffer));
+}
+
+char *convertBufferToCSV(float *sensorDataBuffer, int length)
+{
+  // convert the array to string csv
+  char *buffer = (char *)malloc(length * 20 * sizeof(char)); // the needed bytes are calculated by the number of float values (length) that need 20 chars to be displayed at best
+  buffer[0] = '\0';
+
+  for (int i = 0; i < length; i++)
+  {
+    if (i % 9 == 0)
+      strcat(buffer, "\n"); // append , to buffer
+    else if (i > 0)
+      strcat(buffer, ",");                    // append , to buffer
+    char temp[20];                            // sufficient length is needed
+    dtostrf(sensorDataBuffer[i], 6, 2, temp); // convert float to string and copy it inside temp, this function does only put a max of 6 digits and 2 decimal places
+    strcat(buffer, temp);                     // append converted float to string
+  }
+
+  return buffer;
 }
 
 void openFile(const char *filename, const char *mode)
@@ -275,9 +312,9 @@ void openFile(const char *filename, const char *mode)
   Serial.print(" to ");
   Serial.println(mode);
   if (SDMMC)
-    file = SD_MMC.open(filename, mode);
+    file = SD_MMC.open(filename, mode, true);
   else
-    file = SD.open(filename, mode);
+    file = SD.open(filename, mode, true);
 
   if (!file)
   {
