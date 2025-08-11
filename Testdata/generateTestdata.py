@@ -17,8 +17,6 @@ def haversine(lat1, lon1, lat2, lon2):
 def generate_data_point(t, last_coords, coord_update_counter, last_speed):
     # Simulate temperature (20-30°C)
     temperature = round(random.uniform(20, 30), 1)
-    # Simulate acceleration (average: -2 to 2 m/s², peak: -5 to 5 m/s²)
-    avg_acc = [round(random.uniform(-2, 2), 2) for _ in range(3)]
     peak_acc = [round(random.uniform(-5, 5), 2) for _ in range(3)]
 
     # Update coordinates every 1.2-3s
@@ -45,8 +43,7 @@ def generate_data_point(t, last_coords, coord_update_counter, last_speed):
     # Calculate checksum as sum of all numeric values
     checksum = (
         temperature + speed +
-        coords['latitude'] + coords['longitude'] + coords['height'] +
-        sum(avg_acc) + sum(peak_acc)
+        coords['latitude'] + coords['longitude'] + coords['height'] + sum(peak_acc)
     )
 
     
@@ -55,9 +52,6 @@ def generate_data_point(t, last_coords, coord_update_counter, last_speed):
         "current_temperature": temperature,
         "current_speed": speed,
         "current_coordinates": coords,
-        "averaged_acceleration_x": avg_acc[0],
-        "averaged_acceleration_y": avg_acc[1],
-        "averaged_acceleration_z": avg_acc[2],
         "peak_acceleration_x": peak_acc[0],
         "peak_acceleration_y": peak_acc[1],
         "peak_acceleration_z": peak_acc[2],
