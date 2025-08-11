@@ -2,6 +2,7 @@
 #include "SD.h"
 #include "SPI.h"
 #include <WiFi.h>
+#include "SD_MMC.h"
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
@@ -11,6 +12,8 @@ void getSpeed();
 // setup wlan connection with sdcard credentials
 void setupWlan();
 
+// interface used for sdcard (false is SPI)
+#define SDMMC true
 #define CUSTOM_MOSI 16
 #define CUSTOM_MISO 4
 #define CUSTOM_SCK 15
@@ -44,9 +47,11 @@ void setup()
 {
   Serial.begin(115200);
   // wait for serial monitor to connect
-  delay(2000);
+  delay(3000);
+  Serial.println("test");
 
   setupFileSystem();
+  setupWlan();
 
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
@@ -117,12 +122,24 @@ void getSpeed()
 
 void setupFileSystem()
 {
-  SPI.begin(CUSTOM_SCK, CUSTOM_MISO, CUSTOM_MOSI, CUSTOM_CS);
-
-  if (!SD.begin())
+  Serial.println("Setting up sdcard...");
+  if (SDMMC)
   {
-    Serial.println("Card Mount Failed");
-    return;
+    // Initialize the SD card
+    if (!SD_MMC.begin("/sdcard", true))
+    {
+      Serial.println("Failed to mount SD card");
+      return;
+    }
+  }
+  else
+  {
+    SPI.begin(CUSTOM_SCK, CUSTOM_MISO, CUSTOM_MOSI, CUSTOM_CS);
+    if (!SD.begin())
+    {
+      Serial.println("Card Mount Failed");
+      return;
+    }
   }
 
   uint64_t cardSize = SD.cardSize() / (1024 * 1024);
@@ -133,7 +150,7 @@ void setupFileSystem()
 
 void setupWlan()
 {
-  File file = SD.open("credentials.txt", FILE_READ);
+  File file = SD_MMC.open("credentials.txt", FILE_READ);
   if (!file)
   {
     Serial.println("File not found");
