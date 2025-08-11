@@ -1,13 +1,20 @@
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
+#include <WiFi.h>
+#include "SD_MMC.h"
+#include "string.h"
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
 // setup sdcard connection over SPI bus
 void setupFileSystem();
 void getSpeed();
+// setup wlan connection with sdcard credentials
+void setupWlan();
 
+// interface used for sdcard (false is SPI)
+#define SDMMC true
 #define CUSTOM_MOSI 16
 #define CUSTOM_MISO 4
 #define CUSTOM_SCK 15
@@ -41,9 +48,11 @@ void setup()
 {
   Serial.begin(115200);
   // wait for serial monitor to connect
-  delay(2000);
+  delay(3000);
+  Serial.println("test");
 
   setupFileSystem();
+  setupWlan();
 
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
@@ -114,18 +123,73 @@ void getSpeed()
 
 void setupFileSystem()
 {
-  SPI.begin(CUSTOM_SCK, CUSTOM_MISO, CUSTOM_MOSI, CUSTOM_CS);
-
-  if (!SD.begin())
+  uint64_t cardSize;
+  Serial.println("Setting up sdcard...");
+  if (SDMMC)
   {
-    Serial.println("Card Mount Failed");
-    return;
+    // Initialize the SD card
+    if (!SD_MMC.begin("/sdcard", true))
+    {
+      Serial.println("Failed to mount SD card");
+      delay(1000);
+      setupFileSystem();
+    }
+    cardSize = SD_MMC.cardSize() / (1024 * 1024);
+  }
+  else
+  {
+    SPI.begin(CUSTOM_SCK, CUSTOM_MISO, CUSTOM_MOSI, CUSTOM_CS);
+    if (!SD.begin())
+    {
+      Serial.println("Card Mount Failed");
+      delay(1000);
+      setupFileSystem();
+    }
+    cardSize = SD.cardSize() / (1024 * 1024);
   }
 
-  uint64_t cardSize = SD.cardSize() / (1024 * 1024);
   Serial.printf("SD Card Size: %lluMB\n", cardSize);
   Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
   Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+}
+
+void setupWlan()
+{
+  File file = SD_MMC.open("/credentials.txt", FILE_READ);
+  if (!file)
+  {
+    Serial.println("File not found");
+    return;
+  }
+
+  String buffer = file.readString();
+  file.close();
+
+  String ssid, password;
+  // get the index of the comma char
+  int commaIndex = buffer.indexOf(',');
+  if (commaIndex != -1)
+  {
+    ssid = buffer.substring(0, commaIndex);
+    password = buffer.substring(commaIndex + 1);
+
+    // remove any newline character from the password if one is there
+    password.trim();
+  }
+  else
+  {
+    Serial.println("Invalid format for the credentials on the sdcard. Must be ssid,pass");
+  }
+  Serial.println("Connecting");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.print("Connected to WiFi network with IP Address: ");
+  Serial.println(WiFi.localIP());
 }
 
 void writeSensorDataBlock()
