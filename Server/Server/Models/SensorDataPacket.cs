@@ -13,7 +13,7 @@ namespace Server.Models
 
         [ForeignKey(nameof(ActivityId))]
         public Activity Activity { get; set; } = null!;
-
+    
         [Required]
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
@@ -40,26 +40,19 @@ namespace Server.Models
         [Required]
         [Range(-180.0, 180.0)]
         public double Longitude { get; set; }
-
-        // Acceleration data (averaged)
+        
         [Required]
-        public double AveragedAccelerationX { get; set; }
+        public double ElevationGain { get; set; }
 
+        // Acceleration data
         [Required]
-        public double AveragedAccelerationY { get; set; }
-
-        [Required]
-        public double AveragedAccelerationZ { get; set; }
-
-        // Acceleration data (peak values)
-        [Required]
-        public double PeakAccelerationX { get; set; }
+        public double AccelerationX { get; set; }   
 
         [Required]
-        public double PeakAccelerationY { get; set; }
+        public double AccelerationY { get; set; }
 
         [Required]
-        public double PeakAccelerationZ { get; set; }
+        public double AccelerationZ { get; set; }
 
         // Data integrity
         [Required]
@@ -77,20 +70,7 @@ namespace Server.Models
         // Navigation property to Device (optional)
         [ForeignKey(nameof(DeviceId))]
         public Device? Device { get; set; }
-
-        // Computed properties for analytics
-        [NotMapped]
-        public double TotalAcceleration => Math.Sqrt(
-            Math.Pow(AveragedAccelerationX, 2) + 
-            Math.Pow(AveragedAccelerationY, 2) + 
-            Math.Pow(AveragedAccelerationZ, 2));
-
-        [NotMapped]
-        public double TotalPeakAcceleration => Math.Sqrt(
-            Math.Pow(PeakAccelerationX, 2) + 
-            Math.Pow(PeakAccelerationY, 2) + 
-            Math.Pow(PeakAccelerationZ, 2));
-
+        
         [NotMapped]
         public TimeSpan TimeSinceStartParsed
         {
@@ -110,9 +90,8 @@ namespace Server.Models
         // Method to validate checksum
         public bool ValidateChecksum()
         {
-            var calculatedChecksum = CurrentTemperature + CurrentSpeed + Latitude + Longitude +
-                                   AveragedAccelerationX + AveragedAccelerationY + AveragedAccelerationZ +
-                                   PeakAccelerationX + PeakAccelerationY + PeakAccelerationZ;
+            var calculatedChecksum = CurrentTemperature + CurrentSpeed + Latitude + Longitude + ElevationGain +
+                                   AccelerationX + AccelerationY + AccelerationZ;
             
             return Math.Abs(calculatedChecksum - Checksum) < 0.001; // Allow for small floating point differences
         }
