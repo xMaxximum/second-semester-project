@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.Models;
 using Shared.Models;
+using System.Globalization;
 using System.Security.Claims;
 
 namespace Server.Controllers
@@ -188,15 +189,15 @@ namespace Server.Controllers
 
                 return new CsvDataPoint
                 {
-                    CurrentTemperature = double.Parse(fields[0].Trim()),
-                    CurrentSpeed = double.Parse(fields[1].Trim()),
-                    Latitude = double.Parse(fields[2].Trim()),
-                    Longitude = double.Parse(fields[3].Trim()),
-                    ElevationGain = double.Parse(fields[4].Trim()), 
-                    AccelerationX = double.Parse(fields[5].Trim()),
-                    AccelerationY = double.Parse(fields[6].Trim()),
-                    AccelerationZ = double.Parse(fields[7].Trim()),
-                    Checksum = double.Parse(fields[8].Trim())
+                    CurrentTemperature = double.Parse(fields[0].Trim(), CultureInfo.InvariantCulture),
+                    CurrentSpeed = double.Parse(fields[1].Trim(), CultureInfo.InvariantCulture),
+                    Latitude = double.Parse(fields[2].Trim(), CultureInfo.InvariantCulture),
+                    Longitude = double.Parse(fields[3].Trim(), CultureInfo.InvariantCulture),
+                    ElevationGain = double.Parse(fields[4].Trim(), CultureInfo.InvariantCulture),
+                    AccelerationX = double.Parse(fields[5].Trim(), CultureInfo.InvariantCulture),
+                    AccelerationY = double.Parse(fields[6].Trim(), CultureInfo.InvariantCulture),
+                    AccelerationZ = double.Parse(fields[7].Trim(), CultureInfo.InvariantCulture),
+                    Checksum = double.Parse(fields[8].Trim(), CultureInfo.InvariantCulture)
                 };
             }
             catch (Exception ex)
