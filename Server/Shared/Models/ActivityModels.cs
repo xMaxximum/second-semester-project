@@ -33,6 +33,14 @@ namespace Shared.Models
 
         public ActivityStatus? Status { get; set; }
     }
+    
+    // temporary model to stop activity - need to implement service that stops activity for inactive sensor 
+    public class StopActivityRequest
+    {
+        [Required]
+        [StringLength(50)]
+        public long UserId { get; set; }
+    }
 
     public class ActivityResponse
     {

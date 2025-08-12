@@ -20,6 +20,61 @@ namespace Server.Controllers
             _context = context;
             _logger = logger;
         }
+
+        [HttpPost("stop-activity")]
+        public async Task<ActionResult<ApiResponse<ActivityResponse>>> StopActivity([FromBody] StopActivityRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                    return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
+                }
+                
+                // find active activity for user
+                var activity = await _context.Activities
+                    .Include(a => a.SensorDataPackets)
+                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Status == ActivityStatus.InProgress);
+
+                if (activity == null)
+                {
+                    return NotFound(ApiResponse<ActivityResponse>.Failure("No active activity found for this device"));
+                }
+
+                // stop the activity
+                activity.EndTime = DateTime.UtcNow;
+                activity.Status = ActivityStatus.Completed;
+                activity.UpdatedAt = DateTime.UtcNow;
+
+                _context.Activities.Update(activity);
+                await _context.SaveChangesAsync();
+
+                // Create response
+                var response = new ActivityResponse
+                {
+                    Id = activity.Id,
+                    Name = activity.Name,
+                    Description = activity.Description,
+                    StartTime = activity.StartTime,
+                    EndTime = activity.EndTime,
+                    Status = activity.Status,
+                    Duration = activity.Duration,
+                    IsActive = activity.IsActive,
+                    DataPacketCount = activity.DataPacketCount,
+                    CreatedAt = activity.CreatedAt,
+                    UpdatedAt = activity.UpdatedAt
+                };
+
+                _logger.LogInformation("Activity {ActivityId} stopped by device {UserId}", activity.Id, request.UserId);
+                return Ok(ApiResponse<ActivityResponse>.Success(response, "Activity stopped successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping activity for user {UserId}", request.UserId);
+                return StatusCode(500, ApiResponse<ActivityResponse>.Failure("Internal server error"));
+            }
+        }
         
         [HttpPost("data")]
         public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData(
