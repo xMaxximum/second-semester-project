@@ -467,8 +467,8 @@ namespace Server.Controllers
             var points = new List<CsvDataPoint>(count);
             for (int i = 0; i < count; i++)
             {
-                lat += (rnd.NextDouble() - 0.5) * 0.0005;
-                lon += (rnd.NextDouble() - 0.5) * 0.0005;
+                lat += (rnd.NextDouble() - 0.5) * 0.05;
+                lon += (rnd.NextDouble() - 0.5) * 0.05;
                 var temp = 20 + rnd.NextDouble() * 10;
                 var speed = Math.Abs(Normal(rnd, mean: 15, stddev: 5));
                 var ax = (rnd.NextDouble() - 0.5) * 10;

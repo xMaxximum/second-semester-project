@@ -7,14 +7,17 @@
 <PageTitle>@(_details?.Activity?.Name ?? "Activity Details")</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <!-- Header with Back Button -->
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" 
-                   Color="Color.Primary" OnClick="GoBack">
-            Back to Activities
-        </MudButton>
-        <MudDivider Orientation="Orientation.Vertical" />
-        <MudText Typo="Typo.h4" Class="flex-grow-1">Activity Details</MudText>
+    <div class="d-flex align-items-center justify-space-between mb-4" style="flex-wrap: wrap; gap: 10px;">
+        <div class="d-flex align-items-center">
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" 
+                       Color="Color.Primary" OnClick="GoBack" Size="Size.Small">
+                Back
+            </MudButton>
+        </div>
+        <MudText Typo="Typo.h4" Class="text-center flex-grow-1" Style="font-weight: 600; min-width: 200px;">
+            Activity Details
+        </MudText>
+        <div class="d-none d-sm-block" style="width: 80px;"></div> <!-- Spacer for centering on desktop -->
     </div>
 
     @if (_loading)
@@ -44,20 +47,60 @@
                 <MudCard Elevation="3">
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h5" Color="Color.Primary">
-                                <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
-                                @_details.Activity.Name
-                            </MudText>
+                            <div class="d-flex align-items-center justify-space-between" style="width: 100%;">
+                                <div class="d-flex align-items-center flex-grow-1">
+                                    <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
+                                    @if (_editingTitle)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                            <MudTextField @bind-Value="_editedTitle" 
+                                                         Variant="Variant.Outlined" 
+                                                         Margin="Margin.Dense"
+                                                         Style="flex-grow: 1; max-width: 400px;" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Check" 
+                                                          Color="Color.Success" 
+                                                          Size="Size.Small"
+                                                          OnClick="SaveTitleEdit" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                          Color="Color.Default" 
+                                                          Size="Size.Small"
+                                                          OnClick="CancelTitleEdit" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.h5" Style="margin: 0;">@_details.Activity.Name</MudText>
+                                    }
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (_details.Activity.Status == ActivityStatus.Completed)
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Medium" 
+                                                Icon="@Icons.Material.Filled.CheckCircle" Style="font-weight: bold; padding: 8px 16px;">
+                                            🎉 Completed!
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Color="@GetStatusColor(_details.Activity.Status)" Size="Size.Medium">
+                                            @_details.Activity.Status
+                                        </MudChip>
+                                    }
+                                    @if (!_editingTitle)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                       Color="Color.Primary" 
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => StartEditingTitle())"
+                                                       Title="Edit Activity Name" />
+                                    }
+                                </div>
+                            </div>
                             @if (!string.IsNullOrEmpty(_details.Activity.Description))
                             {
                                 <MudText Typo="Typo.body1" Class="mt-2">@_details.Activity.Description</MudText>
                             }
                         </CardHeaderContent>
-                        <CardHeaderActions>
-                            <MudChip T="string" Color="@GetStatusColor(_details.Activity.Status)" Size="Size.Small">
-                                @_details.Activity.Status
-                            </MudChip>
-                        </CardHeaderActions>
                     </MudCardHeader>
                 </MudCard>
             </MudItem>
@@ -66,7 +109,7 @@
             <MudItem xs="12" sm="6" md="3">
                 <MudCard Elevation="2" Class="pa-4">
                     <div class="d-flex flex-column align-items-center gap-1">
-                        <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Large" Color="Color.Primary" />
+                        <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Large" Color="Color.Secondary" />
                         <MudText Typo="Typo.h6">@Math.Round((_details.Activity.Analytics?.TotalDistance ?? 0)/1000.0, 2) km</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Distance</MudText>
                     </div>
@@ -96,7 +139,7 @@
             <MudItem xs="12" sm="6" md="3">
                 <MudCard Elevation="2" Class="pa-4">
                     <div class="d-flex flex-column align-items-center gap-1">
-                        <MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Large" Color="Color.Error" />
+                        <MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Large" Color="Color.Info" />
                         <MudText Typo="Typo.h6">@Math.Round(_details.Activity.Analytics?.AverageTemperature ?? 0, 1)°C</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Temp</MudText>
                     </div>
@@ -226,6 +269,8 @@
     private ActivityDetailsResponse? _details;
     private bool _loading = true;
     private string? _error;
+    private bool _editingTitle = false;
+    private string _editedTitle = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -277,5 +322,48 @@
         if (d.TotalMinutes >= 1)
             return $"{(int)d.TotalMinutes}m {d.Seconds}s";
         return $"{d.Seconds}s";
+    }
+
+    private void StartEditingTitle()
+    {
+        _editingTitle = true;
+        _editedTitle = _details?.Activity?.Name ?? "";
+        StateHasChanged();
+    }
+
+    private async Task SaveTitleEdit()
+    {
+        if (_details?.Activity != null && !string.IsNullOrWhiteSpace(_editedTitle))
+        {
+            try
+            {
+                var updateRequest = new ActivityUpdateRequest 
+                { 
+                    Id = _details.Activity.Id,
+                    Name = _editedTitle 
+                };
+                
+                var result = await ActivityService.UpdateActivityAsync(_details.Activity.Id, updateRequest);
+                if (result?.IsSuccess == true)
+                {
+                    _details.Activity.Name = _editedTitle;
+                }
+                _editingTitle = false;
+                StateHasChanged();
+            }
+            catch
+            {
+                // Handle error - could show a snackbar or error message
+                _editingTitle = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void CancelTitleEdit()
+    {
+        _editingTitle = false;
+        _editedTitle = string.Empty;
+        StateHasChanged();
     }
 }

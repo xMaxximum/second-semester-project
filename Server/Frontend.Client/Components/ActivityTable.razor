@@ -24,6 +24,7 @@
             </MudButton>
             
             <MudTextField @bind-Value="searchString1" 
+                         @oninput="@(args => OnSearchChanged(args.Value?.ToString()))"
                          Placeholder="Search by title or date..." 
                          Adornment="Adornment.Start"
                          AdornmentIcon="@Icons.Material.Filled.Search" 
@@ -32,6 +33,7 @@
                          Margin="Margin.Dense"
                          Style="min-width: 250px;"
                          Clearable="true"
+                         Immediate="true"
                          HelperText="Try: 'Test', '2025', or 'Aug'" />
         </div>
     </ToolBarContent>
@@ -46,14 +48,12 @@
     </HeaderContent>
     <RowTemplate Context="element">
         <MudTd DataLabel="Title">
-            @if (_editing?.ActivityId == element.ActivityId)
-            {
-                <MudTextField @bind-Value="_editingTitle" Placeholder="Enter title..." Variant="Variant.Outlined" Margin="Margin.Dense" />
-            }
-            else
-            {
-                <MudText Style="font-weight: 500;" Color="Color.Primary">@element.Title</MudText>
-            }
+            <MudButton Variant="Variant.Text" 
+                       Color="Color.Primary" 
+                       OnClick="() => ViewDetails(element.ActivityId)"
+                       Style="padding: 0; text-transform: none; justify-content: flex-start; font-weight: 500;">
+                @element.Title
+            </MudButton>
         </MudTd>
         <MudTd DataLabel="Date">
             <MudText Typo="Typo.body2">@element.Date.ToString("MMM dd, yyyy")</MudText>
@@ -72,20 +72,13 @@
             <MudText Typo="Typo.body2">@element.ElevationGain m</MudText>
         </MudTd>
         <MudTd Style="text-align: center;">
-            @if (_editing?.ActivityId == element.ActivityId)
-            {
-                <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
-                    <MudButton Color="Color.Success" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveInlineEdit">Save</MudButton>
-                    <MudButton Color="Color.Default" StartIcon="@Icons.Material.Filled.Cancel" OnClick="CancelInlineEdit">Cancel</MudButton>
-                </MudButtonGroup>
-            }
-            else
-            {
-                <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
-                    <MudButton Color="Color.Primary" StartIcon="@Icons.Material.Filled.Visibility" OnClick="() => ViewDetails(element.ActivityId)">View</MudButton>
-                    <MudButton Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="() => StartInlineEdit(element)">Edit</MudButton>
-                </MudButtonGroup>
-            }
+            <MudButton Color="Color.Primary" 
+                       Variant="Variant.Text" 
+                       Size="Size.Small" 
+                       StartIcon="@Icons.Material.Filled.Visibility" 
+                       OnClick="() => ViewDetails(element.ActivityId)">
+                View Details
+            </MudButton>
         </MudTd>
     </RowTemplate>
     <PagerContent>
@@ -112,6 +105,12 @@
 
     private bool FilterFunc1(Element element) => FilterFunc(element, searchString1);
 
+    private async Task OnSearchChanged(string? value)
+    {
+        searchString1 = value ?? string.Empty;
+        StateHasChanged();
+    }
+
     private bool FilterFunc(Element activity, string searchString)
     {
         if (string.IsNullOrWhiteSpace(searchString))
@@ -119,7 +118,6 @@
 
         searchString = searchString.Trim();
 
-        // Search in activity title (most important)
         if (!string.IsNullOrEmpty(activity.Title) && 
             activity.Title.Contains(searchString, StringComparison.OrdinalIgnoreCase))
             return true;
