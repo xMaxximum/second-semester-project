@@ -8,7 +8,7 @@ using System.Security.Claims;
 namespace Server.Controllers
 {
     [ApiController]
-    [Route(Constants.DefaultRoute + "/sensordata")]
+    [Route(Constants.DefaultRoute)]
     public class SensorDataController: ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -76,9 +76,7 @@ namespace Server.Controllers
 
         [HttpPost("data")]
         public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData(
-            long activityId,
-            [FromBody] SensorDataPacketRequest requestData,
-            [FromBody] string? deviceId = null)
+            [FromBody] SensorDataPacketRequest requestData)
         {
             try
             {

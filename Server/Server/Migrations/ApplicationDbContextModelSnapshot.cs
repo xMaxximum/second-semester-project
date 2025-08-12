@@ -390,17 +390,17 @@ namespace Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<double>("AccelerationX")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("AccelerationY")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("AccelerationZ")
+                        .HasColumnType("REAL");
+
                     b.Property<long>("ActivityId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<double>("AveragedAccelerationX")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("AveragedAccelerationY")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("AveragedAccelerationZ")
-                        .HasColumnType("REAL");
 
                     b.Property<double>("Checksum")
                         .HasColumnType("REAL");
@@ -418,6 +418,9 @@ namespace Server.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<double>("ElevationGain")
+                        .HasColumnType("REAL");
+
                     b.Property<bool>("IsChecksumValid")
                         .HasColumnType("INTEGER");
 
@@ -427,15 +430,6 @@ namespace Server.Migrations
 
                     b.Property<double>("Longitude")
                         .HasPrecision(18, 10)
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("PeakAccelerationX")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("PeakAccelerationY")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("PeakAccelerationZ")
                         .HasColumnType("REAL");
 
                     b.Property<string>("TimeSinceStart")
