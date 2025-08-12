@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Server.Data;
 
@@ -10,9 +11,11 @@ using Server.Data;
 namespace Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250812053807_UpdateSensorDataPacketAcceleration")]
+    partial class UpdateSensorDataPacketAcceleration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.7");
@@ -127,10 +130,6 @@ namespace Server.Migrations
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeviceId")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("EndTime")
@@ -644,7 +643,14 @@ namespace Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Server.Models.Device", "Device")
+                        .WithMany("SensorDataPackets")
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Activity");
+
+                    b.Navigation("Device");
                 });
 
             modelBuilder.Entity("Server.Models.Activity", b =>
@@ -659,6 +665,11 @@ namespace Server.Migrations
             modelBuilder.Entity("Server.Models.ActivityTag", b =>
                 {
                     b.Navigation("ActivityTagAssignments");
+                });
+
+            modelBuilder.Entity("Server.Models.Device", b =>
+                {
+                    b.Navigation("SensorDataPackets");
                 });
 #pragma warning restore 612, 618
         }

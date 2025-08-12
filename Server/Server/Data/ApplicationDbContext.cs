@@ -63,13 +63,7 @@ namespace Server.Data
                       .WithMany(a => a.SensorDataPackets)
                       .HasForeignKey(e => e.ActivityId)
                       .OnDelete(DeleteBehavior.Cascade);
-
-                // Optional foreign key relationship with Device
-                entity.HasOne(e => e.Device)
-                      .WithMany(d => d.SensorDataPackets)
-                      .HasForeignKey(e => e.DeviceId)
-                      .OnDelete(DeleteBehavior.SetNull);
-
+                
                 // Indexes for performance
                 entity.HasIndex(e => e.ActivityId);
                 entity.HasIndex(e => e.Timestamp);

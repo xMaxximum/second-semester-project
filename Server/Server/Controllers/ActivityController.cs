@@ -127,17 +127,13 @@ namespace Server.Controllers
                     CurrentSpeed = s.CurrentSpeed,
                     Latitude = s.Latitude,
                     Longitude = s.Longitude,
-                    AveragedAccelerationX = s.AveragedAccelerationX,
-                    AveragedAccelerationY = s.AveragedAccelerationY,
-                    AveragedAccelerationZ = s.AveragedAccelerationZ,
-                    PeakAccelerationX = s.PeakAccelerationX,
-                    PeakAccelerationY = s.PeakAccelerationY,
-                    PeakAccelerationZ = s.PeakAccelerationZ,
+                    ElevationGain = s.ElevationGain,
+                    AccelerationX = s.AccelerationX,
+                    AccelerationY = s.AccelerationY,
+                    AccelerationZ = s.AccelerationZ,
                     Checksum = s.Checksum,
                     IsChecksumValid = s.IsChecksumValid,
                     DeviceId = s.DeviceId,
-                    TotalAcceleration = s.TotalAcceleration,
-                    TotalPeakAcceleration = s.TotalPeakAcceleration
                 }).ToList();
 
                 return Ok(new ActivityDetailsResponse
@@ -178,6 +174,7 @@ namespace Server.Controllers
                 var activity = new Activity
                 {
                     UserId = userId.Value,
+                    DeviceId = request.DeviceId,
                     Name = request.Name,
                     Description = request.Description,
                     StartTime = request.StartTime ?? DateTime.UtcNow,
@@ -324,7 +321,7 @@ namespace Server.Controllers
                 MaxSpeed = sensorData.Max(s => s.CurrentSpeed),
                 AverageSpeed = sensorData.Average(s => s.CurrentSpeed),
                 AverageTemperature = sensorData.Average(s => s.CurrentTemperature),
-                MaxAcceleration = sensorData.Max(s => s.TotalAcceleration),
+                //MaxAcceleration = sensorData.Max(s => s.TotalAcceleration), need to change this logic 
                 Route = sensorData.Select(s => new CoordinatePoint
                 {
                     Latitude = s.Latitude,
