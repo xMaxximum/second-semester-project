@@ -22,7 +22,8 @@ namespace Server.Controllers
         }
 
         [HttpPost("stop-activity")]
-        public async Task<ActionResult<ApiResponse<ActivityResponse>>> StopActivity([FromBody] StopActivityRequest request)
+        public async Task<ActionResult<ApiResponse<ActivityResponse>>> StopActivity(
+            [FromBody] StopActivityRequest request)
         {
             try
             {

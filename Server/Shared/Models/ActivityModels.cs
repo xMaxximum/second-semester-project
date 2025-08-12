@@ -38,7 +38,6 @@ namespace Shared.Models
     public class StopActivityRequest
     {
         [Required]
-        [StringLength(50)]
         public long UserId { get; set; }
     }
 
