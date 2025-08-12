@@ -640,14 +640,7 @@ namespace Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Server.Models.Device", "Device")
-                        .WithMany("SensorDataPackets")
-                        .HasForeignKey("DeviceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Activity");
-
-                    b.Navigation("Device");
                 });
 
             modelBuilder.Entity("Server.Models.Activity", b =>
@@ -662,11 +655,6 @@ namespace Server.Migrations
             modelBuilder.Entity("Server.Models.ActivityTag", b =>
                 {
                     b.Navigation("ActivityTagAssignments");
-                });
-
-            modelBuilder.Entity("Server.Models.Device", b =>
-                {
-                    b.Navigation("SensorDataPackets");
                 });
 #pragma warning restore 612, 618
         }

@@ -40,8 +40,5 @@ namespace Server.Models
         // Device settings (JSON)
         [StringLength(1000)]
         public string? Settings { get; set; } // JSON for device-specific settings
-
-        // Navigation properties
-        public ICollection<SensorDataPacket> SensorDataPackets { get; set; } = new List<SensorDataPacket>();
     }
 }

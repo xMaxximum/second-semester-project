@@ -66,10 +66,6 @@ namespace Server.Models
 
         [StringLength(50)]
         public string? DeviceId { get; set; } // ESP32 device identifier (MAC address or unique string)
-
-        // Navigation property to Device (optional)
-        [ForeignKey(nameof(DeviceId))]
-        public Device? Device { get; set; }
         
         [NotMapped]
         public TimeSpan TimeSinceStartParsed

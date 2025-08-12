@@ -86,8 +86,8 @@ namespace Server.Controllers
                     var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
                     return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
                 }
-
-              // Verify activity exists and is active
+                
+                // Verify activity exists and is active
                 var activity = await _context.Activities
                     .FirstOrDefaultAsync(a => a.Id == requestData.ActivityId);
 
@@ -96,7 +96,7 @@ namespace Server.Controllers
 
                 if (activity.Status != ActivityStatus.InProgress)
                     return BadRequest(ApiResponse<string>.Failure("Activity is not in progress"));
-
+                
                 // Parse CSV data
                 var lines = requestData.CsvData
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -155,6 +155,7 @@ namespace Server.Controllers
                 // add all packets to database
                 _context.SensorDataPackets.AddRange(sensorDataPackets);
                 activity.UpdatedAt = DateTime.UtcNow;
+                _context.Activities.Update(activity);
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation(
@@ -205,38 +206,6 @@ namespace Server.Controllers
                 _logger.LogError(ex, "Error parsing CSV line: {Line}", csvLine);
                 return null;
             }
-        }
-        
-        private async Task<Activity> GetOrCreateActiveActivity(string deviceId)
-        {
-            // First, try to find an existing active activity for this device
-            var existingActivity = await _context.Activities
-                .Where(a => a.Status == ActivityStatus.InProgress)
-                .Include(a => a.SensorDataPackets)
-                .FirstOrDefaultAsync(a => a.SensorDataPackets.Any(s => s.DeviceId == deviceId));
-
-            if (existingActivity != null)
-            {
-                return existingActivity;
-            }
-
-            // Create new activity
-            var newActivity = new Activity
-            {
-                UserId = 1, // Default user - you might want to implement device-user mapping
-                Name = $"Cycling Session {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
-                Description = $"Automatic session from device {deviceId}",
-                StartTime = DateTime.UtcNow,
-                Status = ActivityStatus.InProgress,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.Activities.Add(newActivity);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Created new activity {ActivityId} for device {DeviceId}", newActivity.Id, deviceId);
-            return newActivity;
         }
         
         private long? GetCurrentUserId()
