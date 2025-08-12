@@ -5,6 +5,7 @@
 #include "SD_MMC.h"
 #include <HTTPClient.h>
 #include "string.h"
+#include <Preferences.h>
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
@@ -41,6 +42,8 @@ uint bufferCount = 0;
 uint timeBeforeWrite, timeAfterWrite;
 // the object for the sdcard file
 File file;
+// this is a library object that manages internal esp flash (4MB) access to store structured data in json format automatically
+Preferences preferences;
 
 // helper variables
 // magnet sensor positive flank recognition (rpm)
@@ -58,16 +61,15 @@ void setup()
   // wait for serial monitor to connect
   delay(3000);
 
-  setupFileSystem();
+  setupWlan();
   // wifi.begin is a huge problem right now in relation to sdmmc.open function
-  setupWlan(); // only use wlan when it is needed because memory management of wifi library fucks up sdmmc library memory access (LoadProhibited error after call of SD_MMC.open after wifi.begin call)
+  // wifi.h memory management of wifi library fucks up sdmmc library memory access (LoadProhibited error after call of SD_MMC.open after wifi.begin call)
+  // calling wifi.begin before sd_mmc.begin fixes the issue
+  // but that does mean that sdcard cannot be used for credentials -> internal flash with preferences library is used
+  setupFileSystem();
 
-  Serial.print("Free heap: ");
-  Serial.println(ESP.getFreeHeap());
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
-  Serial.print("Free heap: ");
-  Serial.println(ESP.getFreeHeap());
 
   // digital input for rpm sensor (magnet sensor)
   pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
@@ -170,8 +172,8 @@ void setupFileSystem()
 
 void setupWlan()
 {
-  File fileForWlanCredentials;
-  // openFile("/credentials.txt", FILE_READ);
+  /*File fileForWlanCredentials;
+  //openFile("/credentials.txt", FILE_READ);
   fileForWlanCredentials = SD_MMC.open("/credentials.txt", FILE_READ);
 
   String buffer = fileForWlanCredentials.readString();
@@ -192,26 +194,36 @@ void setupWlan()
   {
     Serial.println("Invalid format for the credentials on the sdcard. Must be ssid,pass");
   }
-  Serial.println("Connecting");
+
 
   Serial.print("Free heap before wifi.begin: ");
-  Serial.println(ESP.getFreeHeap());
-  /*WiFi.begin(ssid, password);
+  Serial.println(ESP.getFreeHeap());*/
+
+  // save data to internal flash
+  String ssid = "ssid";
+  String pass = "pass";
+  preferences.begin("credentials", false);
+  preferences.putString("ssid", ssid);
+  preferences.putString("pass", pass);
+  Serial.println("Network credentials saved using Preferences");
+  preferences.end();
+
+  // read data from internal flash
+  String ssidRead;
+  String passRead;
+  preferences.begin("credentials", false);
+  ssidRead = preferences.getString("ssid", "");
+  passRead = preferences.getString("pass", "");
+  Serial.println("Network credentials read using Preferences");
+  preferences.end();
+
+  WiFi.begin(ssidRead, passRead);
+  Serial.println("Connecting");
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
-  }*/
-  Serial.print("Free heap after wifi.begin: ");
-  Serial.println(ESP.getFreeHeap());
-
-  Serial.println("");
-  Serial.print("Connected to WiFi network with IP Address: ");
-  Serial.println(WiFi.localIP());
-  WiFi.mode(WIFI_OFF);
-  Serial.print("Free heap after wifi.mode (off) ");
-  Serial.println(ESP.getFreeHeap());
-  Serial.println("This frees some memory but sdmmc will fail from here on......");
+  }
 }
 
 void writeSensorDataBlock()
