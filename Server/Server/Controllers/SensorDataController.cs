@@ -21,60 +21,6 @@ namespace Server.Controllers
             _logger = logger;
         }
         
-        [HttpPost("start-activity")]
-        public async Task<ActionResult<ApiResponse<ActivityResponse>>> CreateActivity(ActivityCreateRequest request)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                {
-                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
-                    return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
-                }
-
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(ApiResponse<ActivityResponse>.Failure("User not found"));
-
-                var activity = new Activity
-                {
-                    UserId = userId.Value,
-                    Name = request.Name,
-                    Description = request.Description,
-                    StartTime = request.StartTime ?? DateTime.UtcNow,
-                    Status = ActivityStatus.InProgress,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                _context.Activities.Add(activity);
-                await _context.SaveChangesAsync();
-
-                var response = new ActivityResponse
-                {
-                    Id = activity.Id,
-                    Name = activity.Name,
-                    Description = activity.Description,
-                    StartTime = activity.StartTime,
-                    EndTime = activity.EndTime,
-                    Status = activity.Status,
-                    Duration = activity.Duration,
-                    IsActive = activity.IsActive,
-                    DataPacketCount = 0,
-                    CreatedAt = activity.CreatedAt,
-                    UpdatedAt = activity.UpdatedAt
-                };
-
-                _logger.LogInformation("Activity {ActivityId} created for user {UserId}", activity.Id, userId);
-                return Ok(ApiResponse<ActivityResponse>.Success(response, "Activity created successfully"));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating activity");
-                return StatusCode(500, ApiResponse<ActivityResponse>.Failure("Internal server error"));
-            }
-        }
-
         [HttpPost("data")]
         public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData(
             [FromBody] SensorDataPacketRequest requestData)
@@ -87,13 +33,12 @@ namespace Server.Controllers
                     return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
                 }
                 
-                // Verify activity exists and is active
-                var activity = await _context.Activities
-                    .FirstOrDefaultAsync(a => a.Id == requestData.ActivityId);
+                // Get or create activity for this device
+                var activity = await GetOrCreateActiveActivity(requestData.UserId, requestData.DeviceId);
 
                 if (activity == null)
-                    return NotFound(ApiResponse<string>.Failure("Activity not found"));
-
+                    return StatusCode(500, ApiResponse<string>.Failure("Failed to create or retrieve activity"));
+                
                 if (activity.Status != ActivityStatus.InProgress)
                     return BadRequest(ApiResponse<string>.Failure("Activity is not in progress"));
                 
@@ -124,9 +69,8 @@ namespace Server.Controllers
                     
                     var sensorPacket = new SensorDataPacket
                     {
-                        ActivityId = requestData.ActivityId,
+                        ActivityId = activity.Id,
                         Timestamp = DateTime.UtcNow,
-                        TimeSinceStart = "PT0S",  // need to figure this out
                         CurrentTemperature = dataPoint.CurrentTemperature,
                         CurrentSpeed = dataPoint.CurrentSpeed,
                         Latitude = dataPoint.Latitude,
@@ -160,7 +104,7 @@ namespace Server.Controllers
 
                 _logger.LogInformation(
                     "Processed {TotalLines} CSV lines, created {TotalPackets} sensor data packets for activity {ActivityId}, {ValidPackets} valid checksums", 
-                    lines.Count, sensorDataPackets.Count, requestData.ActivityId, validPackets);
+                    lines.Count, sensorDataPackets.Count, activity.Id, validPackets);
 
                 var message = validPackets == sensorDataPackets.Count 
                     ? $"Successfully processed {sensorDataPackets.Count} data packets"
@@ -170,7 +114,7 @@ namespace Server.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing CSV sensor data for activity {ActivityId}", requestData.ActivityId);
+                _logger.LogError(ex, "Error processing CSV sensor data for {DeviceId}", requestData.DeviceId);
                 return StatusCode(500, ApiResponse<string>.Failure("Internal server error"));
             }
         }
@@ -208,10 +152,46 @@ namespace Server.Controllers
             }
         }
         
-        private long? GetCurrentUserId()
+        private async Task<Activity?> GetOrCreateActiveActivity(long userId, string deviceId)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return long.TryParse(userIdClaim, out var userId) ? userId : null;
+            try
+            {
+                // First, try to find an existing active activity for this device
+                var existingActivity = await _context.Activities
+                    .Where(a => a.UserId == userId && a.Status == ActivityStatus.InProgress)
+                    .Include(a => a.SensorDataPackets)
+                    .FirstOrDefaultAsync();
+
+                if (existingActivity != null)
+                {
+                    return existingActivity;
+                }
+
+                // Create new activity
+                var newActivity = new Activity
+                {
+                    UserId = userId,
+                    DeviceId = deviceId,
+                    Name = $"Session from device {deviceId}",
+                    StartTime = DateTime.UtcNow,
+                    Status = ActivityStatus.InProgress,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Activities.Add(newActivity);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Created new activity {ActivityId} for device {DeviceId} and user {UserId}", 
+                    newActivity.Id, deviceId, userId);
+                
+                return newActivity;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating activity for device {DeviceId}", deviceId);
+                return null;
+            }
         }
     }
 }

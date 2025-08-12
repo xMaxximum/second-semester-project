@@ -174,6 +174,7 @@ namespace Server.Controllers
                 var activity = new Activity
                 {
                     UserId = userId.Value,
+                    DeviceId = request.DeviceId,
                     Name = request.Name,
                     Description = request.Description,
                     StartTime = request.StartTime ?? DateTime.UtcNow,

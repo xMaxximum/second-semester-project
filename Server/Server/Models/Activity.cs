@@ -11,6 +11,9 @@ namespace Server.Models
 
         [Required]
         public long UserId { get; set; }
+        
+        [Required]
+        public string DeviceId { get; set; } = String.Empty;
 
         [ForeignKey(nameof(UserId))]
         public User User { get; set; } = null!;

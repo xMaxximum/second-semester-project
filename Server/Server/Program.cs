@@ -67,9 +67,9 @@ namespace Server
                     .PersistKeysToFileSystem(new DirectoryInfo("/app/Data/DataProtection-Keys"));
             }
 
-            // Add Mqtt Service
-            builder.Services.Configure<MqttClientOptions>(builder.Configuration.GetRequiredSection("MQTT"));
-            builder.Services.AddHostedService<MqttService>();
+            // Add Mqtt Service (usage paused) 
+            //builder.Services.Configure<MqttClientOptions>(builder.Configuration.GetRequiredSection("MQTT"));
+            //builder.Services.AddHostedService<MqttService>();
 
             // Configure JWT Authentication
             builder.Services

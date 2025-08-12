@@ -8,6 +8,9 @@ namespace Shared.Models
         [Required]
         [StringLength(100, MinimumLength = 1)]
         public string Name { get; set; } = string.Empty;
+        
+        [Required]
+        public string? DeviceId { get; set; }
 
         [StringLength(500)]
         public string? Description { get; set; }
@@ -74,7 +77,7 @@ namespace Shared.Models
     public class SensorDataPacketRequest
     {
         [Required]
-        public long ActivityId { get; set; }
+        public long UserId { get; set; }
         [Required]
         public string DeviceId { get; set; } = string.Empty;
         [Required]
@@ -93,6 +96,16 @@ namespace Shared.Models
         public double AccelerationY { get; set; }
         public double AccelerationZ { get; set; }
         public double Checksum { get; set; }
+    }
+    
+    public class DeviceRegistrationRequest
+    {
+        [Required]
+        public string DeviceId { get; set; } = string.Empty;
+        
+        public string? DeviceName { get; set; }
+        
+        public string? Description { get; set; }
     }
 
     public class SensorDataPacketResponse
