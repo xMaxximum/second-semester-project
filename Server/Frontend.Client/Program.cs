@@ -42,6 +42,7 @@ namespace Frontend.Client
 
             // Add Auth Service
             builder.Services.AddScoped<AuthService>();
+            builder.Services.AddScoped<ActivityService>();
 
 
             var app = builder.Build();

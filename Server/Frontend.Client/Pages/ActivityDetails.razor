@@ -1,0 +1,281 @@
+@page "/activity/{Id:long}"
+@using Shared.Models
+@using MudBlazor
+@inject ActivityService ActivityService
+@inject NavigationManager Navigation
+
+<PageTitle>@(_details?.Activity?.Name ?? "Activity Details")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header with Back Button -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" 
+                   Color="Color.Primary" OnClick="GoBack">
+            Back to Activities
+        </MudButton>
+        <MudDivider Orientation="Orientation.Vertical" />
+        <MudText Typo="Typo.h4" Class="flex-grow-1">Activity Details</MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="d-flex align-items-center justify-content-center pa-8">
+            <MudProgressCircular Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.h6">Loading activity details...</MudText>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="ma-4">
+            <MudText><strong>Error:</strong> @_error</MudText>
+        </MudAlert>
+    }
+    else if (_details?.Activity is null)
+    {
+        <MudAlert Severity="Severity.Info" Class="ma-4">
+            <MudText>Activity not found. It may have been deleted or you don't have permission to view it.</MudText>
+        </MudAlert>
+    }
+    else
+    {
+        <MudGrid Spacing="3">
+            <!-- Activity Header Card -->
+            <MudItem xs="12">
+                <MudCard Elevation="3">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h5" Color="Color.Primary">
+                                <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
+                                @_details.Activity.Name
+                            </MudText>
+                            @if (!string.IsNullOrEmpty(_details.Activity.Description))
+                            {
+                                <MudText Typo="Typo.body1" Class="mt-2">@_details.Activity.Description</MudText>
+                            }
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Color="@GetStatusColor(_details.Activity.Status)" Size="Size.Small">
+                                @_details.Activity.Status
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                </MudCard>
+            </MudItem>
+
+            <!-- Key Metrics Row -->
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4">
+                    <div class="d-flex flex-column align-items-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">@Math.Round((_details.Activity.Analytics?.TotalDistance ?? 0)/1000.0, 2) km</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Distance</MudText>
+                    </div>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4">
+                    <div class="d-flex flex-column align-items-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Large" Color="Color.Success" />
+                        <MudText Typo="Typo.h6">@Math.Round(_details.Activity.Analytics?.AverageSpeed ?? 0, 1) km/h</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Speed</MudText>
+                    </div>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4">
+                    <div class="d-flex flex-column align-items-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Large" Color="Color.Warning" />
+                        <MudText Typo="Typo.h6">@FormatDuration(_details.Activity.Duration)</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Duration</MudText>
+                    </div>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="pa-4">
+                    <div class="d-flex flex-column align-items-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Large" Color="Color.Error" />
+                        <MudText Typo="Typo.h6">@Math.Round(_details.Activity.Analytics?.AverageTemperature ?? 0, 1)°C</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Temp</MudText>
+                    </div>
+                </MudCard>
+            </MudItem>
+
+            <!-- Activity Timeline -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" />
+                                Timeline
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <div class="d-flex flex-column gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" />
+                                <div>
+                                    <MudText Typo="Typo.body2"><strong>Started</strong></MudText>
+                                    <MudText Typo="Typo.caption">@_details.Activity.StartTime.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                </div>
+                            </div>
+                            
+                            @if (_details.Activity.EndTime.HasValue)
+                            {
+                                <div class="d-flex align-items-center gap-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Stop" Color="Color.Error" />
+                                    <div>
+                                        <MudText Typo="Typo.body2"><strong>Finished</strong></MudText>
+                                        <MudText Typo="Typo.caption">@_details.Activity.EndTime.Value.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Additional Metrics -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />
+                                Additional Metrics
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2">Max Speed:</MudText>
+                                <MudText Typo="Typo.body2"><strong>@Math.Round(_details.Activity.Analytics?.MaxSpeed ?? 0, 1) km/h</strong></MudText>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2">Data Points:</MudText>
+                                <MudText Typo="Typo.body2"><strong>@_details.SensorData.Count</strong></MudText>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2">Calories Burned:</MudText>
+                                <MudText Typo="Typo.body2"><strong>@Math.Round(_details.Activity.Analytics?.CaloriesBurned ?? 0, 0) kcal</strong></MudText>
+                            </MudStack>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Sensor Data Table -->
+            <MudItem xs="12">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.DataUsage" Class="mr-2" />
+                                Sensor Data (@_details.SensorData.Count points)
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent Class="pa-0">
+                        <MudTable Items="_details.SensorData" Dense="true" Hover="true" Striped="true" 
+                                  FixedHeader="true" Height="400px">
+                            <HeaderContent>
+                                <MudTh><MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />Time</MudTh>
+                                <MudTh><MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Class="mr-1" />Speed</MudTh>
+                                <MudTh><MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Small" Class="mr-1" />Temperature</MudTh>
+                                <MudTh><MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />Latitude</MudTh>
+                                <MudTh><MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />Longitude</MudTh>
+                                <MudTh><MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Class="mr-1" />Elevation</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Time">
+                                    <MudText Typo="Typo.caption">@context.Timestamp.ToString("HH:mm:ss")</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Speed">
+                                    <MudText Typo="Typo.body2">@context.CurrentSpeed.ToString("F1") km/h</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Temperature">
+                                    <MudText Typo="Typo.body2">@context.CurrentTemperature.ToString("F1")°C</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Latitude">
+                                    <MudText Typo="Typo.caption">@context.Latitude.ToString("F6")</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Longitude">
+                                    <MudText Typo="Typo.caption">@context.Longitude.ToString("F6")</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Elevation">
+                                    <MudText Typo="Typo.body2">@context.ElevationGain.ToString("F0")m</MudText>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public long Id { get; set; }
+
+    private ActivityDetailsResponse? _details;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true; _error = null;
+        _details = await ActivityService.GetActivityAsync(Id);
+        if (_details is null || !_details.IsSuccess)
+        {
+            _error = _details?.Message ?? "Failed to load";
+        }
+        _loading = false;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private string GetActivityIcon()
+    {
+        return _details?.Activity?.Status switch
+        {
+            ActivityStatus.InProgress => Icons.Material.Filled.DirectionsRun,
+            ActivityStatus.Completed => Icons.Material.Filled.CheckCircle,
+            ActivityStatus.Paused => Icons.Material.Filled.Pause,
+            ActivityStatus.Cancelled => Icons.Material.Filled.Cancel,
+            _ => Icons.Material.Filled.FitnessCenter
+        };
+    }
+
+    private Color GetStatusColor(ActivityStatus status)
+    {
+        return status switch
+        {
+            ActivityStatus.InProgress => Color.Info,
+            ActivityStatus.Completed => Color.Success,
+            ActivityStatus.Paused => Color.Warning,
+            ActivityStatus.Cancelled => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatDuration(TimeSpan? duration)
+    {
+        if (!duration.HasValue) return "N/A";
+        
+        var d = duration.Value;
+        if (d.TotalHours >= 1)
+            return $"{(int)d.TotalHours}h {d.Minutes}m";
+        if (d.TotalMinutes >= 1)
+            return $"{(int)d.TotalMinutes}m {d.Seconds}s";
+        return $"{d.Seconds}s";
+    }
+}
