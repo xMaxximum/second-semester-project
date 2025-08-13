@@ -66,8 +66,6 @@ struct gpsData{
   time_t time;
 };
 gpsData gpsdata;
-bool hasBeenReadThisCycle = false; // flag to check if the gps data has been read this cycle
-
 
 void setup()
 {
@@ -75,16 +73,13 @@ void setup()
   // wait for serial monitor to connect
   delay(8000);
 
-  //setupFileSystem();
-  //setupWlan();
+  setupFileSystem();
+  setupWlan();
   setupGPS();
 
 
   Serial.println("Setup complete. Starting main loop...");
-  uint32_t heapSize = ESP.getFreeHeap();
-  Serial.print("Heap size: ");
-  Serial.println(heapSize);
-  // reserve memory for sensor data
+
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
   pinMode(2, OUTPUT);
   
@@ -104,9 +99,9 @@ void loop()
     bufferCount++;
     sensorData[bufferCount * SENSOR_DATA_SIZE] = 0; // temperature
     sensorData[bufferCount * SENSOR_DATA_SIZE + 1] = (float)speed;
-    sensorData[bufferCount * SENSOR_DATA_SIZE + 2] = 0; // latitude
-    sensorData[bufferCount * SENSOR_DATA_SIZE + 3] = 0;
-    sensorData[bufferCount * SENSOR_DATA_SIZE + 4] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 2] = gpsdata.latitude; // latitude
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 3] = gpsdata.longitude; // longitude
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 4] = gpsdata.height;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 5] = 0;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 6] = 0;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 7] = 0;
