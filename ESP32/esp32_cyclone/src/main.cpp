@@ -37,7 +37,7 @@ void updateAllData();
 #define SENSOR_DATA_SIZE 12
 
 // magnet sensor
-#define PIN_MAGNET 17
+#define PIN_MAGNET 13
 #define WHEEL_DIAMETER 0.6 // 26 inch wheel
 
 // data specific
@@ -75,12 +75,15 @@ void setup()
   // wait for serial monitor to connect
   delay(8000);
 
-  setupFileSystem();
+  //setupFileSystem();
+  //setupWlan();
   setupGPS();
 
 
   Serial.println("Setup complete. Starting main loop...");
-
+  uint32_t heapSize = ESP.getFreeHeap();
+  Serial.print("Heap size: ");
+  Serial.println(heapSize);
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
   pinMode(2, OUTPUT);
@@ -93,6 +96,7 @@ void loop()
   currentTime = millis();
 
   getSpeed();
+  readGPSData();
 
   dtTo200ms = currentTime - lastReadTime200ms;
   if (dtTo200ms >= 200)
