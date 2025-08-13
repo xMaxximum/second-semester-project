@@ -24,6 +24,7 @@ void setupWlan();
 void setupGPS();
 void readGPSData();
 void displayInfo();
+void updateAllData();
 
 #define CUSTOM_TX_GPS 17
 #define CUSTOM_RX_GPS 16
@@ -65,6 +66,7 @@ struct gpsData{
   time_t time;
 };
 gpsData gpsdata;
+bool hasBeenReadThisCycle = false; // flag to check if the gps data has been read this cycle
 
 
 void setup()
@@ -82,7 +84,7 @@ void setup()
   // reserve memory for sensor data
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
   pinMode(2, OUTPUT);
-  digitalWrite(2, HIGH);
+  
 
 }
 
@@ -110,8 +112,7 @@ void loop()
     sensorData[bufferCount * SENSOR_DATA_SIZE + 11] = speed; // checksum is only speed right now
     lastReadTime200ms = currentTime;
   }
-
-  // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
+  readGPSData();
   if (bufferCount == 2000)
   {
     bufferCount = 0; // reset buffer size because ram is free after save to sdcard
@@ -276,31 +277,40 @@ void readGPSData() {
     while (Serial2.available() > 0) { 
       if (gps.encode(Serial2.read())) { 
         displayInfo(); 
+        Serial2.flush(); // clear the serial buffer after reading GPS data
       }
   }
 }
 
 void displayInfo() { 
   // Displaying Google Maps link with latitude and longitude information if GPS location is valid 
-  if (gps.location.isValid()) { 
-    Serial.print("http://www.google.com/maps/place/"); 
-    Serial.print(gps.location.lat(), 6); 
-    Serial.print(F(",")); 
-    Serial.println(gps.location.lng(), 6); } else { Serial.print(F("INVALID"));
-  } // Displaying date and time information if valid 
-  if (gps.date.isValid()) { 
-
-    // Displaying date in MM/DD/YYYY format // If the date is invalid, it prints "INVALID" 
-  } else 
-  { 
-    Serial.print(F("INVALID")); 
-  } // Displaying time in HH:MM:SS format if valid // If the time is invalid, it prints "INVALID" 
-  updateAllData();
+  if (gps.location.isValid() && gps.time.isValid()) { 
+    updateAllData();
+  }
 }
 
 void updateAllData(){
   gpsdata.latitude = gps.location.lat();
   gpsdata.longitude = gps.location.lng();
-  gpsdata.height = gps.altitude.meters();
-  gpsdata.time = gps.time.value();
-}
+  gpsdata.height = trunc(gps.altitude.meters());
+
+  int year = gps.date.year();
+  int month = gps.date.month();
+  int day = gps.date.day();
+  int hour = gps.time.hour();
+  int minute = gps.time.minute();
+  int second = gps.time.second();
+  
+  struct tm timeinfo;
+  timeinfo.tm_year = year - 1900; // Year since 1900
+  timeinfo.tm_mon = month - 1;    // Month from 0 to 11
+  timeinfo.tm_mday = day;
+  timeinfo.tm_hour = hour;
+  timeinfo.tm_min = minute;
+  timeinfo.tm_sec = second;
+  timeinfo.tm_isdst = 0; // No daylight saving time
+
+  // Convert to epoch time
+  time_t epochTime = mktime(&timeinfo);
+  gpsdata.time = epochTime;
+  }
