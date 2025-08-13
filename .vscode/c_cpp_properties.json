@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/shadowwolf/.platformio/**",
+                "/home/shadowwolf/.platformio/packages/framework-arduinoespressif32/cores/esp32",
+                "/home/shadowwolf/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include",
+                "/home/shadowwolf/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/esp_additions/freertos",
+                "/home/shadowwolf/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/dio_qspi/include",
+                "/home/shadowwolf/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_common/include",
+                "/home/shadowwolf/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/port/xtensa/include",
+                "${workspaceFolder}/ESP32/esp32_cyclone/.pio/libdeps/esp32dev/TinyGPSPlus/src"
+		"/home/shadowwolf/.arduino15/packages/esp32/hardware/esp32/2.0.0/**",
+ 		"/home/shadowwolf/.arduino15/packages/esp32/hardware/esp32/2.0.0/cores/esp32",
+ 		"/home/shadowwolf/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/**"
+          ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-clang-x64"
+        }
+    ],
+    "version": 4
+}
