@@ -156,6 +156,18 @@ namespace Shared.Models
         public List<SensorDataPacketResponse> SensorData { get; set; } = new();
     }
 
+    // Seeding request for creating demo activities
+    public class SeedActivityRequest
+    {
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public DateTime? StartTime { get; set; }
+        public string DeviceId { get; set; } = "test-device";
+        public bool UseTestdata { get; set; } = true;
+        public int SampleCount { get; set; } = 180; // number of data points
+        public double IntervalSeconds { get; set; } = 1.0; // spacing between points
+    }
+
     public class SensorDataResponse
     {
         public bool IsSuccess { get; set; }

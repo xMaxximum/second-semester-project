@@ -9,7 +9,7 @@ using System.Security.Claims;
 namespace Server.Controllers
 {
     [ApiController]
-    [Route(Constants.DefaultRoute)]
+    [Route(Constants.RoutePrefix)]
     public class SensorDataController: ControllerBase
     {
         private readonly ApplicationDbContext _context;
