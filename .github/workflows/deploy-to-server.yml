@@ -44,9 +44,10 @@ jobs:
           git config core.sshCommand "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
           git config pull.rebase false
           
-          # Pull latest changes from main branch
+          # Pull latest changes from main branch (force overwrite local changes)
           echo "📥 Pulling latest changes..."
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
           
           # Clean up the deploy key
           rm -f ~/.ssh/deploy_key
