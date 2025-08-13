@@ -4,6 +4,10 @@
 #include <WiFi.h>
 #include "SD_MMC.h"
 #include "string.h"
+#include "TinyGPS++.h"
+#include <Arduino.h>
+
+
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
@@ -16,6 +20,15 @@ void setupWlan();
 // interface used for sdcard (false is SPI)
 #define SDMMC true
 #define CUSTOM_MOSI 16
+// setup GPS serial connection
+void setupGPS();
+void readGPSData();
+void displayInfo();
+void updateAllData();
+
+#define CUSTOM_TX_GPS 17
+#define CUSTOM_RX_GPS 16
+#define CUSTOM_MOSI 18
 #define CUSTOM_MISO 4
 #define CUSTOM_SCK 15
 #define CUSTOM_CS 2
@@ -24,7 +37,7 @@ void setupWlan();
 #define SENSOR_DATA_SIZE 12
 
 // magnet sensor
-#define PIN_MAGNET 17
+#define PIN_MAGNET 13
 #define WHEEL_DIAMETER 0.6 // 26 inch wheel
 
 // data specific
@@ -43,22 +56,34 @@ int lastState = LOW, currentState, flankCount = 0, rpm, speed;
 
 // only get data every 200ms
 unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dtTo1000ms = 0, dtTo200ms = 0;
+ // GPS Serial
+TinyGPSPlus gps;
+
+struct gpsData{
+  double latitude;
+  double longitude;
+  double height;
+  time_t time;
+};
+gpsData gpsdata;
 
 void setup()
 {
   Serial.begin(115200);
   // wait for serial monitor to connect
-  delay(3000);
-  Serial.println("test");
+  delay(8000);
 
   setupFileSystem();
   setupWlan();
+  setupGPS();
 
-  // reserve memory for sensor data
+
+  Serial.println("Setup complete. Starting main loop...");
+
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
+  pinMode(2, OUTPUT);
+  
 
-  // digital input for rpm sensor (magnet sensor)
-  pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
 }
 
 void loop()
@@ -66,6 +91,7 @@ void loop()
   currentTime = millis();
 
   getSpeed();
+  readGPSData();
 
   dtTo200ms = currentTime - lastReadTime200ms;
   if (dtTo200ms >= 200)
@@ -73,9 +99,9 @@ void loop()
     bufferCount++;
     sensorData[bufferCount * SENSOR_DATA_SIZE] = 0; // temperature
     sensorData[bufferCount * SENSOR_DATA_SIZE + 1] = (float)speed;
-    sensorData[bufferCount * SENSOR_DATA_SIZE + 2] = 0; // latitude
-    sensorData[bufferCount * SENSOR_DATA_SIZE + 3] = 0;
-    sensorData[bufferCount * SENSOR_DATA_SIZE + 4] = 0;
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 2] = gpsdata.latitude; // latitude
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 3] = gpsdata.longitude; // longitude
+    sensorData[bufferCount * SENSOR_DATA_SIZE + 4] = gpsdata.height;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 5] = 0;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 6] = 0;
     sensorData[bufferCount * SENSOR_DATA_SIZE + 7] = 0;
@@ -85,8 +111,7 @@ void loop()
     sensorData[bufferCount * SENSOR_DATA_SIZE + 11] = speed; // checksum is only speed right now
     lastReadTime200ms = currentTime;
   }
-
-  // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
+  readGPSData();
   if (bufferCount == 2000)
   {
     bufferCount = 0; // reset buffer size because ram is free after save to sdcard
@@ -240,3 +265,51 @@ void testRead()
   }
   free(sensorDataRead);
 }
+
+
+void setupGPS(){
+  Serial2.begin(9600);
+  Serial.println("GPS Serial started");
+}
+
+void readGPSData() {
+    while (Serial2.available() > 0) { 
+      if (gps.encode(Serial2.read())) { 
+        displayInfo(); 
+        Serial2.flush(); // clear the serial buffer after reading GPS data
+      }
+  }
+}
+
+void displayInfo() { 
+  // Displaying Google Maps link with latitude and longitude information if GPS location is valid 
+  if (gps.location.isValid() && gps.time.isValid()) { 
+    updateAllData();
+  }
+}
+
+void updateAllData(){
+  gpsdata.latitude = gps.location.lat();
+  gpsdata.longitude = gps.location.lng();
+  gpsdata.height = trunc(gps.altitude.meters());
+
+  int year = gps.date.year();
+  int month = gps.date.month();
+  int day = gps.date.day();
+  int hour = gps.time.hour();
+  int minute = gps.time.minute();
+  int second = gps.time.second();
+  
+  struct tm timeinfo;
+  timeinfo.tm_year = year - 1900; // Year since 1900
+  timeinfo.tm_mon = month - 1;    // Month from 0 to 11
+  timeinfo.tm_mday = day;
+  timeinfo.tm_hour = hour;
+  timeinfo.tm_min = minute;
+  timeinfo.tm_sec = second;
+  timeinfo.tm_isdst = 0; // No daylight saving time
+
+  // Convert to epoch time
+  time_t epochTime = mktime(&timeinfo);
+  gpsdata.time = epochTime;
+  }
