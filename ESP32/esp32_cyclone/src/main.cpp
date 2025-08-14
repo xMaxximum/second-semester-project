@@ -17,6 +17,11 @@ void getSpeed();
 // setup wlan connection with sdcard credentials
 void setupWlan();
 
+// setup the first time configuration (if not done yet)
+void checkFirstTimeConfig();
+void setupSequence();
+
+
 // interface used for sdcard (false is SPI)
 #define SDMMC true
 #define CUSTOM_MOSI 16
@@ -313,3 +318,23 @@ void updateAllData(){
   time_t epochTime = mktime(&timeinfo);
   gpsdata.time = epochTime;
   }
+
+
+void checkFirstTimeConfig(){
+  file = SD.open("/isSetup.flag", FILE_READ);
+  if(!file){
+    setupSequence();
+  }
+  else{
+    Serial.println("Setup already done, skipping setup sequence.");
+    file.close();
+  }
+}
+
+void setupSequence(){
+  Serial.println("Running setup sequence...");
+  WiFi.softAP("CycloneSetup", "INF2024AI");
+  
+
+
+}
