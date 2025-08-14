@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
@@ -9,7 +10,8 @@ using System.Security.Claims;
 namespace Server.Controllers
 {
     [ApiController]
-    [Route(Constants.RoutePrefix)]
+    [AllowAnonymous]
+    [Route(Constants.RoutePrefix + "/sensor")]
     public class SensorDataController: ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -32,11 +34,20 @@ namespace Server.Controllers
                     var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
                     return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
                 }
+
+                // Get device and user ID from device authentication middleware
+                var device = HttpContext.Items["Device"] as Device;
+                var deviceUserId = HttpContext.Items["DeviceUserId"] as long?;
+
+                if (device == null || deviceUserId == null)
+                {
+                    return Unauthorized(ApiResponse<ActivityResponse>.Failure("Device authentication required"));
+                }
                 
                 // find active activity for user
                 var activity = await _context.Activities
                     .Include(a => a.SensorDataPackets)
-                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Status == ActivityStatus.InProgress);
+                    .FirstOrDefaultAsync(a => a.UserId == deviceUserId && a.Status == ActivityStatus.InProgress);
 
                 if (activity == null)
                 {
@@ -67,12 +78,13 @@ namespace Server.Controllers
                     UpdatedAt = activity.UpdatedAt
                 };
 
-                _logger.LogInformation("Activity {ActivityId} stopped by device {UserId}", activity.Id, request.UserId);
+                _logger.LogInformation("Activity {ActivityId} stopped by device {DeviceId}", activity.Id, device.DeviceId);
                 return Ok(ApiResponse<ActivityResponse>.Success(response, "Activity stopped successfully"));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error stopping activity for user {UserId}", request.UserId);
+                var device = HttpContext.Items["Device"] as Device;
+                _logger.LogError(ex, "Error stopping activity for device {DeviceId}", device?.DeviceId ?? "unknown");
                 return StatusCode(500, ApiResponse<ActivityResponse>.Failure("Internal server error"));
             }
         }
@@ -81,16 +93,28 @@ namespace Server.Controllers
         public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData(
             [FromBody] SensorDataPacketRequest requestData)
         {
+
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
+                return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
+            }
+            long? deviceUserId = 0;
+
             try
             {
-                if (!ModelState.IsValid)
+
+                // Get device and user ID from device authentication middleware
+                var device = HttpContext.Items["Device"] as Device;
+                deviceUserId = HttpContext.Items["DeviceUserId"] as long?;
+
+                if (device == null || deviceUserId == null)
                 {
-                    var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
-                    return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
+                    return Unauthorized(ApiResponse<SensorDataPacketResponse>.Failure("Device authentication required"));
                 }
                 
-                // Get or create activity for this device
-                var activity = await GetOrCreateActiveActivity(requestData.UserId, requestData.DeviceId);
+                // Get or create activity for this device - use the device's user ID
+                var activity = await GetOrCreateActiveActivity(deviceUserId.Value, device.DeviceId);
 
                 if (activity == null)
                     return StatusCode(500, ApiResponse<string>.Failure("Failed to create or retrieve activity"));
@@ -136,7 +160,7 @@ namespace Server.Controllers
                         AccelerationY = dataPoint.AccelerationY,
                         AccelerationZ = dataPoint.AccelerationZ,
                         Checksum = dataPoint.Checksum,
-                        DeviceId = requestData.DeviceId,
+                        DeviceId = device.DeviceId, // Use authenticated device ID
                         CreatedAt = DateTime.UtcNow
                     };
                     sensorPacket.IsChecksumValid = sensorPacket.ValidateChecksum();
@@ -170,7 +194,7 @@ namespace Server.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing CSV sensor data for {DeviceId}", requestData.DeviceId);
+                _logger.LogError(ex, "Error processing CSV sensor data for {DeviceId}", deviceUserId);
                 return StatusCode(500, ApiResponse<string>.Failure("Internal server error"));
             }
         }

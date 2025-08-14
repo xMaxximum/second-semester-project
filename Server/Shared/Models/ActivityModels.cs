@@ -84,10 +84,6 @@ namespace Shared.Models
     public class SensorDataPacketRequest
     {
         [Required]
-        public long UserId { get; set; }
-        [Required]
-        public string DeviceId { get; set; } = string.Empty;
-        [Required]
         public string CsvData { get; set; } = string.Empty;
     }
     
