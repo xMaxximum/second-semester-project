@@ -12,6 +12,7 @@ using System.Xml;
 namespace Server.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route(Constants.RoutePrefix + "/activities")]
     public class ActivityController : ControllerBase
     {
@@ -26,7 +27,6 @@ namespace Server.Controllers
             _env = env;
         }
 
-        [Authorize]
         [HttpGet]
         public async Task<ActionResult<ActivityListResponse>> GetActivities(
             [FromQuery] int page = 1, 
@@ -93,7 +93,6 @@ namespace Server.Controllers
 
         // GET: api/activities/{id}
         [HttpGet("{id}")]
-        [Authorize]
         public async Task<ActionResult<ActivityDetailsResponse>> GetActivity(long id)
         {
             try
@@ -164,6 +163,7 @@ namespace Server.Controllers
         }
 
         // POST: api/activities
+        // only for testing right now
         [HttpPost]
         public async Task<ActionResult<ApiResponse<ActivityResponse>>> CreateActivity(ActivityCreateRequest request)
         {
@@ -221,7 +221,6 @@ namespace Server.Controllers
 
         // PUT: api/activities/{id}
         [HttpPut("{id}")]
-        [Authorize]
         public async Task<ActionResult<ApiResponse<ActivityResponse>>> UpdateActivity(long id, ActivityUpdateRequest request)
         {
             try
@@ -287,7 +286,6 @@ namespace Server.Controllers
 
         // DELETE: api/activities/{id}
         [HttpDelete("{id}")]
-        [Authorize]
         public async Task<ActionResult<ApiResponse<object>>> DeleteActivity(long id)
         {
             try
@@ -317,7 +315,6 @@ namespace Server.Controllers
 
         // POST: api/activities/seed
         [HttpPost("seed")]
-        [Authorize]
         public async Task<ActionResult<ApiResponse<ActivityResponse>>> SeedActivity([FromBody] SeedActivityRequest request)
         {
             try
