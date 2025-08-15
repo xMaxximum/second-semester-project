@@ -5,7 +5,32 @@
 
 <PageTitle>@(_details?.Activity?.Name ?? "Activity Details")</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+<style>
+    .background-grid {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.05;
+    }
+    .icon-header {
+        display: flex;
+        align-items: center;
+    }
+</style>
+
+<!-- Background Grid SVG -->
+<div class="background-grid">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+        <defs>
+            <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
+                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25"/>
+            </pattern>
+        </defs>
+        <rect width="100" height="100" fill="url(#grid)"/>
+    </svg>
+</div>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-16 mb-16">
     <div class="d-flex align-items-center justify-space-between mb-4" style="flex-wrap: wrap; gap: 10px;">
         <div class="d-flex align-items-center">
             <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" 
@@ -106,7 +131,7 @@
 
             <!-- Key Metrics Row -->
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Elevation="2" Class="pa-4">
+                <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
                     <div class="d-flex flex-column align-items-center gap-1">
                         <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Large" Color="Color.Secondary" />
                         <MudText Typo="Typo.h6">@Math.Round((_details.Activity.Analytics?.TotalDistance ?? 0)/1000.0, 2) km</MudText>
@@ -116,7 +141,7 @@
             </MudItem>
 
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Elevation="2" Class="pa-4">
+                <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
                     <div class="d-flex flex-column align-items-center gap-1">
                         <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Large" Color="Color.Success" />
                         <MudText Typo="Typo.h6">@Math.Round(_details.Activity.Analytics?.AverageSpeed ?? 0, 1) km/h</MudText>
@@ -126,7 +151,7 @@
             </MudItem>
 
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Elevation="2" Class="pa-4">
+                <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
                     <div class="d-flex flex-column align-items-center gap-1">
                         <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Large" Color="Color.Warning" />
                         <MudText Typo="Typo.h6">@FormatDuration(_details.Activity.Duration)</MudText>
@@ -136,7 +161,7 @@
             </MudItem>
 
             <MudItem xs="12" sm="6" md="3">
-                <MudCard Elevation="2" Class="pa-4">
+                <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
                     <div class="d-flex flex-column align-items-center gap-1">
                         <MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Large" Color="Color.Info" />
                         <MudText Typo="Typo.h6">@Math.Round(_details.Activity.Analytics?.AverageTemperature ?? 0, 1)°C</MudText>
@@ -147,10 +172,10 @@
 
             <!-- Activity Timeline -->
             <MudItem xs="12" md="6">
-                <MudCard Elevation="2">
+                <MudCard Elevation="3">
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">
+                            <MudText Typo="Typo.h6" Class="icon-header">
                                 <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" />
                                 Timeline
                             </MudText>
@@ -183,7 +208,7 @@
 
             <!-- Additional Metrics -->
             <MudItem xs="12" md="6">
-                <MudCard Elevation="2">
+                <MudCard Elevation="3">
                     <MudCardHeader>
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6">
@@ -213,7 +238,7 @@
 
             <!-- Sensor Data Table -->
             <MudItem xs="12">
-                <MudCard Elevation="2">
+                <MudCard Elevation="3">
                     <MudCardHeader>
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6">

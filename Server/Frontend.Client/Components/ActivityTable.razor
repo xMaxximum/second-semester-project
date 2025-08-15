@@ -4,13 +4,23 @@
 @inject NavigationManager Nav
 @inject IDialogService DialogService
 
+<style>
+    .icon-header {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        justify-content: flex-start;
+    }
+</style>
+
 <MudTable T="Element" Elevation="3" Items="@Elements" Dense="@dense" Hover="@hover" 
           Class="pa-4" Bordered="@bordered" Striped="@striped" @bind-SelectedItem="selectedItem1"
           Filter="new Func<Element,bool>(FilterFunc1)" Loading="_loading" LoadingProgressColor="Color.Primary">
     <ToolBarContent>
         <div class="d-flex align-items-center gap-3 flex-grow-1">
-            <MudIcon Icon="@Icons.Material.Filled.DirectionsRun" Color="Color.Primary" />
-            <MudText Typo="Typo.h6" Color="Color.Primary">Recent Activities</MudText>
+            <MudText Typo="Typo.h6" Color="Color.Primary" Class="icon-header"><MudIcon Icon="@Icons.Material.Filled.DirectionsRun" Color="Color.Primary" />
+            Recent Activities</MudText>
             <MudSpacer />
             
             <MudButton Color="Color.Primary" 
@@ -23,7 +33,7 @@
             
             <MudTextField @bind-Value="searchString1" 
                          @oninput="@(args => OnSearchChanged(args.Value?.ToString()))"
-                         Placeholder="Search by title or date..." 
+                         Placeholder="Search by title or date... ('2025', 'Aug', 'Test')" 
                          Adornment="Adornment.Start"
                          AdornmentIcon="@Icons.Material.Filled.Search" 
                          IconSize="Size.Medium"
@@ -31,19 +41,53 @@
                          Margin="Margin.Dense"
                          Style="min-width: 250px;"
                          Clearable="true"
-                         Immediate="true"
-                         HelperText="Try: 'Test', '2025', or 'Aug'" />
+                         Immediate="true" />
         </div>
     </ToolBarContent>
     <HeaderContent>
-        <MudTh Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" Class="mr-1" />Title</MudTh>
-        <MudTh Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" />Date</MudTh>
-        <MudTh Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.Straighten" Size="Size.Small" Class="mr-1" />Distance</MudTh>
-        <MudTh Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" Class="mr-1" />Duration</MudTh>
-        <MudTh Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Class="mr-1" />Avg Speed</MudTh>
-        <MudTh Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Class="mr-1" />Elevation</MudTh>
-        <MudTh Style="font-weight: 600; text-align: center;">Actions</MudTh>
+        <MudTh>
+            <div class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" />
+                Title
+            </div>
+        </MudTh>
+        <MudTh>
+            <div class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                Date
+            </div>
+        </MudTh>
+        <MudTh>
+            <div class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Straighten" Size="Size.Small" />
+                Distance
+            </div>
+        </MudTh>
+        <MudTh>
+            <div class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
+                Duration
+            </div>
+        </MudTh>
+        <MudTh>
+            <div class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" />
+                Avg Speed
+            </div>
+        </MudTh>
+        <MudTh>
+            <div class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" />
+                Elevation
+            </div>
+        </MudTh>
+        <MudTh>
+            <div class="icon-header" style="justify-content: center;">
+                Actions
+            </div>
+        </MudTh>
     </HeaderContent>
+
     <RowTemplate Context="element">
         <MudTd DataLabel="Title">
             <MudButton Variant="Variant.Text" 
