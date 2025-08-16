@@ -1,10 +1,7 @@
 @page "/profile"
 @rendermode InteractiveWebAssembly
 @using Shared.Models
-@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Authorization
-@using MudBlazor
-@using Frontend.Client.Services
 @inject AuthService AuthService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -20,13 +17,6 @@
         height: 100%;
     }
 
-    .background-grid {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        opacity: 0.05;
-    }
-
     .profile-wrapper {
         position: relative;
         min-height: 100vh;
@@ -35,24 +25,8 @@
         justify-content: center;
         padding: 2rem;
     }
-
-    .icon-header {
-        display: flex;
-        align-items: center;
-    }
 </style>
 
-<!-- Background Grid SVG -->
-<div class="background-grid">
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
-        <defs>
-            <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
-                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25" />
-            </pattern>
-        </defs>
-        <rect width="100" height="100" fill="url(#grid)" />
-    </svg>
-</div>
 
 <!-- Foreground Content -->
 <div class="profile-wrapper">
