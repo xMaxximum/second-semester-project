@@ -4,70 +4,245 @@
 @inject NavigationManager Nav
 @inject IDialogService DialogService
 
-<MudTable T="Element" Elevation="3" Items="@Elements" Dense="@dense" Hover="@hover" 
+<style>
+    .mud-table-toolbar {
+        overflow: visible !important;
+        min-height: auto !important;
+        padding: 16px !important;
+    }
+
+    .toolbar-flex {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-grow: 1;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-responsive {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        width: 100%;
+        overflow: visible;
+        min-height: auto;
+    }
+
+    .toolbar-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+        flex-wrap: wrap;
+        min-height: auto;
+    }
+
+    .toolbar-title {
+        flex-shrink: 0;
+        overflow: visible;
+    }
+
+    @@media (max-width: 767px) {
+        .toolbar-title {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .toolbar-title .icon-header {
+            justify-content: center;
+        }
+    }
+
+    .toolbar-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+        overflow: visible;
+    }
+
+    .search-field {
+        min-width: 200px;
+        flex: 1;
+        overflow: visible;
+    }
+
+    @@media (min-width: 768px) {
+        .toolbar-responsive {
+            flex-direction: row;
+            align-items: center;
+        }
+
+        .toolbar-row {
+            flex-wrap: nowrap;
+        }
+
+        .search-field {
+            min-width: 250px;
+            flex: 0 1 auto;
+        }
+    }
+
+    @@media (min-width: 1024px) {
+        .search-field {
+            min-width: 300px;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .toolbar-responsive {
+            padding: 0.5rem 0;
+        }
+
+        .toolbar-row {
+            gap: 0.5rem;
+        }
+
+        .toolbar-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .toolbar-actions .mud-button {
+            flex: 1;
+            min-height: 36px;
+        }
+
+        .search-field {
+            min-width: 100%;
+        }
+
+        .toolbar-title .mud-typography {
+            font-size: 1.25rem !important;
+        }
+
+        .mud-input-control {
+            overflow: visible !important;
+        }
+    }
+
+    .mud-table-container {
+        overflow-x: auto;
+        overflow-y: visible !important;
+    }
+
+    .mud-toolbar {
+        overflow: visible !important;
+        min-height: fit-content !important;
+    }
+</style>
+
+<MudTable T="Element" Elevation="3" Items="@Elements" Dense="@dense" Hover="@hover"
           Class="pa-4" Bordered="@bordered" Striped="@striped" @bind-SelectedItem="selectedItem1"
           Filter="new Func<Element,bool>(FilterFunc1)" Loading="_loading" LoadingProgressColor="Color.Primary">
     <ToolBarContent>
-        <div class="d-flex align-items-center gap-3 flex-grow-1">
-            <MudText Typo="Typo.h6" Color="Color.Primary" Class="icon-header"><MudIcon Icon="@Icons.Material.Filled.DirectionsRun" Color="Color.Primary" />
-            Recent Activities</MudText>
-            <MudSpacer />
-            
-            <MudButton Color="Color.Primary" 
-                       Variant="Variant.Filled" 
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="OpenSeedDialog"
-                       Class="mr-2">
-                Create Test Activity
-            </MudButton>
-            
-            <MudTextField @bind-Value="searchString1" 
-                         @oninput="@(args => OnSearchChanged(args.Value?.ToString()))"
-                         Placeholder="Search by title or date... ('2025', 'Aug', 'Test')" 
-                         Adornment="Adornment.Start"
-                         AdornmentIcon="@Icons.Material.Filled.Search" 
-                         IconSize="Size.Medium"
-                         Variant="Variant.Outlined"
-                         Margin="Margin.Dense"
-                         Style="min-width: 250px;"
-                         Clearable="true"
-                         Immediate="true" />
+        <div class="toolbar-responsive">
+            <div class="toolbar-row">
+                <div class="toolbar-title">
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Class="icon-header">
+                        <MudIcon Icon="@Icons.Material.Filled.DirectionsRun" Color="Color.Primary"/>
+                        Recent Activities
+                    </MudText>
+                </div>
+
+                <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="false">
+                    <MudSpacer/>
+                </MudHidden>
+
+                <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="false">
+                    <div class="toolbar-actions">
+                        <MudButton Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenSeedDialog"
+                                   Size="Size.Medium">
+                            Create Test Activity
+                        </MudButton>
+
+                        <MudTextField @bind-Value="searchString1"
+                                      @oninput="@(args => OnSearchChanged(args.Value?.ToString()))"
+                                      Placeholder="Search by title or date..."
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      IconSize="Size.Medium"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="search-field"
+                                      Clearable="true"
+                                      Immediate="true"/>
+                    </div>
+                </MudHidden>
+            </div>
+
+            <MudHidden Breakpoint="Breakpoint.MdAndUp" Invert="false">
+                <div class="toolbar-row">
+                    <div class="toolbar-actions">
+                        <MudButton Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenSeedDialog"
+                                   Size="Size.Small">
+                            <MudHidden Breakpoint="Breakpoint.Xs" Invert="false">
+                                Create Test Activity
+                            </MudHidden>
+                            <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert="false">
+                                Create Test
+                            </MudHidden>
+                        </MudButton>
+                    </div>
+                </div>
+
+                <div class="toolbar-row">
+                    <MudTextField @bind-Value="searchString1"
+                                  @oninput="@(args => OnSearchChanged(args.Value?.ToString()))"
+                                  Placeholder="Search activities..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  IconSize="Size.Medium"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="search-field"
+                                  Clearable="true"
+                                  Immediate="true"/>
+                </div>
+            </MudHidden>
         </div>
     </ToolBarContent>
     <HeaderContent>
         <MudTh>
             <div class="table-header">
-                <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" />
+                <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small"/>
                 Title
             </div>
         </MudTh>
         <MudTh>
             <div class="table-header">
-                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small"/>
                 Date
             </div>
         </MudTh>
         <MudTh>
             <div class="table-header">
-                <MudIcon Icon="@Icons.Material.Filled.Straighten" Size="Size.Small" />
+                <MudIcon Icon="@Icons.Material.Filled.Straighten" Size="Size.Small"/>
                 Distance
             </div>
         </MudTh>
         <MudTh>
             <div class="table-header">
-                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
+                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small"/>
                 Duration
             </div>
         </MudTh>
         <MudTh>
             <div class="table-header">
-                <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" />
+                <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small"/>
                 Avg Speed
             </div>
         </MudTh>
         <MudTh>
             <div class="table-header">
-                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" />
+                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small"/>
                 Elevation
             </div>
         </MudTh>
@@ -80,8 +255,8 @@
 
     <RowTemplate Context="element">
         <MudTd DataLabel="Title">
-            <MudButton Variant="Variant.Text" 
-                       Color="Color.Primary" 
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
                        OnClick="() => ViewDetails(element.ActivityId)"
                        Style="padding: 0; text-transform: none; justify-content: flex-start; font-weight: 500;">
                 @element.Title
@@ -104,17 +279,17 @@
             <MudText Typo="Typo.body2">@element.ElevationGain m</MudText>
         </MudTd>
         <MudTd Style="text-align: center;">
-            <MudButton Color="Color.Primary" 
-                       Variant="Variant.Text" 
-                       Size="Size.Small" 
-                       StartIcon="@Icons.Material.Filled.Visibility" 
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Text"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Visibility"
                        OnClick="() => ViewDetails(element.ActivityId)">
                 View Details
             </MudButton>
         </MudTd>
     </RowTemplate>
     <PagerContent>
-        <MudTablePager PageSizeOptions="new int[]{10, 25, 50, 100}" />
+        <MudTablePager PageSizeOptions="new int[]{10, 25, 50, 100}"/>
     </PagerContent>
 </MudTable>
 
@@ -150,7 +325,7 @@
 
         searchString = searchString.Trim();
 
-        if (!string.IsNullOrEmpty(activity.Title) && 
+        if (!string.IsNullOrEmpty(activity.Title) &&
             activity.Title.Contains(searchString, StringComparison.OrdinalIgnoreCase))
             return true;
 
@@ -158,24 +333,23 @@
         var date = activity.Date;
         var dateFormats = new[]
         {
-            date.ToString("yyyy-MM-dd"),        // 2025-08-12
-            date.ToString("MMM dd, yyyy"),      // Aug 12, 2025
-            date.ToString("dd/MM/yyyy"),        // 12/08/2025
-            date.ToString("MM/dd/yyyy"),        // 08/12/2025
-            date.ToString("yyyy"),              // 2025
-            date.ToString("MMM"),               // Aug
-            date.ToString("MMMM"),              // August
-            date.ToString("dd MMM"),            // 12 Aug
-            date.ToString("MMM yyyy"),          // Aug 2025
-            date.ToString("MMMM yyyy"),         // August 2025
-            date.DayOfWeek.ToString(),          // Monday
-            date.ToString("dddd")               // Monday (full name)
+            date.ToString("yyyy-MM-dd"), // 2025-08-12
+            date.ToString("MMM dd, yyyy"), // Aug 12, 2025
+            date.ToString("dd/MM/yyyy"), // 12/08/2025
+            date.ToString("MM/dd/yyyy"), // 08/12/2025
+            date.ToString("yyyy"), // 2025
+            date.ToString("MMM"), // Aug
+            date.ToString("MMMM"), // August
+            date.ToString("dd MMM"), // 12 Aug
+            date.ToString("MMM yyyy"), // Aug 2025
+            date.ToString("MMMM yyyy"), // August 2025
+            date.DayOfWeek.ToString(), // Monday
+            date.ToString("dddd") // Monday (full name)
         };
 
         if (dateFormats.Any(format => format.Contains(searchString, StringComparison.OrdinalIgnoreCase)))
             return true;
 
-        // Search in numeric values (for power users)
         if (activity.Distance.ToString("F2").Contains(searchString, StringComparison.OrdinalIgnoreCase))
             return true;
 
@@ -199,8 +373,9 @@
 
     private async Task LoadActivities()
     {
-        _loading = true; _error = null;
-        var resp = await ActivityService.GetActivitiesAsync(page:1, pageSize:50);
+        _loading = true;
+        _error = null;
+        var resp = await ActivityService.GetActivitiesAsync(page: 1, pageSize: 50);
         if (resp?.IsSuccess == true)
         {
             _activities = resp.Activities;
@@ -221,6 +396,7 @@
         {
             _error = resp?.Message ?? "Failed to load activities";
         }
+
         _loading = false;
     }
 
@@ -244,6 +420,7 @@
         {
             await LoadActivities();
         }
+
         _editing = null;
         _editingTitle = string.Empty;
     }
@@ -273,4 +450,5 @@
             return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
         return $"{duration.Seconds}s";
     }
+
 }
