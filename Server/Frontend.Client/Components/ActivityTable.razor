@@ -4,16 +4,6 @@
 @inject NavigationManager Nav
 @inject IDialogService DialogService
 
-<style>
-    .icon-header {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        white-space: nowrap;
-        justify-content: flex-start;
-    }
-</style>
-
 <MudTable T="Element" Elevation="3" Items="@Elements" Dense="@dense" Hover="@hover" 
           Class="pa-4" Bordered="@bordered" Striped="@striped" @bind-SelectedItem="selectedItem1"
           Filter="new Func<Element,bool>(FilterFunc1)" Loading="_loading" LoadingProgressColor="Color.Primary">
@@ -46,43 +36,43 @@
     </ToolBarContent>
     <HeaderContent>
         <MudTh>
-            <div class="icon-header">
+            <div class="table-header">
                 <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" />
                 Title
             </div>
         </MudTh>
         <MudTh>
-            <div class="icon-header">
+            <div class="table-header">
                 <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
                 Date
             </div>
         </MudTh>
         <MudTh>
-            <div class="icon-header">
+            <div class="table-header">
                 <MudIcon Icon="@Icons.Material.Filled.Straighten" Size="Size.Small" />
                 Distance
             </div>
         </MudTh>
         <MudTh>
-            <div class="icon-header">
+            <div class="table-header">
                 <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
                 Duration
             </div>
         </MudTh>
         <MudTh>
-            <div class="icon-header">
+            <div class="table-header">
                 <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" />
                 Avg Speed
             </div>
         </MudTh>
         <MudTh>
-            <div class="icon-header">
+            <div class="table-header">
                 <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" />
                 Elevation
             </div>
         </MudTh>
         <MudTh>
-            <div class="icon-header" style="justify-content: center;">
+            <div class="table-header" style="justify-content: center;">
                 Actions
             </div>
         </MudTh>
