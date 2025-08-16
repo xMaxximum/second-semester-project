@@ -16,6 +16,33 @@
         display: flex;
         align-items: center;
     }
+    .kpi {
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-items: center; 
+        gap: 1px;
+        justify-content: center;
+    }
+    .table-header {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        justify-content: flex-start;
+    }
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        gap: 16px;
+    }
+    .error-container {
+        min-height: 60vh;
+        gap: 16px;
+    }
 </style>
 
 <!-- Background Grid SVG -->
@@ -33,35 +60,36 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-16 mb-16">
     <div class="d-flex align-items-center justify-space-between mb-4" style="flex-wrap: wrap; gap: 10px;">
         <div class="d-flex align-items-center">
-            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" 
+            <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.ArrowBack" 
                        Color="Color.Primary" OnClick="GoBack" Size="Size.Small">
                 Back
             </MudButton>
         </div>
-        <MudText Typo="Typo.h4" Class="text-center flex-grow-1" Style="font-weight: 600; min-width: 200px;">
-            Activity Details
-        </MudText>
         <div class="d-none d-sm-block" style="width: 80px;"></div> <!-- Spacer for centering on desktop -->
     </div>
 
     @if (_loading)
     {
-        <div class="d-flex align-items-center justify-content-center pa-8">
+        <div class="loading-container">
             <MudProgressCircular Size="Size.Large" Indeterminate="true" />
             <MudText Typo="Typo.h6">Loading activity details...</MudText>
         </div>
     }
     else if (!string.IsNullOrEmpty(_error))
     {
-        <MudAlert Severity="Severity.Error" Class="ma-4">
-            <MudText><strong>Error:</strong> @_error</MudText>
-        </MudAlert>
+        <div class="error-container">
+            <MudAlert Severity="Severity.Error" Class="ma-4">
+                <MudText><strong>Error:</strong> @_error</MudText>
+            </MudAlert>
+        </div>
     }
     else if (_details?.Activity is null)
     {
-        <MudAlert Severity="Severity.Info" Class="ma-4">
-            <MudText>Activity not found. It may have been deleted or you don't have permission to view it.</MudText>
-        </MudAlert>
+        <div class="error-container">
+            <MudAlert Severity="Severity.Info" Class="ma-4">
+                <MudText>Activity not found. It may have been deleted or you don't have permission to view it.</MudText>
+            </MudAlert>
+        </div>
     }
     else
     {
@@ -72,7 +100,7 @@
                     <MudCardHeader>
                         <CardHeaderContent>
                             <div class="d-flex align-items-center justify-space-between" style="width: 100%;">
-                                <div class="d-flex align-items-center flex-grow-1">
+                                <div class="d-flex align-items-center flex-grow-1 icon-header">
                                     <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
                                     @if (_editingTitle)
                                     {
@@ -101,7 +129,7 @@
                                     {
                                         <MudChip T="string" Color="Color.Success" Size="Size.Medium" 
                                                 Icon="@Icons.Material.Filled.CheckCircle" Style="font-weight: bold; padding: 8px 16px;">
-                                            🎉 Completed!
+                                            Completed!
                                         </MudChip>
                                     }
                                     else
@@ -122,7 +150,7 @@
                             </div>
                             @if (!string.IsNullOrEmpty(_details.Activity.Description))
                             {
-                                <MudText Typo="Typo.body1" Class="mt-2">@_details.Activity.Description</MudText>
+                                <MudText Typo="Typo.body1" Class="mt-2" Style=" text-align: justify">@_details.Activity.Description</MudText>
                             }
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -132,7 +160,7 @@
             <!-- Key Metrics Row -->
             <MudItem xs="12" sm="6" md="3">
                 <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
-                    <div class="d-flex flex-column align-items-center gap-1">
+                    <div class="kpi">
                         <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Large" Color="Color.Secondary" />
                         <MudText Typo="Typo.h6">@Math.Round((_details.Activity.Analytics?.TotalDistance ?? 0)/1000.0, 2) km</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Distance</MudText>
@@ -142,7 +170,7 @@
 
             <MudItem xs="12" sm="6" md="3">
                 <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
-                    <div class="d-flex flex-column align-items-center gap-1">
+                    <div class="kpi">
                         <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Large" Color="Color.Success" />
                         <MudText Typo="Typo.h6">@Math.Round(_details.Activity.Analytics?.AverageSpeed ?? 0, 1) km/h</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Speed</MudText>
@@ -152,7 +180,7 @@
 
             <MudItem xs="12" sm="6" md="3">
                 <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
-                    <div class="d-flex flex-column align-items-center gap-1">
+                    <div class="kpi">
                         <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Large" Color="Color.Warning" />
                         <MudText Typo="Typo.h6">@FormatDuration(_details.Activity.Duration)</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Duration</MudText>
@@ -162,17 +190,17 @@
 
             <MudItem xs="12" sm="6" md="3">
                 <MudCard Elevation="3" Class="pa-4" Style="align-items: center">
-                    <div class="d-flex flex-column align-items-center gap-1">
+                    <div class="kpi">
                         <MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Large" Color="Color.Info" />
                         <MudText Typo="Typo.h6">@Math.Round(_details.Activity.Analytics?.AverageTemperature ?? 0, 1)°C</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Temp</MudText>
                     </div>
                 </MudCard>
             </MudItem>
-
+            
             <!-- Activity Timeline -->
             <MudItem xs="12" md="6">
-                <MudCard Elevation="3">
+                <MudCard Elevation="3" Style="height: 100%">
                     <MudCardHeader>
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6" Class="icon-header">
@@ -208,10 +236,10 @@
 
             <!-- Additional Metrics -->
             <MudItem xs="12" md="6">
-                <MudCard Elevation="3">
+                <MudCard Elevation="3" Style="height: 100%">
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">
+                            <MudText Typo="Typo.h6" Class="icon-header">
                                 <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />
                                 Additional Metrics
                             </MudText>
@@ -235,13 +263,13 @@
                     </MudCardContent>
                 </MudCard>
             </MudItem>
-
+            
             <!-- Sensor Data Table -->
             <MudItem xs="12">
                 <MudCard Elevation="3">
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">
+                            <MudText Typo="Typo.h6" Class="icon-header">
                                 <MudIcon Icon="@Icons.Material.Filled.DataUsage" Class="mr-2" />
                                 Sensor Data (@_details.SensorData.Count points)
                             </MudText>
@@ -251,12 +279,47 @@
                         <MudTable Items="_details.SensorData" Dense="true" Hover="true" Striped="true" 
                                   FixedHeader="true" Height="400px">
                             <HeaderContent>
-                                <MudTh><MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />Time</MudTh>
-                                <MudTh><MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Class="mr-1" />Speed</MudTh>
-                                <MudTh><MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Small" Class="mr-1" />Temperature</MudTh>
-                                <MudTh><MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />Latitude</MudTh>
-                                <MudTh><MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />Longitude</MudTh>
-                                <MudTh><MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Class="mr-1" />Elevation</MudTh>
+                                <MudTh>
+                                    <div class="table-header">
+                                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
+                                        Time
+                                    </div>
+                                </MudTh>
+
+                                <MudTh>
+                                    <div class="table-header">
+                                        <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Class="mr-1" />
+                                        Speed
+                                    </div>
+                                </MudTh>
+
+                                <MudTh>
+                                    <div class="table-header">
+                                        <MudIcon Icon="@Icons.Material.Filled.Thermostat" Size="Size.Small" Class="mr-1" />
+                                        Temperature
+                                    </div>
+                                </MudTh>
+
+                                <MudTh>
+                                    <div class="table-header">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
+                                        Latitude
+                                    </div>
+                                </MudTh>
+
+                                <MudTh>
+                                    <div class="table-header">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
+                                        Longitude
+                                    </div>
+                                </MudTh>
+
+                                <MudTh>
+                                    <div class="table-header">
+                                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Class="mr-1" />
+                                        Elevation
+                                    </div>
+                                </MudTh>
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd DataLabel="Time">
