@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Device Setup</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 500px;
+      margin: 50px auto;
+      background: #ffffff;
+      padding: 20px 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 10px;
+      color: #333333;
+    }
+    p {
+      font-size: 14px;
+      color: #555555;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+      color: #333333;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #cccccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    input[type="submit"] {
+      margin-top: 20px;
+      background-color: #007BFF;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    input[type="submit"]:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Device Setup</h1>
+    <p>Please enter the Name and the Password of your home Wifi. </p>
+    <p>Once saved, the device will store this information and attempt to connect to your Wi-Fi network.</p>
+    <p>Please also input your connection number. It can be found on the Cyclone site under the tab "my devices". </p>
+    <form method="POST" action="/">
+      <label for="ssid">Wi-Fi Name</label>
+      <input type="text" id="ssid" name="ssid" required>
+      
+      <label for="password">Wi-Fi Password</label>
+      <input type="password" id="password" name="password" required>
+      
+      <label for="number">Connection number</label>
+      <input type="text" id="number" name="number" required>
+      
+      <input type="submit" value="Save">
+    </form>
+  </div>
+</body>
+</html>

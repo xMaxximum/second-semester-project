@@ -7,6 +7,7 @@
 #include "TinyGPS++.h"
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <HTTPClient.h>
 
 
 
@@ -66,6 +67,7 @@ unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dt
  // GPS Serial
 TinyGPSPlus gps;
 
+String authenticationNumber = ""; //
 struct gpsData{
   double latitude;
   double longitude;
@@ -407,6 +409,7 @@ void setupSequence() {
           wifiSSID = urlDC(body.substring(ssidIndex + 5, body.indexOf("&", ssidIndex)));
           wifiPassword = urlDC(body.substring(passIndex + 9, body.indexOf("&", passIndex)));
           userNumber = body.substring(numIndex + 7);
+          authenticationNumber = userNumber; // Store the authentication number
 
           Serial.println("Received configuration:");
           Serial.println("SSID: " + wifiSSID);
@@ -479,4 +482,50 @@ String urlDecode(String input) {
     }
   }
   return decoded;
+}
+
+
+void registerDevice(){
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Not connected to WiFi");
+    return;
+  }
+  uint64_t deviceID = ESP.getEfuseMac(); // Replace with your device ID logic
+  HTTPClient http;
+  if(setupMode){
+    http.begin("http://192.168.1.44:7248/api/device/register"); // Replace with your local URL
+  
+  } else {
+    String url = "http://91.99.84.89:7248/api/device/register";
+  }
+  
+  http.addHeader("Content-Type", "application/json");
+
+  // Construct JSON body
+  String jsonPayload = "{";
+  jsonPayload += "\"device_id\":\"" + deviceID;
+  jsonPayload += "\",";
+  jsonPayload += "\"number\":\"" + authenticationNumber + "\"";
+  jsonPayload += "}";
+
+
+  int httpResponseCode = http.POST(jsonPayload);
+
+  if (httpResponseCode > 0) {
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+    String response = http.getString();
+    Serial.println("Response: " + response);
+  } else {
+    Serial.print("Error code: ");
+    Serial.println(httpResponseCode);
+  }
+
+  http.end();
+  if(httpResponseCode == 200){
+    Serial.println("Device registered successfully.");
+  } else {
+    Serial.println("Failed to register device.");
+    digitalWrite(2, HIGH); // Turn on LED to indicate error
+  }
 }
