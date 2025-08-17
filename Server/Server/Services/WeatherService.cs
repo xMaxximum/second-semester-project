@@ -17,13 +17,16 @@ namespace Server.Services
             _apiKey = options.Value.WeatherApiKey;
         }
 
-        public async Task<WeatherData> GetWeatherAsync(double lat, double lon, string city)
+        // Method for getting weather by coordinates (if user provides exact lat/lon)
+        public async Task<WeatherData> GetWeatherAsync(double lat, double lon)
         {
-            if (cachedWeatherData.ContainsKey(city) &&
-                cachedWeatherData.TryGetValue(city, out WeatherData cachedData))
+            var cacheKey = $"{lat:F2},{lon:F2}";
+            
+            if (cachedWeatherData.ContainsKey(cacheKey) &&
+                cachedWeatherData.TryGetValue(cacheKey, out WeatherData cachedData))
             {
                 long nowMillis = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                if (nowMillis - cachedData.timestamp < 1000 * 60 * 10)
+                if (nowMillis - cachedData.timestamp < 1000 * 60 * 10) // 10 minute cache
                 {
                     return cachedData;
                 }
@@ -33,24 +36,86 @@ namespace Server.Services
             var weather = await _http.GetFromJsonAsync<OpenWeatherResponse>(url);
             if (weather == null) throw new Exception("Weather API failed");
 
-            WeatherData data = new WeatherData
+            WeatherData data = CreateWeatherData(weather);
+            cachedWeatherData[cacheKey] = data;
+            return data;
+        }
+
+        // Method for getting weather by city name (most common use case)
+        public async Task<WeatherData> GetWeatherByCityAsync(string cityName)
+        {
+            if (string.IsNullOrWhiteSpace(cityName))
+                throw new ArgumentException("City name cannot be empty", nameof(cityName));
+
+            var cacheKey = cityName.ToLowerInvariant();
+            
+            if (cachedWeatherData.ContainsKey(cacheKey) &&
+                cachedWeatherData.TryGetValue(cacheKey, out WeatherData cachedData))
+            {
+                long nowMillis = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                if (nowMillis - cachedData.timestamp < 1000 * 60 * 10) // 10 minute cache
+                {
+                    return cachedData;
+                }
+            }
+
+            var url = $"https://api.openweathermap.org/data/2.5/weather?q={Uri.EscapeDataString(cityName)}&appid={_apiKey}&units=metric";
+            var weather = await _http.GetFromJsonAsync<OpenWeatherResponse>(url);
+            if (weather == null) throw new Exception("Weather API failed - city not found");
+
+            WeatherData data = CreateWeatherData(weather);
+            cachedWeatherData[cacheKey] = data;
+            return data;
+        }
+
+        // Method for getting weather by city name and country code for better accuracy
+        public async Task<WeatherData> GetWeatherByCityAndCountryAsync(string cityName, string countryCode)
+        {
+            if (string.IsNullOrWhiteSpace(cityName))
+                throw new ArgumentException("City name cannot be empty", nameof(cityName));
+            
+            if (string.IsNullOrWhiteSpace(countryCode))
+                throw new ArgumentException("Country code cannot be empty", nameof(countryCode));
+
+            var cacheKey = $"{cityName.ToLowerInvariant()},{countryCode.ToUpperInvariant()}";
+            
+            if (cachedWeatherData.ContainsKey(cacheKey) &&
+                cachedWeatherData.TryGetValue(cacheKey, out WeatherData cachedData))
+            {
+                long nowMillis = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                if (nowMillis - cachedData.timestamp < 1000 * 60 * 10) // 10 minute cache
+                {
+                    return cachedData;
+                }
+            }
+
+            var url = $"https://api.openweathermap.org/data/2.5/weather?q={Uri.EscapeDataString(cityName)},{countryCode.ToUpperInvariant()}&appid={_apiKey}&units=metric";
+            var weather = await _http.GetFromJsonAsync<OpenWeatherResponse>(url);
+            if (weather == null) throw new Exception("Weather API failed - city/country combination not found");
+
+            WeatherData data = CreateWeatherData(weather);
+            cachedWeatherData[cacheKey] = data;
+            return data;
+        }
+
+        // Helper method to create WeatherData from API response
+        private WeatherData CreateWeatherData(OpenWeatherResponse weather)
+        {
+            return new WeatherData
             {
                 City = weather.Name,
                 CountryCode = weather.Sys.Country,
                 Datetime = DateTime.Now.ToString("dddd, d MMMM yyyy HH:mm", new CultureInfo("en-US")),
-                Temperature = (int)weather.Main.Temp,
-                FeelsLike = (int)weather.Main.FeelsLike,
+                Temperature = (int)Math.Round(weather.Main.Temp),
+                FeelsLike = (int)Math.Round(weather.Main.FeelsLike),
                 Description = weather.Weather[0].Description,
                 WindDirection = ConvertWindDirection(weather.Wind.Deg),
                 Humidity = weather.Main.Humidity,
                 CloudCoverage = weather.Clouds.All,
-                WindSpeed = (int)weather.Wind.Speed,
+                WindSpeed = (int)Math.Round(weather.Wind.Speed),
                 Condition = MapCondition(weather.Weather[0].Main),
                 timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond
             };
-
-            cachedWeatherData[city] = data;
-            return data;
         }
 
         private string ConvertWindDirection(int deg)
@@ -66,6 +131,7 @@ namespace Server.Services
             "clear" => WeatherCondition.Sunny,
             "clouds" => WeatherCondition.Cloudy,
             "rain" => WeatherCondition.Rainy,
+            "drizzle" => WeatherCondition.Rainy,
             _ => WeatherCondition.PartlyCloudy
         };
 
@@ -82,7 +148,7 @@ namespace Server.Services
             {
                 public double Temp { get; set; }            
                 
-                [JsonPropertyName(("feels_like"))]
+                [JsonPropertyName("feels_like")]
                 public double FeelsLike { get; set; }
                 public int Humidity { get; set; }
             }

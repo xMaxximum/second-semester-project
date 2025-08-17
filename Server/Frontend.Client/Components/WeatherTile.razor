@@ -1,4 +1,5 @@
 ﻿@using Shared.Models
+@inject ICookie Cookie
 
 @inject HttpClient Http
 <style>
@@ -28,157 +29,572 @@
         border: none;
     }
 
+    .location-form {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    .mud-alert-position {
+        align-items: center;
+    }
+
     @@media (min-width: 60rem) {
-    .responsive-grid {
-        display: flex;
-        flex-wrap: nowrap;
-        margin-top: auto;
-    }
+        .responsive-grid {
+            display: flex;
+            flex-wrap: nowrap;
+            margin-top: auto;
+        }
 
-    .left-pane {
-        border-right: 0.0625rem solid rgba(0, 0, 0, 0.12);
-        padding-right: 0;
-        flex: 1;
-    }
+        .left-pane {
+            border-right: 0.0625rem solid rgba(0, 0, 0, 0.12);
+            padding-right: 0;
+            flex: 1;
+        }
 
-    .right-pane {
-        padding-left: 0;
-        flex: 1;
-    }
+        .right-pane {
+            padding-left: 0;
+            flex: 1;
+        }
 
-    .divider-container {
-        display: none;
-    }
+        .divider-container {
+            display: none;
+        }
     }
 </style>
 
-@if (isLoading)
+@if (!_locationProvided)
 {
-    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
-        <MudText>Loading weather data...</MudText>
+    <!-- Location Input Form -->
+    <MudPaper Elevation="3" Style="padding: 2rem;">
+        <div class="location-form">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Primary">
+                    Get Weather for Your Location
+                </MudText>
+
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Dark">
+                    Enter your city name or coordinates to get current weather information
+                </MudText>
+
+                @if (_hasSavedLocation)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                        <MudStack Row="true" Style="justify-content: space-between; align-items: center;">
+                            <MudText>Use saved location: <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Info" OnClick="LoadSavedLocation" Disabled="_isLoading">@_savedLocationDisplay</MudButton></MudText>
+                        </MudStack>
+                    </MudAlert>
+                }
+
+                <MudDivider/>
+
+                <!-- City Input Section -->
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6" Color="Color.Primary">Search by City</MudText>
+
+                    <MudTextField @bind-Value="_cityInput"
+                                  Label="City Name"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="e.g., London, New York, Tokyo"
+                                  Disabled="_isLoading"/>
+
+                    <MudTextField @bind-Value="_countryCodeInput"
+                                  Label="Country Code (Optional)"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="e.g., US, GB, DE"
+                                  HelperText="2-letter country code for better accuracy"
+                                  Disabled="_isLoading"/>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="GetWeatherByCity"
+                               Disabled="_isLoading || string.IsNullOrWhiteSpace(_cityInput)"
+                               FullWidth="true">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                            <MudText Style="margin-left: 10px;">Getting Weather...</MudText>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="Icons.Material.Filled.Search"/>
+                            <MudText Style="margin-left: 10px;">Get Weather</MudText>
+                        }
+                    </MudButton>
+                </MudStack>
+
+                <MudDivider>
+                    <MudText Typo="Typo.caption">OR</MudText>
+                </MudDivider>
+
+                <!-- Coordinates Input Section -->
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6" Color="Color.Primary">Search by Coordinates</MudText>
+
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudNumericField @bind-Value="_latitudeInput"
+                                             Label="Latitude"
+                                             Variant="Variant.Outlined"
+                                             Placeholder="51.5074"
+                                             Min="-90" Max="90"
+                                             Disabled="_isLoading"/>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudNumericField @bind-Value="_longitudeInput"
+                                             Label="Longitude"
+                                             Variant="Variant.Outlined"
+                                             Placeholder="-0.1278"
+                                             Min="-180" Max="180"
+                                             Disabled="_isLoading"/>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="GetWeatherByCoordinates"
+                               Disabled="_isLoading || !_latitudeInput.HasValue || !_longitudeInput.HasValue"
+                               FullWidth="true">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                            <MudText Style="margin-left: 10px;">Getting Weather...</MudText>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="Icons.Material.Filled.LocationOn"/>
+                            <MudText Style="margin-left: 10px;">Get Weather by Coordinates</MudText>
+                        }
+                    </MudButton>
+                </MudStack>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                        @_errorMessage
+                    </MudAlert>
+                }
+            </MudStack>
+        </div>
     </MudPaper>
 }
-else if (data is null)
+else if (_isLoading)
 {
     <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
-        <MudText Color="Color.Error">Failed to load weather data.</MudText>
+        <div class="centered-content">
+            <MudProgressCircular Size="Size.Large" Indeterminate="true"/>
+            <MudText Style="margin-top: 1rem;">Loading weather data...</MudText>
+        </div>
+    </MudPaper>
+}
+else if (_data is null)
+{
+    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
+        <MudStack Spacing="2" Class="centered-content">
+            <MudText Color="Color.Error">Failed to load weather data.</MudText>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       OnClick="ResetLocation">
+                Try Different Location
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else if (_hasSavedLocation && _data != null)
+{
+    <!-- Weather Display -->
+    <MudPaper Elevation="3" Style="padding: 1.5rem;">
+        <MudStack Spacing="2">
+            <!-- Header with location and reset button -->
+            <MudStack Row="true" Style="justify-content: space-between; align-items: center">
+                <MudText Typo="Typo.h6" Color="Color.Primary">Current Weather</MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           OnClick="ResetLocation">Change Location
+                </MudButton>
+            </MudStack>
+
+            <MudGrid Class="responsive-grid">
+                <!-- Left Column -->
+                <MudItem xs="12" md="6" Class="left-pane">
+                    <MudStack Spacing="2" Class="centered-content">
+                        <MudText Typo="Typo.subtitle1" Color="Color.Dark" Align="Align.Center">
+                            @_data.City, @_data.CountryCode
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Dark">@_data.Datetime</MudText>
+
+                        <MudStack Row="true" Spacing="3" Class="centered-content">
+                            <MudIcon Icon="@GetIcon(_data.Condition)" Size="Size.Large" Color="Color.Primary"/>
+                            <MudStack Spacing="0" Style="align-items: flex-start;">
+                                <MudText Typo="Typo.h4">@_data.Temperature°C</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Dark">@_data.Description</MudText>
+                            </MudStack>
+                        </MudStack>
+                    </MudStack>
+                </MudItem>
+
+                <!-- Responsive Divider - only shows on mobile -->
+                <MudItem xs="12" Class="divider-container">
+                    <div class="responsive-divider"></div>
+                </MudItem>
+
+                <!-- Right Column -->
+                <MudItem xs="12" md="6" Class="right-pane">
+                    <MudStack Spacing="2">
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Color="Color.Dark">Feels Like:</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.FeelsLike°C</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small"
+                                             Color="Color.Info"/>
+                                    <MudText Color="Color.Dark">Humidity:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.Humidity%</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                             Color="Color.Default"/>
+                                    <MudText Color="Color.Dark">Cloud Coverage:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.CloudCoverage%</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success"/>
+                                    <MudText Color="Color.Dark">Wind Speed:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.WindSpeed m/s @_data.WindDirection</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudStack>
     </MudPaper>
 }
 else
 {
+    <!-- Weather Display -->
     <MudPaper Elevation="3" Style="padding: 1.5rem;">
-        <MudGrid Class="responsive-grid">
-            <!-- Left Column -->
-            <MudItem xs="12" md="6" Class="left-pane">
-                <MudStack Spacing="2" Class="centered-content">
-                    <MudText Typo="Typo.subtitle1" Color="Color.Dark" Align="Align.Center">
-                        Current Weather for <br />
-                        @data.City, @data.CountryCode
-                    </MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Dark">@data.Datetime</MudText>
+        <MudStack Spacing="2">
+            <!-- Header with location and reset button -->
+            <MudStack Row="true" Style="justify-content: space-between; align-items: center">
+                <MudText Typo="Typo.h6" Color="Color.Primary">Current Weather</MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           OnClick="ResetLocation">Change Location
+                </MudButton>
+            </MudStack>
 
-                    <MudStack Row="true" Spacing="3" Class="centered-content">
-                        <MudIcon Icon="@GetIcon(data.Condition)" Size="Size.Large" Color="Color.Primary" />
-                        <MudStack Spacing="0" Style="align-items: flex-start;">
-                            <MudText Typo="Typo.h4">@data.Temperature°C</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Dark">@data.Description @data.WindDirection</MudText>
+            <MudGrid Class="responsive-grid">
+                <!-- Left Column -->
+                <MudItem xs="12" md="6" Class="left-pane">
+                    <MudStack Spacing="2" Class="centered-content">
+                        <MudText Typo="Typo.subtitle1" Color="Color.Dark" Align="Align.Center">
+                            @_data.City, @_data.CountryCode
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Dark">@_data.Datetime</MudText>
+
+                        <MudStack Row="true" Spacing="3" Class="centered-content">
+                            <MudIcon Icon="@GetIcon(_data.Condition)" Size="Size.Large" Color="Color.Primary"/>
+                            <MudStack Spacing="0" Style="align-items: flex-start;">
+                                <MudText Typo="Typo.h4">@_data.Temperature°C</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Dark">@_data.Description</MudText>
+                            </MudStack>
                         </MudStack>
                     </MudStack>
-                </MudStack>
-            </MudItem>
+                </MudItem>
 
-            <!-- Responsive Divider - only shows on mobile -->
-            <MudItem xs="12" Class="divider-container">
-                <div class="responsive-divider"></div>
-            </MudItem>
+                <!-- Responsive Divider - only shows on mobile -->
+                <MudItem xs="12" Class="divider-container">
+                    <div class="responsive-divider"></div>
+                </MudItem>
 
-            <!-- Right Column -->
-            <MudItem xs="12" md="6" Class="right-pane">
-                <MudStack Spacing="2">
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudText Color="Color.Dark">Feels Like:</MudText>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.FeelsLike°C</MudText>
-                        </MudItem>
-                    </MudGrid>
+                <!-- Right Column -->
+                <MudItem xs="12" md="6" Class="right-pane">
+                    <MudStack Spacing="2">
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Color="Color.Dark">Feels Like:</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.FeelsLike°C</MudText>
+                            </MudItem>
+                        </MudGrid>
 
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small" Color="Color.Info" />
-                                <MudText Color="Color.Dark">Humidity:</MudText>
-                            </MudStack>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.Humidity%</MudText>
-                        </MudItem>
-                    </MudGrid>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small"
+                                             Color="Color.Info"/>
+                                    <MudText Color="Color.Dark">Humidity:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.Humidity%</MudText>
+                            </MudItem>
+                        </MudGrid>
 
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" />
-                                <MudText Color="Color.Dark">Cloud Coverage:</MudText>
-                            </MudStack>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.CloudCoverage%</MudText>
-                        </MudItem>
-                    </MudGrid>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                             Color="Color.Default"/>
+                                    <MudText Color="Color.Dark">Cloud Coverage:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.CloudCoverage%</MudText>
+                            </MudItem>
+                        </MudGrid>
 
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success" />
-                                <MudText Color="Color.Dark">Wind Speed:</MudText>
-                            </MudStack>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.WindSpeed m/s</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudStack>
-            </MudItem>
-        </MudGrid>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success"/>
+                                    <MudText Color="Color.Dark">Wind Speed:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@_data.WindSpeed m/s @_data.WindDirection</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudStack>
     </MudPaper>
 }
 
 @code {
-    private WeatherData? data;
-    private bool isLoading = true;
+    private WeatherData? _data;
+    private bool _isLoading = false;
+    private bool _locationProvided = false;
+    private string _errorMessage = string.Empty;
+
+    // Form inputs
+    private string _cityInput = string.Empty;
+    private string _countryCodeInput = string.Empty;
+    private double? _latitudeInput;
+    private double? _longitudeInput;
+
+    // Cookie-related properties
+    private bool _hasSavedLocation = false;
+    private string _savedLocationDisplay = string.Empty;
+    private LocationRequest? _savedLocation;
+
+    private const string LocationCookieKey = "weather_location";
+
+    private bool _loadedFromSaved = false;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadLocationFromCookie();
+
+        if (_hasSavedLocation && !_loadedFromSaved)
+        {
+            _loadedFromSaved = true;
+            await LoadSavedLocation();
+        }
+    }
+
+
+    private async Task LoadLocationFromCookie()
+    {
         try
         {
-            var geo = await Http.GetFromJsonAsync<LocationRequest>("https://ipapi.co/json/");
-
-            if (geo != null)
+            var savedLocationJson = await Cookie.GetValue(LocationCookieKey);
+            if (!string.IsNullOrEmpty(savedLocationJson))
             {
-                var response = await Http.PostAsJsonAsync("api/weather", new LocationRequest
+                _savedLocation = System.Text.Json.JsonSerializer.Deserialize<LocationRequest>(savedLocationJson);
+                if (_savedLocation != null)
                 {
-                    Latitude = geo.Latitude,
-                    Longitude = geo.Longitude,
-                    City = geo.City
-                });
-
-                if (response.IsSuccessStatusCode)
-                {
-                    data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                    _hasSavedLocation = true;
+                    if (!string.IsNullOrEmpty(_savedLocation.City))
+                    {
+                        _savedLocationDisplay = string.IsNullOrEmpty(_savedLocation.CountryCode)
+                            ? _savedLocation.City
+                            : $"{_savedLocation.City}, {_savedLocation.CountryCode}";
+                    }
+                    else if (_savedLocation.Latitude.HasValue && _savedLocation.Longitude.HasValue)
+                    {
+                        _savedLocationDisplay = $"{_savedLocation.Latitude:F4}, {_savedLocation.Longitude:F4}";
+                    }
                 }
             }
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"Failed to load location from cookie: {ex.Message}");
+        }
+    }
+
+    private async Task SaveLocationToCookie(LocationRequest location)
+    {
+        try
+        {
+            var locationJson = System.Text.Json.JsonSerializer.Serialize(location);
+            await Cookie.SetValue(LocationCookieKey, locationJson, 365); // Save for 1 year
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to save location to cookie: {ex.Message}");
+        }
+    }
+
+    private async Task LoadSavedLocation()
+    {
+        if (_savedLocation == null) return;
+
+        _isLoading = true;
+        _errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/weather", _savedLocation);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                _locationProvided = true;
+            }
+            else
+            {
+                _errorMessage = "Could not load weather data for saved location. Please try a different location.";
+            }
+        }
+        catch (Exception ex)
+        {
             Console.Error.WriteLine($"Failed to fetch weather data: {ex.Message}");
-            data = null;
+            _errorMessage = "An error occurred while fetching weather data. Please try again.";
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
+            StateHasChanged();
         }
+    }
+
+    private async Task GetWeatherByCity()
+    {
+        if (string.IsNullOrWhiteSpace(_cityInput))
+            return;
+
+        _isLoading = true;
+        _errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var locationRequest = new LocationRequest
+            {
+                City = _cityInput.Trim(),
+                CountryCode = string.IsNullOrWhiteSpace(_countryCodeInput) ? null : _countryCodeInput.Trim().ToUpperInvariant()
+            };
+
+            var response = await Http.PostAsJsonAsync("api/weather", locationRequest);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                _locationProvided = true;
+
+                await SaveLocationToCookie(locationRequest);
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.Error.WriteLine($"Weather API error: {errorContent}");
+                _errorMessage = $"Could not find weather data for '{_cityInput}'. Please check the city name and try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to fetch weather data: {ex.Message}");
+            _errorMessage = "An error occurred while fetching weather data. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GetWeatherByCoordinates()
+    {
+        if (!_latitudeInput.HasValue || !_longitudeInput.HasValue)
+            return;
+
+        _isLoading = true;
+        _errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var locationRequest = new LocationRequest
+            {
+                Latitude = _latitudeInput.Value,
+                Longitude = _longitudeInput.Value
+            };
+
+            var response = await Http.PostAsJsonAsync("api/weather", locationRequest);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                _locationProvided = true;
+                await SaveLocationToCookie(locationRequest);
+            }
+            else
+            {
+                _errorMessage = "Could not find weather data for the provided coordinates. Please check and try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to fetch weather data: {ex.Message}");
+            _errorMessage = "An error occurred while fetching weather data. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetLocation()
+    {
+        _locationProvided = false;
+        _data = null;
+        _errorMessage = string.Empty;
+        _cityInput = string.Empty;
+        _countryCodeInput = string.Empty;
+        _latitudeInput = null;
+        _longitudeInput = null;
+        StateHasChanged();
     }
 
     private string GetIcon(WeatherCondition condition) => condition switch
@@ -189,4 +605,5 @@ else
         WeatherCondition.PartlyCloudy => Icons.Material.Filled.Cloud,
         _ => Icons.Material.Filled.Cloud
     };
+
 }

@@ -18,6 +18,18 @@
     <Routes />
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="@Assets["_content/MudBlazor/MudBlazor.min.js"]"></script>
+    <script>
+        window.blazorSetCookie = function (value) {
+            document.cookie = value;
+        };
+
+        window.blazorGetCookie = function (name) {
+            let matches = document.cookie.match(new RegExp(
+                "(?:^|; )" + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + "=([^;]*)"
+            ));
+            return matches ? decodeURIComponent(matches[1]) : "";
+        };
+    </script>
 
 </body>
 

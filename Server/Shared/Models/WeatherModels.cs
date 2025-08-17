@@ -30,8 +30,9 @@ namespace Shared.Models
     
     public class LocationRequest
     {
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public string City { get; set; } = string.Empty;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public string? City { get; set; }
+        public string? CountryCode { get; set; }
     }
 }

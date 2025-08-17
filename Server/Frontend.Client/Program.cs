@@ -21,6 +21,8 @@ namespace Frontend.Client
             builder.Services.AddLocalization();
             builder.Services.AddMudLocalization();
 
+            builder.Services.AddScoped<ICookie, Cookie>();
+            
             // Add Authorization Core
             builder.Services.AddAuthorizationCore();
 
