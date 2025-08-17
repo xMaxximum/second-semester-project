@@ -133,18 +133,6 @@
     }
 </style>
 
-<!-- Background Grid SVG -->
-<div class="background-grid">
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
-        <defs>
-            <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
-                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25"/>
-            </pattern>
-        </defs>
-        <rect width="100" height="100" fill="url(#grid)"/>
-    </svg>
-</div>
-
 <!-- Hero Banner -->
 <section class="hero-banner">
     <div class="video-wrapper">
@@ -155,7 +143,7 @@
                playsinline
                preload="metadata">
             <source src="media/Hero_Banner_Video.mp4" type="video/mp4" />
-            Dein Browser unterstützt HTML5-Video nicht.
+            Your browser does not support HTML5 video.
         </video>
     </div>
     <div class="hero-overlay">
@@ -163,7 +151,7 @@
         <p>Your cycling data at your fingertips. Anywhere. Anytime.</p>
         <MudStack Direction="Row" Spacing="2" Justify="Justify.Center" Class="hero-cta">
             <MudButton Variant="@Variant.Filled" Color="@Color.Primary" Href="/register">Get Started</MudButton>
-            <MudButton Variant="@Variant.Outlined" Color="@Color.Inherit" Href="/login">Login</MudButton>
+            <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Href="/login">Login</MudButton>
         </MudStack>
     </div>
 </section>
