@@ -21,6 +21,7 @@ void setupWlan();
 // setup the first time configuration (if not done yet)
 void checkFirstTimeConfig();
 void setupSequence();
+String urlDC(String input);
 
 #define setupMode true
 
@@ -35,7 +36,6 @@ void updateAllData();
 
 #define CUSTOM_TX_GPS 17
 #define CUSTOM_RX_GPS 16
-#define CUSTOM_MOSI 18
 #define CUSTOM_MISO 4
 #define CUSTOM_SCK 15
 #define CUSTOM_CS 2
@@ -194,31 +194,15 @@ void setupFileSystem()
 
 void setupWlan()
 {
-  File file = SD_MMC.open("/credentials.txt", FILE_READ);
-  if (!file)
-  {
-    Serial.println("File not found");
-    return;
-  }
-
-  String buffer = file.readString();
-  file.close();
-
   String ssid, password;
-  // get the index of the comma char
-  int commaIndex = buffer.indexOf(',');
-  if (commaIndex != -1)
-  {
-    ssid = buffer.substring(0, commaIndex);
-    password = buffer.substring(commaIndex + 1);
+  EEPROM.begin(128);
+  // read the ssid and password from the sdcard 
+  ssid = EEPROM.readString(1);
+  password = EEPROM.readString(64);
 
-    // remove any newline character from the password if one is there
-    password.trim();
-  }
-  else
-  {
-    Serial.println("Invalid format for the credentials on the sdcard. Must be ssid,pass");
-  }
+  password.trim();
+  ssid.trim();
+  
   Serial.println("Connecting");
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
@@ -341,88 +325,158 @@ void checkFirstTimeConfig(){
   }
 }
 
-void setupSequence(){
-  Serial.println("Running setup sequence...");
-  WiFi.softAP("CycloneSetup", "INF2024AI");
+// Helper function to decode URL-encoded strings (e.g. spaces as '+', %20, etc.)
+String urlDC(String input) {
+  input.replace("+", " ");
+  String decoded = "";
+  char temp[] = "00";
+  unsigned int len = input.length();
+  unsigned int i = 0;
+  while (i < len) {
+    char c = input.charAt(i);
+    if (c == '%') {
+      if (i + 2 < len) {
+        temp[0] = input.charAt(i + 1);
+        temp[1] = input.charAt(i + 2);
+        decoded += (char) strtol(temp, NULL, 16);
+        i += 3;
+      }
+    } else {
+      decoded += c;
+      i++;
+    }
+  }
+  return decoded;
+}
+
+
+void setupSequence() {
   WiFiServer server(80);
+  String wifiSSID = "";
+  String wifiPassword = "";
+  String userNumber = "";
+  Serial.println("Running setup sequence...");
+  // Start AP
+
+  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
+  WiFi.softAP("CycloneSetup", "INF2024AI");
   server.begin();
-  String header = "";
+
+  Serial.println("Access Point started: CycloneSetup / INF2024AI");
+
+  bool setupFinished = false;
   unsigned long previousTime = millis();
-  unsigned long timeoutTime = 300000; // 30 seconds timeout for setup
-  while(true){
-    WiFiClient client = server.available();   // Listen for incoming clients
+  const unsigned long timeoutTime = 300000; // 5 minutes timeout
 
-  if (client) {                             // If a new client connects,
-    currentTime = millis();
+  while (!setupFinished) {
+    WiFiClient client = server.available();
+    if (!client) continue;
+
+    Serial.println("New client connected");
+    String request = "";
+    unsigned long currentTime = millis();
     previousTime = currentTime;
-    Serial.println("New Client.");          // print a message out in the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
-      currentTime = millis();
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        header += c;
-        if (c == '\n') {                    // if the byte is a newline character
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println("Connection: close");
-            client.println();
 
-            client.println("<!DOCTYPE html><html>");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<link rel=\"icon\" href=\"data:,\">");
-            // Web Page Heading
-            client.println("<body><h1>ESP32 Web Server</h1>");
-            
-            // Display current state, and ON/OFF buttons for GPIO 26  
-            client.println("<p>GPIO 26 - State </p>");
-            // If the output26State is off, it displays the ON button       
-            if (true) {
-              client.println("<p><a href=\"/26/on\"><button class=\"button\">ON</button></a></p>");
-            } else {
-              client.println("<p><a href=\"/26/off\"><button class=\"button button2\">OFF</button></a></p>");
-            } 
-               
-            // Display current state, and ON/OFF buttons for GPIO 27  
-            client.println("<p>GPIO 27 - State </p>");
-            // If the output27State is off, it displays the ON button       
-            if (false) {
-              client.println("<p><a href=\"/27/on\"><button class=\"button\">ON</button></a></p>");
-            } else {
-              client.println("<p><a href=\"/27/off\"><button class=\"button button2\">OFF</button></a></p>");
-            }
-            client.println("</body></html>");
-            
-            // The HTTP response ends with another blank line
-            client.println();
-            // Break out of the while loop
+    while (client.connected() && (millis() - previousTime <= timeoutTime)) {
+      if (client.available()) {
+        char c = client.read();
+        request += c;
+
+        if (c == '\n') {
+          // End of headers
+          if (request.endsWith("\r\n\r\n")) {
             break;
-          } else { // if you got a newline, then clear currentLine
-            currentLine = "";
           }
-        } else if (c != '\r') {  // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
         }
       }
     }
-    // Clear the header variable
-    header = "";
-    // Close the connection
-    client.stop();
-    Serial.println("Client disconnected.");
-    Serial.println("");
-  
+
+    // Check for POST data
+    if (request.indexOf("POST") >= 0) {
+      // Extract body
+      int bodyIndex = request.indexOf("\r\n\r\n");
+      if (bodyIndex >= 0) {
+        String body = request.substring(bodyIndex + 4);
+
+        // Expecting form data like: ssid=MyWiFi&password=abc123&number=42
+        int ssidIndex = body.indexOf("ssid=");
+        int passIndex = body.indexOf("password=");
+        int numIndex  = body.indexOf("number=");
+        
+        if (ssidIndex >= 0 && passIndex >= 0 && numIndex >= 0) {
+          wifiSSID = urlDC(body.substring(ssidIndex + 5, body.indexOf("&", ssidIndex)));
+          wifiPassword = urlDC(body.substring(passIndex + 9, body.indexOf("&", passIndex)));
+          userNumber = body.substring(numIndex + 7);
+
+          Serial.println("Received configuration:");
+          Serial.println("SSID: " + wifiSSID);
+          Serial.println("Password: " + wifiPassword);
+          Serial.println("Number: " + userNumber);
+
+          setupFinished = true;
+        }
       }
     }
-  
 
-  EEPROM.write(0, 1); // Mark setup as done
+    // Serve HTML page
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-type:text/html");
+    client.println("Connection: close");
+    client.println();
+
+    file = SD.open("/website.html", FILE_READ);
+    if (!file) {
+      Serial.println("Error opening website.html");
+      client.println("<!DOCTYPE html><html><body><h1>Error</h1><p>Failed to open website.html</p> <p>SDCard not found or file defective</p></body></html>");
+    } else {
+      while (file.available()) {
+        client.write(file.read());
+      }
+      file.close();
+    }
+
+    client.stop();
+    Serial.println("Client disconnected");
+  }
+
+  // Save setup state to EEPROM
+  EEPROM.write(0, 1);
+  EEPROM.put(1, wifiSSID);
+  EEPROM.put(64, wifiPassword); 
   EEPROM.commit();
-  Serial.println("Setup complete. You can now connect to the CycloneSetup WiFi network.");
+  EEPROM.end();
+  
+  // Stop the AP
+  WiFi.softAPdisconnect(true);
+  WiFi.disconnect();
+
+  Serial.println("Setup complete. Stored credentials:");
+  Serial.println("SSID: " + wifiSSID);
+  Serial.println("Password: " + wifiPassword);
+  Serial.println("Number: " + String(userNumber));
+  Serial.println("You can now connect the ESP to your WiFi network.");
+}
+
+// Helper function to decode URL-encoded strings (e.g. spaces as '+', %20, etc.)
+String urlDecode(String input) {
+  input.replace("+", " ");
+  String decoded = "";
+  char temp[] = "00";
+  unsigned int len = input.length();
+  unsigned int i = 0;
+  while (i < len) {
+    char c = input.charAt(i);
+    if (c == '%') {
+      if (i + 2 < len) {
+        temp[0] = input.charAt(i + 1);
+        temp[1] = input.charAt(i + 2);
+        decoded += (char) strtol(temp, NULL, 16);
+        i += 3;
+      }
+    } else {
+      decoded += c;
+      i++;
+    }
+  }
+  return decoded;
 }
