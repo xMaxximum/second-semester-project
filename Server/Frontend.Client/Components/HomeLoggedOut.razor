@@ -2,6 +2,18 @@
 <PageTitle>Home</PageTitle>
 
 <style>
+    
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+
+    html, body {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    
     .hero-banner {
         position: relative;
         width: 100%;
@@ -12,7 +24,7 @@
         position: absolute;
         inset: 0;
     }
-    .video-wrapper iframe {
+    .video-wrapper video {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -83,9 +95,11 @@
     }
     .cta-footer {
         text-align: center;
-        padding-top: 2rem;
+        padding-top: 3rem;
         padding-bottom: 0;
-        margin-bottom: 0;
+        position: static;
+        width: 100%;
+        margin: 0 auto;
     }
 
     @@media (max-width: 768px) {
@@ -116,18 +130,22 @@
 <!-- Hero Banner -->
 <section class="hero-banner">
     <div class="video-wrapper">
-        <iframe src="https://player.vimeo.com/video/964455070?background=1&autoplay=1&loop=1&muted=1&autopause=0&playsinline=1"
-                frameborder="0"
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowfullscreen>
-        </iframe>
+        <video class="hero-video"
+               autoplay
+               muted
+               loop
+               playsinline
+               preload="metadata">
+            <source src="media/Hero_Banner_Video.mp4" type="video/mp4" />
+            Your browser does not support HTML5 video.
+        </video>
     </div>
     <div class="hero-overlay">
         <h1>Track every Turn.</h1>
         <p>Your cycling data at your fingertips. Anywhere. Anytime.</p>
         <MudStack Direction="Row" Spacing="2" Justify="Justify.Center" Class="hero-cta">
             <MudButton Variant="@Variant.Filled" Color="@Color.Primary" Href="/register">Get Started</MudButton>
-            <MudButton Variant="@Variant.Outlined" Color="@Color.Inherit" Href="/login">Login</MudButton>
+            <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Href="/login">Login</MudButton>
         </MudStack>
     </div>
 </section>
@@ -135,7 +153,7 @@
 <MudContainer MaxWidth="@MaxWidth.False" Class="p-0">
 
     <!-- Features Section -->
-    <section class="section-wrapper">
+    <section class="section-wrapper mb-16 mt-16">
         <MudPaper Class="section-background" Elevation="0">
             <MudPaper Class="section-card" Elevation="3">
                 <h2>Our Features</h2>
@@ -155,7 +173,7 @@
     </section>
 
     <!-- Testimonials Section -->
-    <section class="section-wrapper">
+    <section class="section-wrapper mb-16">
         <MudPaper Class="section-background" Elevation="0">
             <MudPaper Class="section-card" Elevation="3">
                 <h2>What Our Riders Say</h2>
@@ -167,7 +185,8 @@
                                            CollapsedIcon="Icons.Material.Filled.ExpandMore">
                             <MudGrid AlignItems="Center" Spacing="2">
                                 <MudItem xs="12" sm="2">
-                                    <MudAvatar Image="@t.ImgUrl" Size="Size.Medium" />
+                                    <MudAvatar Size="Size.Large"
+                                               Style="@($"background-image:url('/media/{t.ImgUrl}');background-size:cover;background-position:center")" />
                                 </MudItem>
                                 <MudItem xs="12" sm="10">
                                     <MudText Typo="@Typo.body1">“@t.Text”</MudText>
@@ -180,17 +199,18 @@
             </MudPaper>
         </MudPaper>
     </section>
-
-    <!-- CTA Footer Section -->
-    <section class="section-wrapper" style="padding-bottom:0; margin-bottom:0;">
-        <div class="cta-footer">
-            <MudText Typo="@Typo.h4" Class="mb-3">Ready to Ride?</MudText>
-            <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Size="Size.Large" Href="/register">
-                Join Cyclone Now
-            </MudButton>
-        </div>
-    </section>
 </MudContainer>
+
+
+<!-- CTA Footer Section -->
+<section style="padding-bottom:0; margin-bottom:0;">
+    <div class="cta-footer" >
+        <MudText Typo="@Typo.h4" Class="mb-3">Ready to Ride?</MudText>
+        <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Size="Size.Large" Href="/register">
+            Join Cyclone Now
+        </MudButton>
+    </div>
+</section>
 
 @code {
     class Feature
@@ -213,9 +233,10 @@
     };
     private List<Testimonial> Testimonials = new()
     {
-        new Testimonial { Name="Alex Rider", ImgUrl="https://img.freepik.com/fotos-kostenlos/smiley-mann-der-sich-draussen-entspannt_23-2148739334.jpg", Text="Boosted my performance!", Role="Competitive Cyclist" },
-        new Testimonial { Name="Maria Wheels", ImgUrl="https://images.bravo.de/das-verrat-dein-profilbild-uber-dich-selfie,id=e8f96e08,b=bravo,w=1600,rm=sk.jpeg", Text="Community keeps me motivated.", Role="Fitness Enthusiast" },
-        new Testimonial { Name="John Trail", ImgUrl="https://i.pinimg.com/236x/b1/e9/88/b1e988b2e1295930db530b1d257a5a31.jpg", Text="Discovering new routes is amazing.", Role="Adventure Seeker" },
-        new Testimonial { Name="Sarah Pace", ImgUrl="https://www.businessinsider.de/wp-content/uploads/2017/04/5eaa81c1981b7.jpg", Text="Intuitive dashboard & real-time stats.", Role="Weekend Rider" }
+        new() { Name="Alex Rider",  ImgUrl="Alex_Rider.jpg",   Text="Boosted my performance!", Role="Competitive Cyclist" },
+        new() { Name="Maria Wheels", ImgUrl="Maria_Wheels.jpeg", Text="Community keeps me motivated.", Role="Fitness Enthusiast" },
+        new() { Name="John Trail",  ImgUrl="John_Trail.jpeg",  Text="Discovering new routes is amazing.", Role="Adventure Seeker" },
+        new() { Name="Sarah Pace",  ImgUrl="Sarah_Pace.jpg",   Text="Intuitive dashboard & real-time stats.", Role="Weekend Rider" }
     };
+
 }
