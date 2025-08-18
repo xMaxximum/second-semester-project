@@ -104,5 +104,38 @@ namespace Server.Controllers
                 return StatusCode(500, $"An error occurred while fetching weather data: {ex.Message}");
             }
         }
+
+        [HttpGet("search-locations")]
+        public async Task<ActionResult<List<LocationSuggestion>>> SearchLocations([FromQuery] string query, [FromQuery] int limit = 5)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+                {
+                    return Ok(new List<LocationSuggestion>());
+                }
+
+                var results = await _weatherService.SearchLocationsAsync(query, limit);
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred while searching locations: {ex.Message}");
+            }
+        }
+
+        [HttpGet("country-codes")]
+        public ActionResult<List<CountryCode>> GetCountryCodes()
+        {
+            try
+            {
+                var countryCodes = WeatherService.GetCountryCodes();
+                return Ok(countryCodes);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred while fetching country codes: {ex.Message}");
+            }
+        }
     }
 }

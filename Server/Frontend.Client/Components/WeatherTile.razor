@@ -133,23 +133,63 @@
                 <MudStack Spacing="2">
                     <MudText Typo="Typo.h6" Color="Color.Primary">Search by City</MudText>
 
-                    <MudTextField @bind-Value="_cityInput"
-                                  Label="City Name"
-                                  Variant="Variant.Outlined"
-                                  Placeholder="e.g., London, New York, Tokyo"
-                                  Disabled="_isLoading"/>
+                    <MudAutocomplete T="LocationSuggestion"
+                                     @bind-Value="_selectedCity"
+                                     SearchFunc="SearchCities"
+                                     ToStringFunc="@(e => e?.DisplayText)"
+                                     Label="City Name"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Type to search for cities..."
+                                     MinCharacters="2"
+                                     MaxItems="10"
+                                     Disabled="_isLoading"
+                                     DebounceInterval="300"
+                                     ShowProgressIndicator="true"
+                                     ProgressIndicatorColor="Color.Primary">
+                        <ItemTemplate Context="city">
+                            <MudText Typo="Typo.body1">@city.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(city.State != null ? $"{city.State}, {city.Country}" : city.Country)</MudText>
+                        </ItemTemplate>
+                        <MoreItemsTemplate>
+                            <MudText Align="Align.Center" Class="px-4 py-1">
+                                Keep typing to see more results...
+                            </MudText>
+                        </MoreItemsTemplate>
+                        <NoItemsTemplate>
+                            <MudText Align="Align.Center" Class="px-4 py-1">
+                                No cities found. Try a different search term.
+                            </MudText>
+                        </NoItemsTemplate>
+                    </MudAutocomplete>
 
-                    <MudTextField @bind-Value="_countryCodeInput"
-                                  Label="Country Code (Optional)"
-                                  Variant="Variant.Outlined"
-                                  Placeholder="e.g., US, GB, DE"
-                                  HelperText="2-letter country code for better accuracy"
-                                  Disabled="_isLoading"/>
+                    <MudAutocomplete T="CountryCode"
+                                     @bind-Value="_selectedCountryCode"
+                                     SearchFunc="SearchCountryCodes"
+                                     ToStringFunc="@(e => e?.Code)"
+                                     Label="Country Code (Optional)"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Type to search for country codes..."
+                                     MinCharacters="1"
+                                     MaxItems="15"
+                                     Disabled="_isLoading"
+                                     DebounceInterval="200"
+                                     HelperText="2-letter country code for better accuracy"
+                                     ShowProgressIndicator="false">
+                        <ItemTemplate Context="country">
+                            <MudText Typo="Typo.body1">@country.Code</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@country.Name</MudText>
+                        </ItemTemplate>
+                        <NoItemsTemplate>
+                            <MudText Align="Align.Center" Class="px-4 py-1">
+                                No countries found.
+                            </MudText>
+                        </NoItemsTemplate>
+                    </MudAutocomplete>
 
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
-                               OnClick="GetWeatherByCity"
-                               Disabled="_isLoading || string.IsNullOrWhiteSpace(_cityInput)"
+                               OnClick="GetWeatherBySelectedCity"
+                               Disabled="_isLoading || _selectedCity == null"
                                FullWidth="true">
                         @if (_isLoading && !_currentLocationLoading)
                         {
@@ -406,10 +446,13 @@ else
     private bool _currentLocationLoading = false;
 
     // Form inputs
-    private string _cityInput = string.Empty;
-    private string _countryCodeInput = string.Empty;
+    private LocationSuggestion? _selectedCity;
+    private CountryCode? _selectedCountryCode;
     private double? _latitudeInput;
     private double? _longitudeInput;
+
+    // Country codes cache
+    private List<CountryCode> _allCountryCodes = new();
 
     // Cookie-related properties
     private bool _hasSavedLocation = false;
@@ -434,12 +477,71 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadLocationFromCookie();
+        await LoadCountryCodes();
 
         if (_hasSavedLocation && !_loadedFromSaved)
         {
             _loadedFromSaved = true;
             await LoadSavedLocation();
         }
+    }
+
+    private async Task LoadCountryCodes()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/weather/country-codes");
+            if (response.IsSuccessStatusCode)
+            {
+                _allCountryCodes = await response.Content.ReadFromJsonAsync<List<CountryCode>>() ?? new List<CountryCode>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load country codes: {ex.Message}");
+            _allCountryCodes = new List<CountryCode>();
+        }
+    }
+
+    // Autocomplete search methods
+    private async Task<IEnumerable<LocationSuggestion>> SearchCities(string value, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length < 2)
+            return new List<LocationSuggestion>();
+
+        try
+        {
+            var response = await Http.GetAsync($"api/weather/search-locations?query={Uri.EscapeDataString(value)}&limit=10", token);
+            if (response.IsSuccessStatusCode)
+            {
+                var results = await response.Content.ReadFromJsonAsync<List<LocationSuggestion>>(cancellationToken: token);
+                return results ?? new List<LocationSuggestion>();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Request was cancelled, return empty list
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error searching cities: {ex.Message}");
+        }
+        
+        return new List<LocationSuggestion>();
+    }
+
+    private Task<IEnumerable<CountryCode>> SearchCountryCodes(string value, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult<IEnumerable<CountryCode>>(new List<CountryCode>());
+
+        var filtered = _allCountryCodes
+            .Where(c => c.Code.Contains(value, StringComparison.OrdinalIgnoreCase) || 
+                       c.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .Take(15)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<CountryCode>>(filtered);
     }
 
     private async Task GetCurrentLocation()
@@ -595,9 +697,9 @@ else
         }
     }
 
-    private async Task GetWeatherByCity()
+    private async Task GetWeatherBySelectedCity()
     {
-        if (string.IsNullOrWhiteSpace(_cityInput))
+        if (_selectedCity == null)
             return;
 
         _isLoading = true;
@@ -608,8 +710,10 @@ else
         {
             var locationRequest = new LocationRequest
             {
-                City = _cityInput.Trim(),
-                CountryCode = string.IsNullOrWhiteSpace(_countryCodeInput) ? null : _countryCodeInput.Trim().ToUpperInvariant()
+                Latitude = _selectedCity.Latitude,
+                Longitude = _selectedCity.Longitude,
+                City = _selectedCity.Name,
+                CountryCode = _selectedCountryCode?.Code
             };
 
             var response = await Http.PostAsJsonAsync("api/weather", locationRequest);
@@ -625,7 +729,7 @@ else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
                 Console.Error.WriteLine($"Weather API error: {errorContent}");
-                _errorMessage = $"Could not find weather data for '{_cityInput}'. Please check the city name and try again.";
+                _errorMessage = $"Could not find weather data for '{_selectedCity.Name}'. Please try a different location.";
             }
         }
         catch (Exception ex)
@@ -688,8 +792,8 @@ else
         _data = null;
         _errorMessage = string.Empty;
         _geolocationError = string.Empty;
-        _cityInput = string.Empty;
-        _countryCodeInput = string.Empty;
+        _selectedCity = null;
+        _selectedCountryCode = null;
         _latitudeInput = null;
         _longitudeInput = null;
         _currentLocationLoading = false;
