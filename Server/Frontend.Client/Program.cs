@@ -45,6 +45,11 @@ namespace Frontend.Client
             // Add Auth Service
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<ActivityService>();
+            
+            // Add Weather Services
+            builder.Services.AddScoped<WeatherService>();
+            builder.Services.AddScoped<GeolocationService>();
+            builder.Services.AddScoped<WeatherLocationService>();
 
 
             var app = builder.Build();

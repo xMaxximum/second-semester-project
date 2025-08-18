@@ -1,379 +1,22 @@
 ﻿@using Shared.Models
-@inject ICookie Cookie
-@inject IJSRuntime JSRuntime
-@inject HttpClient Http
-@using System.Text.Json.Serialization;
-
-<style>
-    .centered-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
-
-    .responsive-divider {
-        background-color: rgba(0, 0, 0, 0.12);
-        width: 100%;
-        height: 0.0625rem;
-    }
-
-    .divider-container {
-        display: block;
-        width: 100%;
-        padding: 0.5rem 0;
-    }
-
-    .left-pane,
-    .right-pane {
-        padding: 0.5rem 0;
-        border: none;
-    }
-
-    .location-form {
-        max-width: 500px;
-        margin: 0 auto;
-    }
-
-    .mud-alert-position {
-        align-items: center;
-    }
-
-    @@media (min-width: 60rem) {
-        .responsive-grid {
-            display: flex;
-            flex-wrap: nowrap;
-            margin-top: auto;
-        }
-
-        .left-pane {
-            border-right: 0.0625rem solid rgba(0, 0, 0, 0.12);
-            padding-right: 0;
-            flex: 1;
-        }
-
-        .right-pane {
-            padding-left: 0;
-            flex: 1;
-        }
-
-        .divider-container {
-            display: none;
-        }
-    }
-</style>
+@inject WeatherService WeatherService
+@inject WeatherLocationService LocationService
 
 @if (!_locationProvided)
 {
-    <!-- Location Input Form -->
-    <MudPaper Elevation="3" Style="padding: 2rem;">
-        <div class="location-form">
-            <MudStack Spacing="3">
-                <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Primary">
-                    Get Weather for Your Location
-                </MudText>
-
-                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Dark">
-                    Choose how you'd like to get weather information
-                </MudText>
-
-                @if (_hasSavedLocation)
-                {
-                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
-                        <MudStack Row="true" Style="justify-content: space-between; align-items: center;">
-                            <MudText>Use saved location:
-                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Info"
-                                           OnClick="LoadSavedLocation"
-                                           Disabled="_isLoading">@_savedLocationDisplay</MudButton>
-                            </MudText>
-                        </MudStack>
-                    </MudAlert>
-                }
-
-                <MudDivider/>
-
-                <!-- Current Location Section -->
-                <MudStack Spacing="2">
-                    <MudText Typo="Typo.h6" Color="Color.Primary">Use Current Location</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Dark">
-                        Allow location access to get weather for your current position
-                    </MudText>
-
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               OnClick="GetCurrentLocation"
-                               Disabled="_isLoading"
-                               FullWidth="true">
-                        @if (_isLoading && _currentLocationLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
-                            <MudText Style="margin-left: 10px;">Getting Location...</MudText>
-                        }
-                        else
-                        {
-                            <MudIcon Icon="Icons.Material.Filled.MyLocation"/>
-                            <MudText Style="margin-left: 10px;">Use Current Location</MudText>
-                        }
-                    </MudButton>
-
-                    @if (!string.IsNullOrEmpty(_geolocationError))
-                    {
-                        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
-                            @_geolocationError
-                        </MudAlert>
-                    }
-                </MudStack>
-
-                <MudDivider>
-                    <MudText Typo="Typo.caption">OR</MudText>
-                </MudDivider>
-
-                <!-- City Input Section -->
-                <MudStack Spacing="2">
-                    <MudText Typo="Typo.h6" Color="Color.Primary">Search by City</MudText>
-
-                    <MudAutocomplete T="LocationSuggestion"
-                                     @bind-Value="_selectedCity"
-                                     SearchFunc="SearchCities"
-                                     ToStringFunc="@(e => e?.DisplayText)"
-                                     Label="City Name"
-                                     Variant="Variant.Outlined"
-                                     Placeholder="Type to search for cities..."
-                                     MinCharacters="2"
-                                     MaxItems="10"
-                                     Disabled="_isLoading"
-                                     DebounceInterval="300"
-                                     ShowProgressIndicator="true"
-                                     ProgressIndicatorColor="Color.Primary">
-                        <ItemTemplate Context="city">
-                            <MudText Typo="Typo.body1">@city.Name</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(city.State != null ? $"{city.State}, {city.Country}" : city.Country)</MudText>
-                        </ItemTemplate>
-                        <MoreItemsTemplate>
-                            <MudText Align="Align.Center" Class="px-4 py-1">
-                                Keep typing to see more results...
-                            </MudText>
-                        </MoreItemsTemplate>
-                        <NoItemsTemplate>
-                            <MudText Align="Align.Center" Class="px-4 py-1">
-                                No cities found. Try a different search term.
-                            </MudText>
-                        </NoItemsTemplate>
-                    </MudAutocomplete>
-
-                    <MudAutocomplete T="CountryCode"
-                                     @bind-Value="_selectedCountryCode"
-                                     SearchFunc="SearchCountryCodes"
-                                     ToStringFunc="@(e => e?.Code)"
-                                     Label="Country Code (Optional)"
-                                     Variant="Variant.Outlined"
-                                     Placeholder="Type to search for country codes..."
-                                     MinCharacters="1"
-                                     MaxItems="15"
-                                     Disabled="_isLoading"
-                                     DebounceInterval="200"
-                                     HelperText="2-letter country code for better accuracy"
-                                     ShowProgressIndicator="false">
-                        <ItemTemplate Context="country">
-                            <MudText Typo="Typo.body1">@country.Code</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@country.Name</MudText>
-                        </ItemTemplate>
-                        <NoItemsTemplate>
-                            <MudText Align="Align.Center" Class="px-4 py-1">
-                                No countries found.
-                            </MudText>
-                        </NoItemsTemplate>
-                    </MudAutocomplete>
-
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               OnClick="GetWeatherBySelectedCity"
-                               Disabled="_isLoading || _selectedCity == null"
-                               FullWidth="true">
-                        @if (_isLoading && !_currentLocationLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
-                            <MudText Style="margin-left: 10px;">Getting Weather...</MudText>
-                        }
-                        else
-                        {
-                            <MudIcon Icon="Icons.Material.Filled.Search"/>
-                            <MudText Style="margin-left: 10px;">Get Weather</MudText>
-                        }
-                    </MudButton>
-                </MudStack>
-
-                <MudDivider>
-                    <MudText Typo="Typo.caption">OR</MudText>
-                </MudDivider>
-
-                <!-- Coordinates Input Section -->
-                <MudStack Spacing="2">
-                    <MudText Typo="Typo.h6" Color="Color.Primary">Search by Coordinates</MudText>
-
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudNumericField @bind-Value="_latitudeInput"
-                                             Label="Latitude"
-                                             Variant="Variant.Outlined"
-                                             Placeholder="51.5074"
-                                             Min="-90" Max="90"
-                                             Disabled="_isLoading"/>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudNumericField @bind-Value="_longitudeInput"
-                                             Label="Longitude"
-                                             Variant="Variant.Outlined"
-                                             Placeholder="-0.1278"
-                                             Min="-180" Max="180"
-                                             Disabled="_isLoading"/>
-                        </MudItem>
-                    </MudGrid>
-
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               OnClick="GetWeatherByCoordinates"
-                               Disabled="_isLoading || !_latitudeInput.HasValue || !_longitudeInput.HasValue"
-                               FullWidth="true">
-                        @if (_isLoading && !_currentLocationLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
-                            <MudText Style="margin-left: 10px;">Getting Weather...</MudText>
-                        }
-                        else
-                        {
-                            <MudIcon Icon="Icons.Material.Filled.LocationOn"/>
-                            <MudText Style="margin-left: 10px;">Get Weather by Coordinates</MudText>
-                        }
-                    </MudButton>
-                </MudStack>
-
-                @if (!string.IsNullOrEmpty(_errorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
-                        @_errorMessage
-                    </MudAlert>
-                }
-            </MudStack>
-        </div>
-    </MudPaper>
-}
-else if (_isLoading)
-{
-    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
-        <div class="centered-content">
-            <MudProgressCircular Size="Size.Large" Indeterminate="true"/>
-            <MudText Style="margin-top: 1rem;">Loading weather data...</MudText>
-        </div>
-    </MudPaper>
-}
-else if (_data is null)
-{
-    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
-        <MudStack Spacing="2" Class="centered-content">
-            <MudText Color="Color.Error">Failed to load weather data.</MudText>
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Primary"
-                       OnClick="ResetLocation">
-                Try Different Location
-            </MudButton>
-        </MudStack>
-    </MudPaper>
+    <WeatherLocationForm IsLoading="@_isLoading"
+                         ErrorMessage="@_errorMessage"
+                         HasSavedLocation="@_hasSavedLocation"
+                         SavedLocationDisplay="@_savedLocationDisplay"
+                         OnLocationSelected="HandleLocationSelected"
+                         OnUseSavedLocation="LoadSavedLocation"
+                         @ref="@_locationFormRef" />
 }
 else
 {
-    <!-- Weather Display -->
-    <MudPaper Elevation="3" Style="padding: 1.5rem;">
-        <MudStack Spacing="2">
-            <!-- Header with location and reset button -->
-            <MudStack Row="true" Style="justify-content: space-between; align-items: center">
-                <MudText Typo="Typo.h6" Color="Color.Primary">Current Weather</MudText>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Default"
-                           Size="Size.Small"
-                           OnClick="ResetLocation">Change Location
-                </MudButton>
-            </MudStack>
-
-            <MudGrid Class="responsive-grid">
-                <!-- Left Column -->
-                <MudItem xs="12" md="6" Class="left-pane">
-                    <MudStack Spacing="2" Class="centered-content">
-                        <MudText Typo="Typo.subtitle1" Color="Color.Dark" Align="Align.Center">
-                            @_data.City, @_data.CountryCode
-                        </MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Dark">@_data.Datetime</MudText>
-
-                        <MudStack Row="true" Spacing="3" Class="centered-content">
-                            <MudIcon Icon="@GetIcon(_data.Condition)" Size="Size.Large" Color="Color.Primary"/>
-                            <MudStack Spacing="0" Style="align-items: flex-start;">
-                                <MudText Typo="Typo.h4">@_data.Temperature°C</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Dark">@_data.Description</MudText>
-                            </MudStack>
-                        </MudStack>
-                    </MudStack>
-                </MudItem>
-
-                <!-- Responsive Divider - only shows on mobile -->
-                <MudItem xs="12" Class="divider-container">
-                    <div class="responsive-divider"></div>
-                </MudItem>
-
-                <!-- Right Column -->
-                <MudItem xs="12" md="6" Class="right-pane">
-                    <MudStack Spacing="2">
-                        <MudGrid>
-                            <MudItem xs="6">
-                                <MudText Color="Color.Dark">Feels Like:</MudText>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudText Align="Align.Right">@_data.FeelsLike°C</MudText>
-                            </MudItem>
-                        </MudGrid>
-
-                        <MudGrid>
-                            <MudItem xs="6">
-                                <MudStack Row="true" Spacing="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small"
-                                             Color="Color.Info"/>
-                                    <MudText Color="Color.Dark">Humidity:</MudText>
-                                </MudStack>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudText Align="Align.Right">@_data.Humidity%</MudText>
-                            </MudItem>
-                        </MudGrid>
-
-                        <MudGrid>
-                            <MudItem xs="6">
-                                <MudStack Row="true" Spacing="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
-                                             Color="Color.Default"/>
-                                    <MudText Color="Color.Dark">Cloud Coverage:</MudText>
-                                </MudStack>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudText Align="Align.Right">@_data.CloudCoverage%</MudText>
-                            </MudItem>
-                        </MudGrid>
-
-                        <MudGrid>
-                            <MudItem xs="6">
-                                <MudStack Row="true" Spacing="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success"/>
-                                    <MudText Color="Color.Dark">Wind Speed:</MudText>
-                                </MudStack>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudText Align="Align.Right">@_data.WindSpeed m/s @_data.WindDirection</MudText>
-                            </MudItem>
-                        </MudGrid>
-                    </MudStack>
-                </MudItem>
-            </MudGrid>
-        </MudStack>
-    </MudPaper>
+    <WeatherDisplay WeatherData="_data"
+                    IsLoading="_isLoading"
+                    OnReset="ResetLocation" />
 }
 
 <script>
@@ -442,42 +85,19 @@ else
     private bool _isLoading = false;
     private bool _locationProvided = false;
     private string _errorMessage = string.Empty;
-    private string _geolocationError = string.Empty;
-    private bool _currentLocationLoading = false;
 
-    // Form inputs
-    private LocationSuggestion? _selectedCity;
-    private CountryCode? _selectedCountryCode;
-    private double? _latitudeInput;
-    private double? _longitudeInput;
-
-    // Country codes cache
-    private List<CountryCode> _allCountryCodes = new();
-
-    // Cookie-related properties
+    // Saved location properties
     private bool _hasSavedLocation = false;
     private string _savedLocationDisplay = string.Empty;
     private LocationRequest? _savedLocation;
-
-    private const string LocationCookieKey = "weather_location";
-
     private bool _loadedFromSaved = false;
 
-    // Helper class for deserializing geolocation data
-    private class GeolocationPosition
-    {
-        [JsonPropertyName("latitude")] public double? Latitude { get; set; }
-
-        [JsonPropertyName("longitude")] public double? Longitude { get; set; }
-
-        [JsonPropertyName("accuracy")] public double? Accuracy { get; set; }
-    }
-
+    // Component reference
+    private WeatherLocationForm? _locationFormRef;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadLocationFromCookie();
-        await LoadCountryCodes();
 
         if (_hasSavedLocation && !_loadedFromSaved)
         {
@@ -486,181 +106,33 @@ else
         }
     }
 
-    private async Task LoadCountryCodes()
-    {
-        try
-        {
-            var response = await Http.GetAsync("api/weather/country-codes");
-            if (response.IsSuccessStatusCode)
-            {
-                _allCountryCodes = await response.Content.ReadFromJsonAsync<List<CountryCode>>() ?? new List<CountryCode>();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Failed to load country codes: {ex.Message}");
-            _allCountryCodes = new List<CountryCode>();
-        }
-    }
-
-    // Autocomplete search methods
-    private async Task<IEnumerable<LocationSuggestion>> SearchCities(string value, CancellationToken token)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Length < 2)
-            return new List<LocationSuggestion>();
-
-        try
-        {
-            var response = await Http.GetAsync($"api/weather/search-locations?query={Uri.EscapeDataString(value)}&limit=10", token);
-            if (response.IsSuccessStatusCode)
-            {
-                var results = await response.Content.ReadFromJsonAsync<List<LocationSuggestion>>(cancellationToken: token);
-                return results ?? new List<LocationSuggestion>();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Request was cancelled, return empty list
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error searching cities: {ex.Message}");
-        }
-        
-        return new List<LocationSuggestion>();
-    }
-
-    private Task<IEnumerable<CountryCode>> SearchCountryCodes(string value, CancellationToken token)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return Task.FromResult<IEnumerable<CountryCode>>(new List<CountryCode>());
-
-        var filtered = _allCountryCodes
-            .Where(c => c.Code.Contains(value, StringComparison.OrdinalIgnoreCase) || 
-                       c.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
-            .Take(15)
-            .ToList();
-
-        return Task.FromResult<IEnumerable<CountryCode>>(filtered);
-    }
-
-    private async Task GetCurrentLocation()
-    {
-        _currentLocationLoading = true;
-        _isLoading = true;
-        _geolocationError = string.Empty;
-        _errorMessage = string.Empty;
-        StateHasChanged();
-
-        try
-        {
-            Console.WriteLine("Requesting current position...");
-            var positionJson = await JSRuntime.InvokeAsync<string>("blazorGeolocation.getCurrentPosition");
-            Console.WriteLine($"Received position JSON: {positionJson}");
-
-            var position = System.Text.Json.JsonSerializer.Deserialize<GeolocationPosition>(positionJson);
-            Console.WriteLine($"Deserialized position - Lat: {position?.Latitude}, Lng: {position?.Longitude}");
-
-            if (position?.Latitude == null || position?.Longitude == null)
-            {
-                _geolocationError = "Could not retrieve valid coordinates from your location.";
-                Console.WriteLine("Invalid coordinates received");
-                return;
-            }
-
-            // Validate coordinate ranges
-            if (Math.Abs(position.Latitude.Value) > 90 || Math.Abs(position.Longitude.Value) > 180)
-            {
-                _geolocationError = "Invalid coordinates received. Please try manual entry.";
-                Console.WriteLine($"Coordinates out of range - Lat: {position.Latitude}, Lng: {position.Longitude}");
-                return;
-            }
-
-            Console.WriteLine($"Creating location request with coordinates: {position.Latitude.Value}, {position.Longitude.Value}");
-
-            var locationRequest = new LocationRequest
-            {
-                Latitude = position.Latitude.Value,
-                Longitude = position.Longitude.Value
-            };
-
-            Console.WriteLine("Sending weather API request...");
-            var response = await Http.PostAsJsonAsync("api/weather", locationRequest);
-            Console.WriteLine($"Weather API response status: {response.StatusCode}");
-
-            if (response.IsSuccessStatusCode)
-            {
-                _data = await response.Content.ReadFromJsonAsync<WeatherData>();
-                _locationProvided = true;
-                await SaveLocationToCookie(locationRequest);
-                Console.WriteLine("Weather data loaded successfully");
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Weather API error: {errorContent}");
-                _errorMessage = "Could not get weather data for your current location. Please try again.";
-            }
-        }
-        catch (JSException jsEx)
-        {
-            Console.WriteLine($"JavaScript geolocation error: {jsEx.Message}");
-            _geolocationError = jsEx.Message;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to get current location: {ex.Message}");
-            _geolocationError = "Failed to get your current location. Please try entering your location manually.";
-        }
-        finally
-        {
-            _currentLocationLoading = false;
-            _isLoading = false;
-            StateHasChanged();
-        }
-    }
-
     private async Task LoadLocationFromCookie()
     {
         try
         {
-            var savedLocationJson = await Cookie.GetValue(LocationCookieKey);
-            if (!string.IsNullOrEmpty(savedLocationJson))
+            _savedLocation = await LocationService.GetSavedLocationAsync();
+            
+            if (_savedLocation != null)
             {
-                _savedLocation = System.Text.Json.JsonSerializer.Deserialize<LocationRequest>(savedLocationJson);
-                if (_savedLocation != null)
-                {
-                    _hasSavedLocation = true;
-                    if (!string.IsNullOrEmpty(_savedLocation.City))
-                    {
-                        _savedLocationDisplay = string.IsNullOrEmpty(_savedLocation.CountryCode)
-                            ? _savedLocation.City
-                            : $"{_savedLocation.City}, {_savedLocation.CountryCode}";
-                    }
-                    else if (_savedLocation.Latitude.HasValue && _savedLocation.Longitude.HasValue)
-                    {
-                        _savedLocationDisplay = $"{_savedLocation.Latitude:F4}, {_savedLocation.Longitude:F4}";
-                    }
-                }
+                _hasSavedLocation = true;
+                _savedLocationDisplay = LocationService.GetLocationDisplayText(_savedLocation);
+                Console.WriteLine($"Loaded saved location: {_savedLocationDisplay}");
+            }
+            else
+            {
+                _hasSavedLocation = false;
+                _savedLocationDisplay = string.Empty;
+                Console.WriteLine("No saved location found");
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to load location from cookie: {ex.Message}");
+            Console.Error.WriteLine($"Error loading saved location: {ex.Message}");
+            _hasSavedLocation = false;
+            _savedLocationDisplay = string.Empty;
         }
-    }
-
-    private async Task SaveLocationToCookie(LocationRequest location)
-    {
-        try
-        {
-            var locationJson = System.Text.Json.JsonSerializer.Serialize(location);
-            await Cookie.SetValue(LocationCookieKey, locationJson, 365); // Save for 1 year
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Failed to save location to cookie: {ex.Message}");
-        }
+        
+        StateHasChanged();
     }
 
     private async Task LoadSavedLocation()
@@ -668,17 +140,29 @@ else
         if (_savedLocation == null) return;
 
         _isLoading = true;
-        _errorMessage = string.Empty;
+        _errorMessage = string.Empty; // Clear any existing error messages
         StateHasChanged();
 
         try
         {
-            var response = await Http.PostAsJsonAsync("api/weather", _savedLocation);
-
-            if (response.IsSuccessStatusCode)
+            var weatherData = await WeatherService.GetWeatherAsync(_savedLocation);
+            
+            if (weatherData != null)
             {
-                _data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                _data = weatherData;
                 _locationProvided = true;
+                
+                // If saved location doesn't have city info but weather data does, update it
+                if (string.IsNullOrWhiteSpace(_savedLocation.City) && !string.IsNullOrWhiteSpace(weatherData.City))
+                {
+                    var enhancedLocationRequest = LocationService.EnhanceLocationWithWeatherData(_savedLocation, weatherData);
+                    
+                    await LocationService.SaveLocationAsync(enhancedLocationRequest);
+                    _savedLocation = enhancedLocationRequest;
+                    _savedLocationDisplay = LocationService.GetLocationDisplayText(enhancedLocationRequest);
+                    
+                    Console.WriteLine($"Enhanced saved location display: {_savedLocationDisplay}");
+                }
             }
             else
             {
@@ -697,81 +181,36 @@ else
         }
     }
 
-    private async Task GetWeatherBySelectedCity()
+    private async Task HandleLocationSelected(LocationRequest locationRequest)
     {
-        if (_selectedCity == null)
-            return;
-
         _isLoading = true;
-        _errorMessage = string.Empty;
+        _errorMessage = string.Empty; // Clear any existing error messages
         StateHasChanged();
 
         try
         {
-            var locationRequest = new LocationRequest
+            var weatherData = await WeatherService.GetWeatherAsync(locationRequest);
+            
+            if (weatherData != null)
             {
-                Latitude = _selectedCity.Latitude,
-                Longitude = _selectedCity.Longitude,
-                City = _selectedCity.Name,
-                CountryCode = _selectedCountryCode?.Code
-            };
-
-            var response = await Http.PostAsJsonAsync("api/weather", locationRequest);
-
-            if (response.IsSuccessStatusCode)
-            {
-                _data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                _data = weatherData;
                 _locationProvided = true;
-
-                await SaveLocationToCookie(locationRequest);
+                
+                // Enhance location request with city information from weather response
+                var enhancedLocationRequest = LocationService.EnhanceLocationWithWeatherData(locationRequest, weatherData);
+                
+                await LocationService.SaveLocationAsync(enhancedLocationRequest);
+                
+                // Update saved location display for future use
+                _savedLocation = enhancedLocationRequest;
+                _hasSavedLocation = true;
+                _savedLocationDisplay = LocationService.GetLocationDisplayText(enhancedLocationRequest);
+                
+                Console.WriteLine($"Updated saved location display: {_savedLocationDisplay}");
             }
             else
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.Error.WriteLine($"Weather API error: {errorContent}");
-                _errorMessage = $"Could not find weather data for '{_selectedCity.Name}'. Please try a different location.";
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Failed to fetch weather data: {ex.Message}");
-            _errorMessage = "An error occurred while fetching weather data. Please try again.";
-        }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task GetWeatherByCoordinates()
-    {
-        if (!_latitudeInput.HasValue || !_longitudeInput.HasValue)
-            return;
-
-        _isLoading = true;
-        _errorMessage = string.Empty;
-        StateHasChanged();
-
-        try
-        {
-            var locationRequest = new LocationRequest
-            {
-                Latitude = _latitudeInput.Value,
-                Longitude = _longitudeInput.Value
-            };
-
-            var response = await Http.PostAsJsonAsync("api/weather", locationRequest);
-
-            if (response.IsSuccessStatusCode)
-            {
-                _data = await response.Content.ReadFromJsonAsync<WeatherData>();
-                _locationProvided = true;
-                await SaveLocationToCookie(locationRequest);
-            }
-            else
-            {
-                _errorMessage = "Could not find weather data for the provided coordinates. Please check and try again.";
+                _errorMessage = "Could not get weather data for the specified location. Please try again.";
             }
         }
         catch (Exception ex)
@@ -791,22 +230,7 @@ else
         _locationProvided = false;
         _data = null;
         _errorMessage = string.Empty;
-        _geolocationError = string.Empty;
-        _selectedCity = null;
-        _selectedCountryCode = null;
-        _latitudeInput = null;
-        _longitudeInput = null;
-        _currentLocationLoading = false;
+        _locationFormRef?.Reset();
         StateHasChanged();
     }
-
-    private string GetIcon(WeatherCondition condition) => condition switch
-    {
-        WeatherCondition.Sunny => Icons.Material.Filled.WbSunny,
-        WeatherCondition.Cloudy => Icons.Material.Filled.Cloud,
-        WeatherCondition.Rainy => Icons.Material.Filled.CloudQueue,
-        WeatherCondition.PartlyCloudy => Icons.Material.Filled.Cloud,
-        _ => Icons.Material.Filled.Cloud
-    };
-
 }
