@@ -1,7 +1,6 @@
 ﻿using Microsoft.JSInterop;
 using System;
 using System.Threading.Tasks;
-using System.Web;
 
 namespace Frontend.Client.Services
 {
@@ -31,12 +30,26 @@ namespace Frontend.Client.Services
                 expires = $"; expires={expireDate:R}";
             }
 
-            await _js.InvokeVoidAsync("blazorSetCookie", $"{key}={encodedValue}{expires}; path=/");
+            // Use native JS directly via IJSRuntime
+            string jsCode = $"document.cookie = '{key}={encodedValue}{expires}; path=/'";
+            await _js.InvokeVoidAsync("eval", jsCode);
         }
 
         public async Task<string> GetValue(string key, string def = "")
         {
-            var cookie = await _js.InvokeAsync<string>("blazorGetCookie", key);
+            // Use native JS to read cookie
+            string jsCode = $@"
+                (function() {{
+                    const nameEQ = '{key}' + '=';
+                    const ca = document.cookie.split(';');
+                    for(let i=0;i < ca.length;i++) {{
+                        let c = ca[i].trim();
+                        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length,c.length);
+                    }}
+                    return '';
+                }})()";
+
+            var cookie = await _js.InvokeAsync<string>("eval", jsCode);
             return string.IsNullOrEmpty(cookie) ? def : Uri.UnescapeDataString(cookie);
         }
     }
