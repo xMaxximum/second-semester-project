@@ -1,0 +1,324 @@
+@using Shared.Models
+@inject WeatherService WeatherService
+@inject GeolocationService GeolocationService
+@inject WeatherLocationService LocationService
+
+<style>
+    .location-form {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+</style>
+
+<MudPaper Elevation="3" Style="padding: 2rem;">
+    <div class="location-form">
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Primary">
+                Get Weather for Your Location
+            </MudText>
+
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Dark">
+                Choose how you'd like to get weather information
+            </MudText>
+
+            @if (HasSavedLocation && !string.IsNullOrWhiteSpace(SavedLocationDisplay) && SavedLocationDisplay != "Unknown Location")
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    <MudStack Row="true" Style="justify-content: space-between; align-items: center;">
+                        <MudText>Use saved location:
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Info"
+                                       OnClick="UseSavedLocation"
+                                       Disabled="IsLoading">@SavedLocationDisplay</MudButton>
+                        </MudText>
+                    </MudStack>
+                </MudAlert>
+            }
+
+            <MudDivider/>
+
+            <!-- Current Location Section -->
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6" Color="Color.Primary">Use Current Location</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Dark">
+                    Allow location access to get weather for your current position
+                </MudText>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="GetCurrentLocation"
+                           Disabled="IsLoading"
+                           FullWidth="true">
+                    @if (IsLoading && _currentLocationLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                        <MudText Style="margin-left: 10px;">Getting Location...</MudText>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="Icons.Material.Filled.MyLocation"/>
+                        <MudText Style="margin-left: 10px;">Use Current Location</MudText>
+                    }
+                </MudButton>
+
+                @if (!string.IsNullOrEmpty(_geolocationError))
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                        @_geolocationError
+                    </MudAlert>
+                }
+            </MudStack>
+
+            <MudDivider>
+                <MudText Typo="Typo.caption">OR</MudText>
+            </MudDivider>
+
+            <!-- City Input Section -->
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6" Color="Color.Primary">Search by City</MudText>
+
+                <MudAutocomplete T="LocationSuggestion"
+                                 @bind-Value="_selectedCity"
+                                 SearchFunc="SearchCities"
+                                 ToStringFunc="@(e => e?.DisplayText)"
+                                 Label="City Name"
+                                 Variant="Variant.Outlined"
+                                 Placeholder="Type to search for cities..."
+                                 MinCharacters="2"
+                                 MaxItems="10"
+                                 Disabled="IsLoading"
+                                 DebounceInterval="300"
+                                 ShowProgressIndicator="true"
+                                 ProgressIndicatorColor="Color.Primary">
+                    <ItemTemplate Context="city">
+                        <MudText Typo="Typo.body1">@city.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@(city.State != null ? $"{city.State}, {city.Country}" : city.Country)</MudText>
+                    </ItemTemplate>
+                    <MoreItemsTemplate>
+                        <MudText Align="Align.Center" Class="px-4 py-1">
+                            Keep typing to see more results...
+                        </MudText>
+                    </MoreItemsTemplate>
+                    <NoItemsTemplate>
+                        <MudText Align="Align.Center" Class="px-4 py-1">
+                            No cities found. Try a different search term.
+                        </MudText>
+                    </NoItemsTemplate>
+                </MudAutocomplete>
+
+                <MudAutocomplete T="CountryCode"
+                                 @bind-Value="_selectedCountryCode"
+                                 SearchFunc="SearchCountryCodes"
+                                 ToStringFunc="@(e => e?.Code)"
+                                 Label="Country Code (Optional)"
+                                 Variant="Variant.Outlined"
+                                 Placeholder="Type to search for country codes..."
+                                 MinCharacters="1"
+                                 MaxItems="15"
+                                 Disabled="IsLoading"
+                                 DebounceInterval="200"
+                                 HelperText="2-letter country code for better accuracy"
+                                 ShowProgressIndicator="false">
+                    <ItemTemplate Context="country">
+                        <MudText Typo="Typo.body1">@country.Code</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@country.Name</MudText>
+                    </ItemTemplate>
+                    <NoItemsTemplate>
+                        <MudText Align="Align.Center" Class="px-4 py-1">
+                            No countries found.
+                        </MudText>
+                    </NoItemsTemplate>
+                </MudAutocomplete>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="GetWeatherBySelectedCity"
+                           Disabled="IsLoading || _selectedCity == null"
+                           FullWidth="true">
+                    @if (IsLoading && !_currentLocationLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                        <MudText Style="margin-left: 10px;">Getting Weather...</MudText>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="Icons.Material.Filled.Search"/>
+                        <MudText Style="margin-left: 10px;">Get Weather</MudText>
+                    }
+                </MudButton>
+            </MudStack>
+
+            <MudDivider>
+                <MudText Typo="Typo.caption">OR</MudText>
+            </MudDivider>
+
+            <!-- Coordinates Input Section -->
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6" Color="Color.Primary">Search by Coordinates</MudText>
+
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="_latitudeInput"
+                                         Label="Latitude"
+                                         Variant="Variant.Outlined"
+                                         Placeholder="51.5074"
+                                         Min="-90" Max="90"
+                                         Disabled="IsLoading"/>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="_longitudeInput"
+                                         Label="Longitude"
+                                         Variant="Variant.Outlined"
+                                         Placeholder="-0.1278"
+                                         Min="-180" Max="180"
+                                         Disabled="IsLoading"/>
+                    </MudItem>
+                </MudGrid>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="GetWeatherByCoordinates"
+                           Disabled="IsLoading || !_latitudeInput.HasValue || !_longitudeInput.HasValue"
+                           FullWidth="true">
+                    @if (IsLoading && !_currentLocationLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                        <MudText Style="margin-left: 10px;">Getting Weather...</MudText>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="Icons.Material.Filled.LocationOn"/>
+                        <MudText Style="margin-left: 10px;">Get Weather by Coordinates</MudText>
+                    }
+                </MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                    @ErrorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string ErrorMessage { get; set; } = string.Empty;
+    [Parameter] public bool HasSavedLocation { get; set; }
+    [Parameter] public string SavedLocationDisplay { get; set; } = string.Empty;
+    [Parameter] public EventCallback<LocationRequest> OnLocationSelected { get; set; }
+    [Parameter] public EventCallback OnUseSavedLocation { get; set; }
+
+    private bool _currentLocationLoading = false;
+    private string _geolocationError = string.Empty;
+
+    // Form inputs
+    private LocationSuggestion? _selectedCity;
+    private CountryCode? _selectedCountryCode;
+    private double? _latitudeInput;
+    private double? _longitudeInput;
+
+    // Country codes cache
+    private List<CountryCode> _allCountryCodes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCountryCodes();
+    }
+
+    private async Task LoadCountryCodes()
+    {
+        _allCountryCodes = await WeatherService.GetCountryCodesAsync();
+    }
+
+    private async Task<IEnumerable<LocationSuggestion>> SearchCities(string value, CancellationToken token)
+    {
+        return await WeatherService.SearchLocationsAsync(value, 10, token);
+    }
+
+    private Task<IEnumerable<CountryCode>> SearchCountryCodes(string value, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult<IEnumerable<CountryCode>>(new List<CountryCode>());
+
+        var filtered = _allCountryCodes
+            .Where(c => c.Code.Contains(value, StringComparison.OrdinalIgnoreCase) || 
+                       c.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .Take(15)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<CountryCode>>(filtered);
+    }
+
+    private async Task GetCurrentLocation()
+    {
+        _currentLocationLoading = true;
+        _geolocationError = string.Empty;
+        StateHasChanged();
+
+        var result = await GeolocationService.GetCurrentPositionAsync();
+
+        if (result.IsSuccess)
+        {
+            var locationRequest = new LocationRequest
+            {
+                Latitude = result.Latitude,
+                Longitude = result.Longitude
+            };
+
+            await OnLocationSelected.InvokeAsync(locationRequest);
+        }
+        else
+        {
+            _geolocationError = result.ErrorMessage;
+        }
+
+        _currentLocationLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task GetWeatherBySelectedCity()
+    {
+        if (_selectedCity == null) return;
+
+        var locationRequest = new LocationRequest
+        {
+            Latitude = _selectedCity.Latitude,
+            Longitude = _selectedCity.Longitude,
+            City = _selectedCity.Name,
+            CountryCode = _selectedCountryCode?.Code
+        };
+
+        await OnLocationSelected.InvokeAsync(locationRequest);
+    }
+
+    private async Task GetWeatherByCoordinates()
+    {
+        if (!_latitudeInput.HasValue || !_longitudeInput.HasValue) return;
+
+        var locationRequest = new LocationRequest
+        {
+            Latitude = _latitudeInput.Value,
+            Longitude = _longitudeInput.Value
+        };
+
+        await OnLocationSelected.InvokeAsync(locationRequest);
+    }
+
+    private async Task UseSavedLocation()
+    {
+        await OnUseSavedLocation.InvokeAsync();
+    }
+
+    public void Reset()
+    {
+        _selectedCity = null;
+        _selectedCountryCode = null;
+        _latitudeInput = null;
+        _longitudeInput = null;
+        _geolocationError = string.Empty;
+        _currentLocationLoading = false;
+        StateHasChanged();
+    }
+}
