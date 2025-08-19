@@ -193,7 +193,7 @@
                                 <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" />
                                 <div>
                                     <MudText Typo="Typo.body2"><strong>Started</strong></MudText>
-                                    <MudText Typo="Typo.caption">@_details.Activity.StartTime.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                    <MudText Typo="Typo.caption">@_details.Activity.StartTime.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</MudText>
                                 </div>
                             </div>
                             
@@ -203,7 +203,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Stop" Color="Color.Error" />
                                     <div>
                                         <MudText Typo="Typo.body2"><strong>Finished</strong></MudText>
-                                        <MudText Typo="Typo.caption">@_details.Activity.EndTime.Value.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                        <MudText Typo="Typo.caption">@_details.Activity.EndTime.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</MudText>
                                     </div>
                                 </div>
                             }
@@ -301,7 +301,7 @@
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd DataLabel="Time">
-                                    <MudText Typo="Typo.caption">@context.Timestamp.ToString("HH:mm:ss")</MudText>
+                                    <MudText Typo="Typo.caption">@context.Timestamp.ToLocalTime().ToString("HH:mm:ss")</MudText>
                                 </MudTd>
                                 <MudTd DataLabel="Speed">
                                     <MudText Typo="Typo.body2">@context.CurrentSpeed.ToString("F1") km/h</MudText>

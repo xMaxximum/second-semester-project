@@ -148,8 +148,8 @@
                 calendarItems = resp.Activities.Select(a => new CalendarItem
                 {
                     Text = string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name,
-                    Start = a.StartTime,
-                    End = a.EndTime ?? a.StartTime.AddHours(1)
+                    Start = a.StartTime.ToLocalTime(),
+                    End = (a.EndTime ?? a.StartTime.AddHours(1)).ToLocalTime()
                 }).ToList();
                 _lastRefresh = DateTime.Now;
             }
