@@ -5,14 +5,13 @@ using Server.Data;
 using Server.Models;
 using Shared.Models;
 using System.Globalization;
-using System.Security.Claims;
 
 namespace Server.Controllers
 {
     [ApiController]
     [AllowAnonymous]
     [Route(Constants.RoutePrefix + "/sensor")]
-    public class SensorDataController: ControllerBase
+    public class SensorDataController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SensorDataController> _logger;
@@ -90,90 +89,90 @@ namespace Server.Controllers
         }
         
         [HttpPost("data")]
-        public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData(
-            [FromBody] SensorDataPacketRequest requestData)
+        public async Task<ActionResult<ApiResponse<SensorDataPacketResponse>>> AddSensorData()
         {
-
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList();
-                return BadRequest(ApiResponse<ActivityResponse>.Failure("Validation failed", errors));
-            }
-            long? deviceUserId = 0;
-
             try
             {
+                // I have sent the data as a raw float array over http
+                using var memoryStream = new MemoryStream();
+                await Request.Body.CopyToAsync(memoryStream);
 
-                // Get device and user ID from device authentication middleware
+                // is the binarydata divisible by 4 and therefore consisting out of floats?
+                if (memoryStream.Length % 4 != 0)
+                {
+                    return BadRequest(ApiResponse<string>.Failure("Invalid binary data size; not divisible by 4."));
+                }
+
+                memoryStream.Position = 0;
+                int floatCount = (int)(memoryStream.Length / 4);
+
+                // read the binary data that is a float array
+                var floatValues = new float[floatCount];
+                using var reader = new BinaryReader(memoryStream);
+                for (int i = 0; i < floatCount; i++)
+                {
+                    floatValues[i] = reader.ReadSingle();
+                }
+
+                // this is the corresponding device and userid to the authToken send by the esp
+                // the authToken is wrong when there is no user or device for that token registered
                 var device = HttpContext.Items["Device"] as Device;
-                deviceUserId = HttpContext.Items["DeviceUserId"] as long?;
+                var deviceUserId = HttpContext.Items["DeviceUserId"] as long?;
 
                 if (device == null || deviceUserId == null)
-                {
-                    return Unauthorized(ApiResponse<SensorDataPacketResponse>.Failure("Device authentication required"));
-                }
+                    return Unauthorized(ApiResponse<string>.Failure("Device authentication required"));
                 
+
                 // Get or create activity for this device - use the device's user ID
                 var activity = await GetOrCreateActiveActivity(deviceUserId.Value, device.DeviceId);
-
                 if (activity == null)
                     return StatusCode(500, ApiResponse<string>.Failure("Failed to create or retrieve activity"));
-                
                 if (activity.Status != ActivityStatus.InProgress)
                     return BadRequest(ApiResponse<string>.Failure("Activity is not in progress"));
                 
-                // Parse CSV data
-                var lines = requestData.CsvData
-                    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(line => line.Trim())
-                    .Where(line => !string.IsNullOrWhiteSpace(line))
-                    .ToList();
-                
+                // processing the float array here and saving each sensordata packet into a sensorPacket object
+                const int floatsPerPacket = 9;
                 var sensorDataPackets = new List<SensorDataPacket>();
-                var validPackets = 0;
-                var totalPackets = 0;
+                var validCount = 0;
 
-                foreach (var line in lines)
+                for (int i = 0; i < floatValues.Length; i += floatsPerPacket)
                 {
-                    var trimmedLine = line.Trim();
-                    if (string.IsNullOrWhiteSpace(trimmedLine)) continue;
-
-                    var dataPoint = ParseCsvLine(trimmedLine);
-                    if (dataPoint == null)
+                    if (i + floatsPerPacket > floatValues.Length)
                     {
-                        _logger.LogWarning("Failed to parse CSV line: {Line}", trimmedLine);
-                        continue;
+                        // data is corrupt when there are more floats that do not form a complete packet, ignore those
+                        break;
                     }
 
-                    totalPackets++;
-                    
+                    // map each packet from the array to the object
                     var sensorPacket = new SensorDataPacket
                     {
                         ActivityId = activity.Id,
                         Timestamp = DateTime.UtcNow,
-                        CurrentTemperature = dataPoint.CurrentTemperature,
-                        CurrentSpeed = dataPoint.CurrentSpeed,
-                        Latitude = dataPoint.Latitude,
-                        Longitude = dataPoint.Longitude,
-                        ElevationGain = dataPoint.ElevationGain,
-                        AccelerationX = dataPoint.AccelerationX,
-                        AccelerationY = dataPoint.AccelerationY,
-                        AccelerationZ = dataPoint.AccelerationZ,
-                        Checksum = dataPoint.Checksum,
-                        DeviceId = device.DeviceId, // Use authenticated device ID
-                        CreatedAt = DateTime.UtcNow
+                        CurrentTemperature = floatValues[i + 0],
+                        CurrentSpeed       = floatValues[i + 1],
+                        Latitude           = floatValues[i + 2],
+                        Longitude          = floatValues[i + 3],
+                        ElevationGain      = floatValues[i + 4],
+                        AccelerationX      = floatValues[i + 5],
+                        AccelerationY      = floatValues[i + 6],
+                        AccelerationZ      = floatValues[i + 7],
+                        Checksum           = floatValues[i + 8],
+                        DeviceId           = device.DeviceId,
+                        CreatedAt          = DateTime.UtcNow
                     };
+
+                    // Validate checksum if needed
                     sensorPacket.IsChecksumValid = sensorPacket.ValidateChecksum();
                     if (sensorPacket.IsChecksumValid)
                     {
                         sensorDataPackets.Add(sensorPacket);
-                        validPackets++;
+                        validCount++;
                     }
                 }
 
                 if (sensorDataPackets.Count == 0)
                 {
-                    return BadRequest(ApiResponse<string>.Failure("No valid data points found in CSV"));
+                    return BadRequest(ApiResponse<string>.Failure("No valid data packets found"));
                 }
 
                 // add all packets to database
@@ -182,53 +181,21 @@ namespace Server.Controllers
                 _context.Activities.Update(activity);
                 await _context.SaveChangesAsync();
 
+                // changed logger messages, because it is float data and not csv strings anymore
                 _logger.LogInformation(
-                    "Processed {TotalLines} CSV lines, created {TotalPackets} sensor data packets for activity {ActivityId}, {ValidPackets} valid checksums", 
-                    lines.Count, sensorDataPackets.Count, activity.Id, validPackets);
+                    "Processed {FloatCount} floats, created {PacketCount} packets, {ValidCount} valid checksums",
+                    floatValues.Length, sensorDataPackets.Count, validCount);
 
-                var message = validPackets == sensorDataPackets.Count 
-                    ? $"Successfully processed {sensorDataPackets.Count} data packets"
-                    : $"Processed {sensorDataPackets.Count} packets, {validPackets} with valid checksums";
+                var message = validCount == sensorDataPackets.Count
+                    ? $"Successfully processed {sensorDataPackets.Count} data packets."
+                    : $"Processed {sensorDataPackets.Count} packets, {validCount} valid checksums.";
 
-                return Ok(ApiResponse<string>.Success("CSV data received", message));
+                return Ok(ApiResponse<string>.Success("Binary float data received", message));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing CSV sensor data for {DeviceId}", deviceUserId);
+                _logger.LogError(ex, "Error processing octet-stream data.");
                 return StatusCode(500, ApiResponse<string>.Failure("Internal server error"));
-            }
-        }
-        
-        //method for parsing csv lines
-        private CsvDataPoint? ParseCsvLine(string csvLine)
-        {
-            try
-            {
-                var fields = csvLine.Split(',');
-                
-                if (fields.Length < 9)
-                {
-                    _logger.LogWarning("CSV line has insufficient fields: {Line}", csvLine);
-                    return null;
-                }
-
-                return new CsvDataPoint
-                {
-                    CurrentTemperature = double.Parse(fields[0].Trim(), CultureInfo.InvariantCulture),
-                    CurrentSpeed = double.Parse(fields[1].Trim(), CultureInfo.InvariantCulture),
-                    Latitude = double.Parse(fields[2].Trim(), CultureInfo.InvariantCulture),
-                    Longitude = double.Parse(fields[3].Trim(), CultureInfo.InvariantCulture),
-                    ElevationGain = double.Parse(fields[4].Trim(), CultureInfo.InvariantCulture),
-                    AccelerationX = double.Parse(fields[5].Trim(), CultureInfo.InvariantCulture),
-                    AccelerationY = double.Parse(fields[6].Trim(), CultureInfo.InvariantCulture),
-                    AccelerationZ = double.Parse(fields[7].Trim(), CultureInfo.InvariantCulture),
-                    Checksum = double.Parse(fields[8].Trim(), CultureInfo.InvariantCulture)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing CSV line: {Line}", csvLine);
-                return null;
             }
         }
         
