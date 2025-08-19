@@ -1,192 +1,236 @@
 ﻿@using Shared.Models
+@inject WeatherService WeatherService
+@inject WeatherLocationService LocationService
 
-@inject HttpClient Http
-<style>
-    .centered-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
-
-    .responsive-divider {
-        background-color: rgba(0, 0, 0, 0.12);
-        width: 100%;
-        height: 0.0625rem;
-    }
-
-    .divider-container {
-        display: block;
-        width: 100%;
-        padding: 0.5rem 0;
-    }
-
-    .left-pane,
-    .right-pane {
-        padding: 0.5rem 0;
-        border: none;
-    }
-
-    @@media (min-width: 60rem) {
-    .responsive-grid {
-        display: flex;
-        flex-wrap: nowrap;
-        margin-top: auto;
-    }
-
-    .left-pane {
-        border-right: 0.0625rem solid rgba(0, 0, 0, 0.12);
-        padding-right: 0;
-        flex: 1;
-    }
-
-    .right-pane {
-        padding-left: 0;
-        flex: 1;
-    }
-
-    .divider-container {
-        display: none;
-    }
-    }
-</style>
-
-@if (isLoading)
+@if (!_locationProvided)
 {
-    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
-        <MudText>Loading weather data...</MudText>
-    </MudPaper>
-}
-else if (data is null)
-{
-    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
-        <MudText Color="Color.Error">Failed to load weather data.</MudText>
-    </MudPaper>
+    <WeatherLocationForm IsLoading="@_isLoading"
+                         ErrorMessage="@_errorMessage"
+                         HasSavedLocation="@_hasSavedLocation"
+                         SavedLocationDisplay="@_savedLocationDisplay"
+                         OnLocationSelected="HandleLocationSelected"
+                         OnUseSavedLocation="LoadSavedLocation"
+                         @ref="@_locationFormRef" />
 }
 else
 {
-    <MudPaper Elevation="3" Style="padding: 1.5rem;">
-        <MudGrid Class="responsive-grid">
-            <!-- Left Column -->
-            <MudItem xs="12" md="6" Class="left-pane">
-                <MudStack Spacing="2" Class="centered-content">
-                    <MudText Typo="Typo.subtitle1" Color="Color.Dark" Align="Align.Center">
-                        Current Weather for <br />
-                        @data.City, @data.CountryCode
-                    </MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Dark">@data.Datetime</MudText>
-
-                    <MudStack Row="true" Spacing="3" Class="centered-content">
-                        <MudIcon Icon="@GetIcon(data.Condition)" Size="Size.Large" Color="Color.Primary" />
-                        <MudStack Spacing="0" Style="align-items: flex-start;">
-                            <MudText Typo="Typo.h4">@data.Temperature°C</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Dark">@data.Description @data.WindDirection</MudText>
-                        </MudStack>
-                    </MudStack>
-                </MudStack>
-            </MudItem>
-
-            <!-- Responsive Divider - only shows on mobile -->
-            <MudItem xs="12" Class="divider-container">
-                <div class="responsive-divider"></div>
-            </MudItem>
-
-            <!-- Right Column -->
-            <MudItem xs="12" md="6" Class="right-pane">
-                <MudStack Spacing="2">
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudText Color="Color.Dark">Feels Like:</MudText>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.FeelsLike°C</MudText>
-                        </MudItem>
-                    </MudGrid>
-
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small" Color="Color.Info" />
-                                <MudText Color="Color.Dark">Humidity:</MudText>
-                            </MudStack>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.Humidity%</MudText>
-                        </MudItem>
-                    </MudGrid>
-
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" />
-                                <MudText Color="Color.Dark">Cloud Coverage:</MudText>
-                            </MudStack>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.CloudCoverage%</MudText>
-                        </MudItem>
-                    </MudGrid>
-
-                    <MudGrid>
-                        <MudItem xs="6">
-                            <MudStack Row="true" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success" />
-                                <MudText Color="Color.Dark">Wind Speed:</MudText>
-                            </MudStack>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudText Align="Align.Right">@data.WindSpeed m/s</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudStack>
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
+    <WeatherDisplay WeatherData="_data"
+                    IsLoading="_isLoading"
+                    OnReset="ResetLocation" />
 }
 
+<script>
+    window.blazorGeolocation = {
+        getCurrentPosition: function () {
+            return new Promise((resolve, reject) => {
+                console.log('Geolocation request started...');
+
+                if (!navigator.geolocation) {
+                    console.error('Geolocation not supported');
+                    reject('Geolocation is not supported by this browser.');
+                    return;
+                }
+
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 60000 // 1 minute
+                };
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log('Position received:', position);
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const accuracy = position.coords.accuracy;
+
+                        console.log(`Coordinates: ${lat}, ${lng} (accuracy: ${accuracy}m)`);
+
+                        const result = {
+                            latitude: lat,
+                            longitude: lng,
+                            accuracy: accuracy
+                        };
+
+                        resolve(JSON.stringify(result));
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        let errorMessage = '';
+                        switch (error.code) {
+                            case 1: // PERMISSION_DENIED
+                                errorMessage = 'Location access denied by user. Please enable location permissions and try again.';
+                                break;
+                            case 2: // POSITION_UNAVAILABLE
+                                errorMessage = 'Location information is unavailable. Please check your internet connection.';
+                                break;
+                            case 3: // TIMEOUT
+                                errorMessage = 'Location request timed out. Please try again.';
+                                break;
+                            default:
+                                errorMessage = 'An unknown error occurred while getting location.';
+                                break;
+                        }
+                        reject(errorMessage);
+                    },
+                    options
+                );
+            });
+        }
+    };
+</script>
+
 @code {
-    private WeatherData? data;
-    private bool isLoading = true;
+    private WeatherData? _data;
+    private bool _isLoading = false;
+    private bool _locationProvided = false;
+    private string _errorMessage = string.Empty;
+
+    // Saved location properties
+    private bool _hasSavedLocation = false;
+    private string _savedLocationDisplay = string.Empty;
+    private LocationRequest? _savedLocation;
+    private bool _loadedFromSaved = false;
+
+    // Component reference
+    private WeatherLocationForm? _locationFormRef;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadLocationFromCookie();
+
+        if (_hasSavedLocation && !_loadedFromSaved)
+        {
+            _loadedFromSaved = true;
+            await LoadSavedLocation();
+        }
+    }
+
+    private async Task LoadLocationFromCookie()
+    {
         try
         {
-            var geo = await Http.GetFromJsonAsync<LocationRequest>("https://ipapi.co/json/");
-
-            if (geo != null)
+            _savedLocation = await LocationService.GetSavedLocationAsync();
+            
+            if (_savedLocation != null)
             {
-                var response = await Http.PostAsJsonAsync("api/weather", new LocationRequest
-                {
-                    Latitude = geo.Latitude,
-                    Longitude = geo.Longitude,
-                    City = geo.City
-                });
+                _hasSavedLocation = true;
+                _savedLocationDisplay = LocationService.GetLocationDisplayText(_savedLocation);
+                Console.WriteLine($"Loaded saved location: {_savedLocationDisplay}");
+            }
+            else
+            {
+                _hasSavedLocation = false;
+                _savedLocationDisplay = string.Empty;
+                Console.WriteLine("No saved location found");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading saved location: {ex.Message}");
+            _hasSavedLocation = false;
+            _savedLocationDisplay = string.Empty;
+        }
+        
+        StateHasChanged();
+    }
 
-                if (response.IsSuccessStatusCode)
+    private async Task LoadSavedLocation()
+    {
+        if (_savedLocation == null) return;
+
+        _isLoading = true;
+        _errorMessage = string.Empty; // Clear any existing error messages
+        StateHasChanged();
+
+        try
+        {
+            var weatherData = await WeatherService.GetWeatherAsync(_savedLocation);
+            
+            if (weatherData != null)
+            {
+                _data = weatherData;
+                _locationProvided = true;
+                
+                // If saved location doesn't have city info but weather data does, update it
+                if (string.IsNullOrWhiteSpace(_savedLocation.City) && !string.IsNullOrWhiteSpace(weatherData.City))
                 {
-                    data = await response.Content.ReadFromJsonAsync<WeatherData>();
+                    var enhancedLocationRequest = LocationService.EnhanceLocationWithWeatherData(_savedLocation, weatherData);
+                    
+                    await LocationService.SaveLocationAsync(enhancedLocationRequest);
+                    _savedLocation = enhancedLocationRequest;
+                    _savedLocationDisplay = LocationService.GetLocationDisplayText(enhancedLocationRequest);
+                    
+                    Console.WriteLine($"Enhanced saved location display: {_savedLocationDisplay}");
                 }
+            }
+            else
+            {
+                _errorMessage = "Could not load weather data for saved location. Please try a different location.";
             }
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Failed to fetch weather data: {ex.Message}");
-            data = null;
+            _errorMessage = "An error occurred while fetching weather data. Please try again.";
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 
-    private string GetIcon(WeatherCondition condition) => condition switch
+    private async Task HandleLocationSelected(LocationRequest locationRequest)
     {
-        WeatherCondition.Sunny => Icons.Material.Filled.WbSunny,
-        WeatherCondition.Cloudy => Icons.Material.Filled.Cloud,
-        WeatherCondition.Rainy => Icons.Material.Filled.CloudQueue,
-        WeatherCondition.PartlyCloudy => Icons.Material.Filled.Cloud,
-        _ => Icons.Material.Filled.Cloud
-    };
+        _isLoading = true;
+        _errorMessage = string.Empty; // Clear any existing error messages
+        StateHasChanged();
+
+        try
+        {
+            var weatherData = await WeatherService.GetWeatherAsync(locationRequest);
+            
+            if (weatherData != null)
+            {
+                _data = weatherData;
+                _locationProvided = true;
+                
+                // Enhance location request with city information from weather response
+                var enhancedLocationRequest = LocationService.EnhanceLocationWithWeatherData(locationRequest, weatherData);
+                
+                await LocationService.SaveLocationAsync(enhancedLocationRequest);
+                
+                // Update saved location display for future use
+                _savedLocation = enhancedLocationRequest;
+                _hasSavedLocation = true;
+                _savedLocationDisplay = LocationService.GetLocationDisplayText(enhancedLocationRequest);
+                
+                Console.WriteLine($"Updated saved location display: {_savedLocationDisplay}");
+            }
+            else
+            {
+                _errorMessage = "Could not get weather data for the specified location. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to fetch weather data: {ex.Message}");
+            _errorMessage = "An error occurred while fetching weather data. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetLocation()
+    {
+        _locationProvided = false;
+        _data = null;
+        _errorMessage = string.Empty;
+        _locationFormRef?.Reset();
+        StateHasChanged();
+    }
 }

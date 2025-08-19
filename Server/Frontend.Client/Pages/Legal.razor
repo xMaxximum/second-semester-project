@@ -1,13 +1,6 @@
 ﻿@page "/legal"
 
 <style>
-    .background-grid {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        opacity: 0.05;
-    }
-
     .legal-card {
         max-width: 960px;
         margin: 2rem auto;
@@ -17,18 +10,6 @@
     .legal-card .mt-2 { margin-top: .5rem; }
     .legal-card .mt-4 { margin-top: 1rem; }
 </style>
-
-<!-- Background Grid SVG -->
-<div class="background-grid">
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
-        <defs>
-            <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
-                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25"/>
-            </pattern>
-        </defs>
-        <rect width="100" height="100" fill="url(#grid)"/>
-    </svg>
-</div>
 
 <PageTitle>Legal Notice</PageTitle>
 
