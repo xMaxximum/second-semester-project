@@ -58,8 +58,10 @@
         }
         catch (Exception ex)
         {
-            // TODO: log error 
+            Console.Error.WriteLine($"Error loading weekly distance data: {ex.Message}");
         }
+        
+        StateHasChanged();
     }
 
     public class MyData
