@@ -1,4 +1,8 @@
-﻿@using ApexCharts
+﻿@using System.Net
+@using ApexCharts
+@using MudBlazor.Extensions
+@using Shared.Models
+@inject HttpClient Http
 
 <ApexChart TItem="MyData"
            Options="chartOptions" Height="150">
@@ -41,6 +45,29 @@
         Data.Add(new MyData { Category = "Fri", Distance = 112 });
         Data.Add(new MyData { Category = "Sat", Distance = 22 });
         Data.Add(new MyData { Category = "Sun", Distance = 112 });
+        await LoadWeeklyData();
+    }
+    
+    private async Task LoadWeeklyData()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<WeeklyDistanceResponse>>>(
+                "/api/activities/weekly-distance");
+
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                Data = response.Data.Select(item => new MyData() 
+                { 
+                    Category = item.Day, 
+                    Distance = item.Distance.As<int>()
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // TODO: log error 
+        }
     }
 
     public class MyData

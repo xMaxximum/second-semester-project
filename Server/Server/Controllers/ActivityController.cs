@@ -402,6 +402,67 @@ namespace Server.Controllers
                 return StatusCode(500, ApiResponse<ActivityResponse>.Failure("Internal server error"));
             }
         }
+        
+        // GET: api/activities/weekly-distance}
+        [HttpGet("weekly-distance")]
+        public async Task<ActionResult<ApiResponse<List<WeeklyDistanceResponse>>>> GetWeeklyDistance()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized(ApiResponse<List<WeeklyDistanceResponse>>.Failure("User not found"));
+
+                // get current week 
+                var weekStart = GetStartOfWeek(DateTime.UtcNow);
+                var weekEnd = weekStart.AddDays(7);
+
+                // Get all completed activities for the week
+                var activities = await _context.Activities
+                    .Include(a => a.SensorDataPackets)
+                    .Where(a => a.UserId == userId.Value && 
+                                a.Status == ActivityStatus.Completed &&
+                                a.StartTime >= weekStart && 
+                                a.StartTime < weekEnd)
+                    .ToListAsync();
+
+                // group activities by weekday 
+                var weeklyData = new List<WeeklyDistanceResponse>();
+                var daysOfWeek = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        
+                for (int i = 0; i < 7; i++)
+                {
+                    var currentDay = weekStart.AddDays(i);
+                    var dayActivities = activities.Where(a => a.StartTime.Date == currentDay.Date).ToList();
+            
+                    double totalDistance = 0;
+                    foreach (var activity in dayActivities)
+                    {
+                        var analytics = CalculateAnalytics(activity.SensorDataPackets.OrderBy(s => s.Timestamp).ToList());
+                        totalDistance += analytics.TotalDistance;
+                    }
+
+                    weeklyData.Add(new WeeklyDistanceResponse
+                    {
+                        Day = daysOfWeek[i],
+                        Distance = Math.Round(totalDistance / 1000, 2),
+                    });
+                }
+                return Ok(ApiResponse<List<WeeklyDistanceResponse>>.Success(weeklyData, "Weekly distance data retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving weekly distance data");
+                return StatusCode(500, ApiResponse<List<WeeklyDistanceResponse>>.Failure("Internal server error"));
+            }
+        }
+        
+        private DateTime GetStartOfWeek(DateTime date)
+        {
+            // get monday as start of week 
+            var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+            return date.AddDays(-1 * diff).Date;
+        }
 
         private async Task<List<CsvDataPoint>> ReadTestdataCsvPointsAsync(int max)
         {
