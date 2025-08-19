@@ -49,9 +49,9 @@
 
             if (response?.IsSuccess == true && response.Data != null)
             {
-                Data = response.Data.Select(item => new MyData() 
-                { 
-                    Category = item.Day, 
+                Data = response.Data.Select(item => new MyData()
+                {
+                    Category = item.Day,
                     Distance = (int)Math.Round(item.Distance)
                 }).ToList();
             }
@@ -60,8 +60,10 @@
         {
             Console.Error.WriteLine($"Error loading weekly distance data: {ex.Message}");
         }
-        
-        StateHasChanged();
+        finally
+        {
+            StateHasChanged();
+        }
     }
 
     public class MyData
