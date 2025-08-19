@@ -535,7 +535,7 @@ namespace Server.Controllers
                 MaxSpeed = sensorData.Max(s => s.CurrentSpeed),
                 AverageSpeed = sensorData.Average(s => s.CurrentSpeed),
                 AverageTemperature = sensorData.Average(s => s.CurrentTemperature),
-                //MaxAcceleration = sensorData.Max(s => s.TotalAcceleration), need to change this logic 
+                MaxAcceleration = sensorData.Max(s => s.TotalAcceleration),
                 Route = sensorData.Select(s => new CoordinatePoint
                 {
                     Latitude = s.Latitude,
