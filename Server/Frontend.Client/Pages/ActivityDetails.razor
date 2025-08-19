@@ -2,6 +2,8 @@
 @using Shared.Models
 @inject ActivityService ActivityService
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>@(_details?.Activity?.Name ?? "Activity Details")</PageTitle>
 
@@ -116,6 +118,11 @@
                                                        Size="Size.Small"
                                                        OnClick="@(() => StartEditingTitle())"
                                                        Title="Edit Activity Name" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                       Color="Color.Error" 
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => DeleteActivity())"
+                                                       Title="Delete Activity" />
                                     }
                                 </div>
                             </div>
@@ -423,5 +430,52 @@
         _editingTitle = false;
         _editedTitle = string.Empty;
         StateHasChanged();
+    }
+
+    private async Task DeleteActivity()
+    {
+        if (_details?.Activity == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the activity '{_details.Activity.Name}'? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["ButtonColor"] = Color.Error
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Activity", parameters, options);
+        var result = await dialog.Result;
+
+        if (result.Data != null && (bool)result.Data)
+        {
+            try
+            {
+                _loading = true;
+                StateHasChanged();
+
+                var deleteResult = await ActivityService.DeleteActivityAsync(_details.Activity.Id);
+                
+                if (deleteResult?.IsSuccess == true)
+                {
+                    Snackbar.Add($"Activity '{_details.Activity.Name}' deleted successfully", Severity.Success);
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    var errorMessage = deleteResult?.Message ?? "Unknown error";
+                    Snackbar.Add($"Failed to delete activity: {errorMessage}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting activity: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
     }
 }
