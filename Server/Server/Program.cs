@@ -168,6 +168,9 @@ namespace Server
 
             app.MapStaticAssets();
 
+            // Add device authentication middleware
+            app.UseMiddleware<Server.Middleware.DeviceAuthenticationMiddleware>();
+
             app.MapControllers();
 
             app.UseAuthentication();

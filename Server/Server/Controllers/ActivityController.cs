@@ -12,8 +12,8 @@ using System.Xml;
 namespace Server.Controllers
 {
     [ApiController]
-    [Route(Constants.RoutePrefix + "/activities")]
     [Authorize]
+    [Route(Constants.RoutePrefix + "/activities")]
     public class ActivityController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -163,6 +163,7 @@ namespace Server.Controllers
         }
 
         // POST: api/activities
+        // only for testing right now
         [HttpPost]
         public async Task<ActionResult<ApiResponse<ActivityResponse>>> CreateActivity(ActivityCreateRequest request)
         {
