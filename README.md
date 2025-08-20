@@ -90,58 +90,15 @@ Cyclone consists of three main components:
 - [Visual Studio 2022](https://visualstudio.microsoft.com/) or [VS Code](https://code.visualstudio.com/)
 - [Docker](https://www.docker.com/get-started) (optional, for production-like environment)
 
-### Backend Development
-
-1. **Navigate to Server directory**
-   ```bash
-   cd Server
-   ```
-
-2. **Restore dependencies**
-   ```bash
-   dotnet restore
-   ```
-
-3. **Run the backend**
-   ```bash
-   cd Server
-   dotnet run
-   ```
-   The API will be available at `https://localhost:7227` and `http://localhost:5227`
-
-### Frontend Development
-
-1. **Navigate to Frontend.Client directory**
-   ```bash
-   cd Server/Frontend.Client
-   ```
-
-2. **Restore dependencies**
-   ```bash
-   dotnet restore
-   ```
-
-3. **Run the frontend**
-   ```bash
-   dotnet run
-   ```
-   The frontend will be available at `https://localhost:7067`
-
 ### Full Solution
 
-1. **Open in Visual Studio**
-   ```bash
-   cd Server
-   start Server.sln  # Windows
-   # or
-   open Server.sln   # macOS
-   ```
+**Open in Visual Studio**
+```bash
+cd Server
+dotnet run
+```
+The frontend will be available at `https://localhost:5058`
 
-2. **Set multiple startup projects**
-   - Right-click solution → Properties → Multiple startup projects
-   - Set both `Server` and `Frontend.Client` to "Start"
-
-3. **Press F5 to run**
 
 
 ## 📁 Project Structure
@@ -211,9 +168,6 @@ The production setup includes:
 This project is a non-commercial educational project developed by students at DHBW Heidenheim for learning purposes.
 
 ## 👨‍💻 Contact
-
-**Leon Scharf**  
-Email: [Scharfl.tin24@student.dhbw-heidenheim.de](mailto:Scharfl.tin24@student.dhbw-heidenheim.de)
 
 **Institution**: DHBW Heidenheim  
 **Project Type**: Second Semester Student Project
