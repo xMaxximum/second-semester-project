@@ -91,13 +91,9 @@ jobs:
           echo "📊 Docker disk usage after cleanup:"
           docker system df
           
-          # Enable BuildKit for better caching
-          export DOCKER_BUILDKIT=1
-          export COMPOSE_DOCKER_CLI_BUILD=1
-          
           # Build containers with cache optimization
           echo "🔨 Building containers with cache..."
-          docker compose build --parallel
+          docker compose build
           
           # Start containers
           echo "🚀 Starting containers..."
