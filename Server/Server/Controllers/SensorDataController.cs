@@ -170,7 +170,7 @@ namespace Server.Controllers
                     }
                     else
                     {
-                        _logger.LogWarning("Checksum not valid on line: {Line}", trimmedLine);
+                        _logger.LogWarning("Checksum not valid in one of the lines");
                         // error handling logic down the line
                     }
                 }

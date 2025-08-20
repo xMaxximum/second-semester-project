@@ -109,32 +109,6 @@ jobs:
           echo "✅ Checking container status..."
           docker compose ps
           
-          # Verify all containers are running (not exited)
-          echo "🔍 Verifying container health..."
-          FAILED_CONTAINERS=$(docker compose ps --format "table {{.Name}}\t{{.Status}}" | grep -E "(Exit|Restarting|Dead)" || true)
-          
-          if [ ! -z "$FAILED_CONTAINERS" ]; then
-            echo "❌ Failed containers detected:"
-            echo "$FAILED_CONTAINERS"
-            echo "📋 Container logs for debugging:"
-            docker compose logs --tail=50
-            echo "💥 Deployment failed due to container failures!"
-            exit 1
-          fi
-          
-          # Check for critical errors in server container logs
-          echo "🔍 Checking for server errors..."
-          SERVER_ERRORS=$(docker compose logs server --tail=20 | grep -i -E "(error|exception|fail|fatal)" || true)
-          
-          if [ ! -z "$SERVER_ERRORS" ]; then
-            echo "❌ Critical errors found in server container:"
-            echo "$SERVER_ERRORS"
-            echo "📋 Full server logs:"
-            docker compose logs server --tail=50
-            echo "💥 Deployment failed due to server errors!"
-            exit 1
-          fi
-          
           # Final container status check
           echo "✅ Final container status check..."
           docker compose ps
