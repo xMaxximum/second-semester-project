@@ -169,6 +169,11 @@ namespace Server.Controllers
                         sensorDataPackets.Add(sensorPacket);
                         validPackets++;
                     }
+                    else
+                    {
+                        _logger.LogWarning("Checksum not valid on line: {Line}", trimmedLine);
+                        // error handling logic down the line
+                    }
                 }
 
                 if (sensorDataPackets.Count == 0)

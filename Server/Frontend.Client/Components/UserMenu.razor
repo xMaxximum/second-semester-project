@@ -2,44 +2,19 @@
 @rendermode InteractiveWebAssembly
 @inject AuthService AuthService
 @inject NavigationManager Navigation
+@inject NavigationManager NavigationManager
 
 
 <AuthorizeView>
-        <Authorized>
-            <MudMenu>
-                <ActivatorContent>
-                    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person">
-                        @context.User.Identity?.Name
-                    </MudButton>
-                </ActivatorContent>
-                <ChildContent>
-                <MudMenuItem Icon="@Icons.Material.Filled.AccountBox" Href="/profile">
-                    Profile
-                </MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Memory" Href="/devices">
-                    My Devices
-                </MudMenuItem>
-
-                <MudMenuItem Icon="@Icons.Material.Filled.Logout"
-                                 OnClick="@HandleLogout">
-                        Logout
-                </MudMenuItem>
-                </ChildContent>
-            </MudMenu>
-        </Authorized>
-        <NotAuthorized>
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Secondary"
-                       Href="/login">
-                Login
-            </MudButton>
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Secondary"
-                       Href="/register"
-                       Class="ml-2">
-                Register
-            </MudButton>
-        </NotAuthorized>
+    <Authorized>
+        <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle" OnClick="CloseDrawer">Profile</MudNavLink>
+        <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="@HandleLogout">Logout</MudMenuItem>
+    </Authorized>
+    <NotAuthorized>
+        <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login" OnClick="CloseDrawer">Login</MudNavLink>
+        <MudNavLink Href="/register" Icon="@Icons.Material.Filled.AppRegistration" OnClick="CloseDrawer">Register</MudNavLink>
+        <MudNavLink Href="/devices" Icon="@Icons.Material.Filled.Memory" OnClick="CloseDrawer">My Devices</MudNavLink>
+    </NotAuthorized>
 </AuthorizeView>
 
 @code {
@@ -48,4 +23,9 @@
         await AuthService.LogoutAsync();
         Navigation.NavigateTo("/");
     }
+    
+    private bool _drawerOpen;
+
+    void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+    void CloseDrawer() => _drawerOpen = false;
 }
