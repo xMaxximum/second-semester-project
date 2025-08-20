@@ -16,8 +16,6 @@ void getSpeed();
 void setupWlan();
 // unified function for opening files depending on the SDMMC or SPI connection type
 void openFile(const char *filename, const char *mode);
-void testRead();
-char *convertBufferToCSV(float *sensorData, int length);
 void uploadSensorDataToBackend();
 
 // ESP CAM
@@ -33,8 +31,10 @@ void uploadSensorDataToBackend();
 // 24000 * 4 bytes for a float is 96kB of RAM
 #define SENSOR_DATA_SIZE 9
 
-// api endpoint
-#define API_ENDPOINT "http://192.168.132.180:5085/api/sensordata/data"
+// api endpoints
+#define API_ENDPOINT "http://ip-addr"
+#define API_APPEND_ACTIVITY "/api/sensor/data"
+#define API_STOP_ACTIVITY "/api/sensor/stop-activity"
 
 // magnet sensor
 #define PIN_MAGNET 17
@@ -78,7 +78,7 @@ void setup()
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
 
   // digital input for rpm sensor (magnet sensor)
-  // pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor  
+  // pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
 }
 
 void loop()
@@ -199,7 +199,6 @@ void setupFileSystem()
 
 void setupWlan()
 {
-  // save data to internal flash  
   String ssid = "ssid";
   String pass = "pass";
   preferences.begin("credentials", false);
@@ -256,37 +255,40 @@ void uploadSensorDataToBackend()
   WiFiClient client;
   HTTPClient http;
   unsigned long timePoint1;
-  char *buffer; // the csv containing string
 
   // sensorDataRead contains the actual data of the sdcard now
-  openFile("/sensorData.bin", FILE_READ);  
+  openFile("/sensorData.bin", FILE_READ);
 
   for (size_t i = savedBufferToSdcardCount; i > 0; i--)
   {
-
     timePoint1 = millis();
     //  we want to upload the data to the backend now
     // if the last buffer was not filled fully, read only a partial buffer and upload the data
     if (bufferCounter == 0 && i == 1)
     {
-      file.read((uint8_t *)sensorData, bufferCounter * SENSOR_DATA_SIZE * sizeof(float));
-      buffer = convertBufferToCSV(sensorData, bufferCounter * SENSOR_DATA_SIZE);
+      Serial.println("Read the data from sdcard to ram buffer...");
+      file.read((uint8_t *)sensorData, RAM_ARR * sizeof(float));
+      Serial.println("Convert float buffer to csv string...");
     }
     else
     {
-      file.read((uint8_t *)sensorData, RAM_ARR * sizeof(float));
-      buffer = convertBufferToCSV(sensorData, RAM_ARR);
+      Serial.println("Read the partial data from sdcard to ram buffer...");
+      file.read((uint8_t *)sensorData, bufferCounter * SENSOR_DATA_SIZE * sizeof(float));
+      Serial.println("Convert partial float buffer to csv string...");
     }
-    
-    http.begin(client, API_ENDPOINT);
 
-    // Specify content-type header
-    http.addHeader("Content-Type", "application/json");
-    // Data to send with HTTP POST
-    String httpRequestData = "{\"userId\":1,\"csvData\":\"" + String(buffer) + "\",\"deviceId\":\"ESP32-ABC123\"}";
-    
-    // Send HTTP POST request
-    int httpResponseCode = http.POST(httpRequestData);
+    Serial.println("Starting http transmission...");
+    http.begin(client, String(API_ENDPOINT) + String(API_APPEND_ACTIVITY));
+
+    // content-type headers
+    http.addHeader("Content-Type", "application/octet-stream");
+    http.addHeader("Authorization", "Bearer authToken");
+
+    // convert the float array to a byte array, completely ignore the type
+    uint8_t *byteData = reinterpret_cast<uint8_t *>(sensorData);
+
+    // Send HTTP POST request with byte data
+    int httpResponseCode = http.POST(byteData, RAM_ARR * sizeof(float));
 
     Serial.print("HTTP Response code: ");
     Serial.println(httpResponseCode);
@@ -303,33 +305,25 @@ void uploadSensorDataToBackend()
     Serial.print("Heap size: ");
     Serial.println(heapSize);
 
-    delay(5000);
+    delay(3000);
   }
+  Serial.println("Starting stop-activity...");
+  http.begin(client, String(API_ENDPOINT) + String(API_STOP_ACTIVITY));
+
+  // content-type headers
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer authToken");
+  
+  // Send HTTP POST request with byte data
+  int httpResponseCode = http.POST("{}");
+
+  Serial.print("HTTP Response code: ");
+  Serial.println(httpResponseCode);
+  //  Free resources
+  http.end();
+  Serial.println("Activity stopped.");
 
   file.close();
-}
-
-char *convertBufferToCSV(float *sensorDataBuffer, int length)
-{
-  // convert the array to string csv
-  char *buffer = (char *)malloc(length * 10 * sizeof(char)); // the needed bytes are calculated by the number of float values (length) that need 20 chars to be displayed at best
-  buffer[0] = '\0';
-
-  for (int i = 0; i < length; i++)
-  {
-    if (i % 9 == 0)
-      strcat(buffer, "\\n"); // append , to buffer (append the crlf as is)
-    else if (i > 0)
-      strcat(buffer, ",");                    // append , to buffer
-    char temp[10];                            // sufficient length is needed
-    dtostrf(sensorDataBuffer[i], 6, 2, temp); // convert float to string and copy it inside temp, this function does only put a max of 6 digits and 2 decimal places
-    // Serial.print("Appending to csv buffer: ");
-    // Serial.println(temp);
-    strcat(buffer, temp); // append converted float to string
-  }
-  // Serial.println(buffer);
-
-  return buffer;
 }
 
 void openFile(const char *filename, const char *mode)
