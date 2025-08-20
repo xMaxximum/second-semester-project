@@ -68,9 +68,28 @@ jobs:
           echo "🛑 Stopping existing containers..."
           docker compose down
           
-          # Clean up old images (keep cache layers)
-          echo "🧹 Cleaning up old images..."
+          # Comprehensive Docker cleanup to prevent disk space issues
+          echo "🧹 Performing comprehensive Docker cleanup..."
+          
+          # Show current disk usage
+          echo "📊 Current Docker disk usage:"
+          docker system df
+          
+          # Remove unused containers, networks, and images (but preserve volumes)
+          echo "🗑️  Removing unused Docker resources (preserving volumes)..."
+          docker system prune -a -f
+          
+          # Remove any dangling images that might still exist
+          echo "🏷️  Removing dangling images..."
           docker image prune -f
+          
+          # Remove unused build cache (keeps recent cache layers)
+          echo "💾 Cleaning build cache..."
+          docker builder prune -f --keep-storage 2GB
+          
+          # Show disk usage after cleanup
+          echo "📊 Docker disk usage after cleanup:"
+          docker system df
           
           # Enable BuildKit for better caching
           export DOCKER_BUILDKIT=1
@@ -92,11 +111,37 @@ jobs:
           echo "✅ Checking container status..."
           docker compose ps
           
-          # Check Caddy logs for SSL certificate status
-          echo "🔒 Checking SSL certificate status..."
-          docker compose logs caddy | tail -10
+          # Verify all containers are running (not exited)
+          echo "🔍 Verifying container health..."
+          FAILED_CONTAINERS=$(docker compose ps --format "table {{.Name}}\t{{.Status}}" | grep -E "(Exit|Restarting|Dead)" || true)
           
-          # Check container logs for any immediate errors
+          if [ ! -z "$FAILED_CONTAINERS" ]; then
+            echo "❌ Failed containers detected:"
+            echo "$FAILED_CONTAINERS"
+            echo "📋 Container logs for debugging:"
+            docker compose logs --tail=50
+            echo "💥 Deployment failed due to container failures!"
+            exit 1
+          fi
+          
+          # Check for critical errors in server container logs
+          echo "🔍 Checking for server errors..."
+          SERVER_ERRORS=$(docker compose logs server --tail=20 | grep -i -E "(error|exception|fail|fatal)" || true)
+          
+          if [ ! -z "$SERVER_ERRORS" ]; then
+            echo "❌ Critical errors found in server container:"
+            echo "$SERVER_ERRORS"
+            echo "📋 Full server logs:"
+            docker compose logs server --tail=50
+            echo "💥 Deployment failed due to server errors!"
+            exit 1
+          fi
+          
+          # Final container status check
+          echo "✅ Final container status check..."
+          docker compose ps
+          
+          # Show recent logs one more time for confirmation
           echo "📋 Recent container logs:"
           docker compose logs --tail=20
           
