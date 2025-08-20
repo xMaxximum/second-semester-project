@@ -75,9 +75,9 @@ jobs:
           echo "📊 Current Docker disk usage:"
           docker system df
           
-          # Remove unused containers, networks, and images (but preserve volumes)
-          echo "🗑️  Removing unused Docker resources (preserving volumes)..."
-          docker system prune -a -f
+
+          echo "🗑️  Removing stopped containers..."
+          docker container prune -f
           
           # Remove any dangling images that might still exist
           echo "🏷️  Removing dangling images..."
