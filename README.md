@@ -2,16 +2,6 @@
 
 Cyclone is a comprehensive cycling data tracking and analytics platform that combines embedded hardware with modern web technologies to provide real-time cycling metrics, route tracking, and performance analytics for cyclists of all levels.
 
-## 🌟 Features
-
-- **🛰️ Live GPS Tracking**: Real-time location tracking using ESP32-based hardware
-- **📊 Performance Analytics**: Speed, distance, elevation, and performance metrics
-- **📈 AI-Driven Insights**: Advanced analytics with charts and detailed reports
-- **👥 Community Features**: Challenges, route sharing, badges, and competitions
-- **📱 Cross-Platform**: Web-based interface accessible on any device
-- **🔄 Real-Time Updates**: Live data streaming from embedded devices
-- **☁️ Weather Integration**: Weather data integration for enhanced tracking
-
 ## 🏗️ Architecture
 
 Cyclone consists of three main components:
@@ -60,7 +50,7 @@ Cyclone consists of three main components:
 
 ## 🚀 Quick Start (Production)
 
-> ⚠️ **Note**: The ESP32 embedded system requires separate setup (see [ESP32 Setup](#esp32-setup) below)
+> ⚠️ **Note**: The ESP (Embedded System Project) part is currently not included in this setup.
 
 ### Prerequisites
 - [Docker](https://www.docker.com/get-started) installed
@@ -153,78 +143,25 @@ Cyclone consists of three main components:
 
 3. **Press F5 to run**
 
-## 🔧 ESP32 Setup
-
-The ESP32 component provides the embedded GPS tracking functionality.
-
-### Prerequisites
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- ESP32 development board
-- USB cable for programming
-- [nanoFramework](https://www.nanoframework.net/) development environment
-
-### Setting up nanoFramework
-
-1. **Install nanoff tool**
-   ```bash
-   dotnet tool install -g nanoff
-   ```
-
-2. **Flash nanoFramework to ESP32**
-   ```bash
-   nanoff --platform esp32 --serialport /dev/ttyUSB0 --update -v diag --baud 115200
-   # On Windows, use COM port like COM3 instead of /dev/ttyUSB0
-   ```
-
-### Building and Deploying ESP32 Code
-
-1. **Navigate to ESP32 directory**
-   ```bash
-   cd ESP32/Cyclone_ESP32
-   ```
-
-2. **Open in Visual Studio**
-   ```bash
-   start Cyclone_ESP32.sln  # Windows
-   ```
-
-3. **Install nanoFramework extension** in Visual Studio
-
-4. **Build the solution**
-   - Use Ctrl+Shift+P → "nanoFramework: Build"
-   - Select the solution
-
-5. **Deploy to ESP32**
-   ```bash
-   nanoff --target ESP32_PSRAM_REV0 --serialport /dev/ttyUSB0 --deploy --image ./bin/Debug/Cyclone_ESP32.bin --baud 115200
-   ```
-
-### ESP32 Configuration
-
-When working with ESP32, edit the `.nfproj` file and add the build constant:
-
-```xml
-<DefineConstants>$(DefineConstants);BUILD_FOR_ESP32;</DefineConstants>
-```
 
 ## 📁 Project Structure
 
 ```
 second-semester-project/
 ├── ESP32/                          # Embedded system code
-│   ├── Cyclone_ESP32/              # Main ESP32 project
-│   ├── SerialCommunication/        # Communication examples
-│   ├── Blinky/                     # Basic LED example
-│   └── setup-nanoFramework.md      # ESP32 setup guide
+│   ├── Cyclone_ESP32/              
+│   ├── SerialCommunication/        
+│   ├── Blinky/                     
+│   └── setup-nanoFramework.md      
 ├── Server/                         # Web application
 │   ├── Server/                     # ASP.NET Core backend
 │   ├── Frontend.Client/            # Blazor WebAssembly frontend
 │   ├── Shared/                     # Shared models and DTOs
 │   ├── docker-compose.yml          # Production deployment
 │   └── Dockerfile                  # Container configuration
-├── Testdata/                       # Test data and tools
-│   ├── generateTestdata.py         # Test data generator
-│   └── testdata.json              # Sample cycling data
+├── Testdata/                       
+│   ├── generateTestdata.py         
+│   └── testdata.json              
 └── README.md                       # This file
 ```
 
@@ -235,9 +172,6 @@ The backend provides a REST API for all cycling data operations:
 - **Authentication**: `/api/auth/*` - User registration, login, logout
 - **Activities**: `/api/activities/*` - Cycling activity data
 - **Users**: `/api/users/*` - User management
-- **Real-time**: SignalR hub at `/dataHub` - Live data streaming
-
-API documentation is available at `/swagger` when running in development mode.
 
 ## 🗄️ Database
 
@@ -252,26 +186,6 @@ cd Server/Server
 dotnet ef migrations add MigrationName
 dotnet ef database update
 ```
-
-## 🧪 Testing
-
-### Generating Test Data
-
-The repository includes a Python script to generate realistic cycling activity data for development and testing:
-
-```bash
-cd Testdata
-python3 generateTestdata.py
-```
-
-**Requirements**: Python 3.6+ (uses only standard library modules)
-
-This creates a `testdata.json` file with simulated cycling activities including:
-- GPS coordinates and routes
-- Speed and distance data  
-- Temperature readings
-- Acceleration data
-- Timestamps and duration
 
 ## 🐳 Docker Deployment
 
@@ -291,20 +205,6 @@ The production setup includes:
 - Caddy reverse proxy with automatic HTTPS
 - Volume persistence for data
 - Optimized container configurations
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow C# coding conventions
-- Add unit tests for new features
-- Update documentation for API changes
-- Test embedded code on actual hardware when possible
 
 ## 📄 License
 
