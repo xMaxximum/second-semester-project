@@ -8,6 +8,7 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 
 
@@ -485,29 +486,31 @@ String urlDecode(String input) {
 }
 
 
+
+
 void registerDevice(){
+  String authToken = "";
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Not connected to WiFi");
     return;
   }
+
   uint64_t deviceID = ESP.getEfuseMac(); // Replace with your device ID logic
   HTTPClient http;
-  if(setupMode){
-    http.begin("http://192.168.1.44:7248/api/device/register"); // Replace with your local URL
-  
+
+  if (setupMode) {
+    http.begin("http://192.168.1.44:7248/api/device/register"); // Local URL
   } else {
-    String url = "http://91.99.84.89:7248/api/device/register";
+    http.begin("http://91.99.84.89:7248/api/device/register"); // External URL
   }
   
   http.addHeader("Content-Type", "application/json");
 
   // Construct JSON body
   String jsonPayload = "{";
-  jsonPayload += "\"device_id\":\"" + deviceID;
-  jsonPayload += "\",";
+  jsonPayload += "\"device_id\":\"" + String(deviceID) + "\",";
   jsonPayload += "\"number\":\"" + authenticationNumber + "\"";
   jsonPayload += "}";
-
 
   int httpResponseCode = http.POST(jsonPayload);
 
@@ -516,15 +519,41 @@ void registerDevice(){
     Serial.println(httpResponseCode);
     String response = http.getString();
     Serial.println("Response: " + response);
+
+    if (httpResponseCode == 200) {
+      // Parse JSON response
+      StaticJsonDocument<512> doc;
+      DeserializationError error = deserializeJson(doc, response);
+      if (!error) {
+        const char* token = doc["authToken"];
+        const char* devId = doc["deviceId"];
+
+        if (token) {
+          authToken = String(token); // Store globally for later API calls
+          Serial.println("Token extracted: " + authToken);
+          EEPROM.begin(128+256);
+          EEPROM.put(128, authToken); // Store token in EEPROM
+          EEPROM.commit();
+          EEPROM.end();
+        }
+        if (devId) {
+          Serial.println("Device ID confirmed: " + String(devId));
+        }
+
+        Serial.println("Device registered successfully.");
+      } else {
+        Serial.print("JSON parse failed: ");
+        Serial.println(error.f_str());
+      }
+    }
   } else {
     Serial.print("Error code: ");
     Serial.println(httpResponseCode);
   }
 
   http.end();
-  if(httpResponseCode == 200){
-    Serial.println("Device registered successfully.");
-  } else {
+
+  if (httpResponseCode != 200) {
     Serial.println("Failed to register device.");
     digitalWrite(2, HIGH); // Turn on LED to indicate error
   }
