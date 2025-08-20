@@ -185,7 +185,7 @@ namespace Server.Controllers
                     DeviceId = request.DeviceId,
                     Name = request.Name,
                     Description = request.Description,
-                    StartTime = request.StartTime ?? DateTime.UtcNow,
+                    StartTime = request.StartTime?.ToUniversalTime() ?? DateTime.UtcNow,
                     Status = ActivityStatus.InProgress,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -250,7 +250,7 @@ namespace Server.Controllers
                     activity.Description = request.Description;
                 
                 if (request.EndTime.HasValue)
-                    activity.EndTime = request.EndTime.Value;
+                    activity.EndTime = request.EndTime.Value.ToUniversalTime();
                 
                 if (request.Status.HasValue)
                     activity.Status = request.Status.Value;

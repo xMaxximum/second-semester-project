@@ -2,6 +2,8 @@
 @using Shared.Models
 @inject ActivityService ActivityService
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>@(_details?.Activity?.Name ?? "Activity Details")</PageTitle>
 
@@ -70,7 +72,66 @@
                 <MudCard Elevation="3">
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <div class="d-flex align-items-center justify-space-between" style="width: 100%;">
+                            <!-- Mobile Layout (stacked) -->
+                            <div class="d-block d-sm-none">
+                                <div class="d-flex align-items-center mb-3">
+                                    <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
+                                    @if (_editingTitle)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                            <MudTextField @bind-Value="_editedTitle" 
+                                                         Variant="Variant.Outlined" 
+                                                         Margin="Margin.Dense"
+                                                         Style="flex-grow: 1;" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Check" 
+                                                          Color="Color.Success" 
+                                                          Size="Size.Small"
+                                                          OnClick="SaveTitleEdit" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                          Color="Color.Default" 
+                                                          Size="Size.Small"
+                                                          OnClick="CancelTitleEdit" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.h6" Style="margin: 0; flex-grow: 1;">@_details.Activity.Name</MudText>
+                                    }
+                                </div>
+                                <div class="d-flex align-items-center justify-space-between">
+                                    @if (_details.Activity.Status == ActivityStatus.Completed)
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" 
+                                                Icon="@Icons.Material.Filled.CheckCircle" Style="font-weight: bold;">
+                                            Completed!
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Color="@GetStatusColor(_details.Activity.Status)" Size="Size.Small">
+                                            @_details.Activity.Status
+                                        </MudChip>
+                                    }
+                                    @if (!_editingTitle)
+                                    {
+                                        <div class="d-flex gap-2">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                           Color="Color.Primary" 
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => StartEditingTitle())"
+                                                           Title="Edit Activity Name" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                           Color="Color.Error" 
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => DeleteActivity())"
+                                                           Title="Delete Activity" />
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Desktop Layout (horizontal) -->
+                            <div class="d-none d-sm-flex align-items-center justify-space-between" style="width: 100%;">
                                 <div class="d-flex align-items-center flex-grow-1 icon-header">
                                     <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
                                     @if (_editingTitle)
@@ -116,12 +177,18 @@
                                                        Size="Size.Small"
                                                        OnClick="@(() => StartEditingTitle())"
                                                        Title="Edit Activity Name" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                       Color="Color.Error" 
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => DeleteActivity())"
+                                                       Title="Delete Activity" />
                                     }
                                 </div>
                             </div>
+
                             @if (!string.IsNullOrEmpty(_details.Activity.Description))
                             {
-                                <MudText Typo="Typo.body1" Class="mt-2" Style=" text-align: justify">@_details.Activity.Description</MudText>
+                                <MudText Typo="Typo.body1" Class="mt-2" Style="text-align: justify">@_details.Activity.Description</MudText>
                             }
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -186,7 +253,7 @@
                                 <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" />
                                 <div>
                                     <MudText Typo="Typo.body2"><strong>Started</strong></MudText>
-                                    <MudText Typo="Typo.caption">@_details.Activity.StartTime.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                    <MudText Typo="Typo.caption">@_details.Activity.StartTime.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</MudText>
                                 </div>
                             </div>
                             
@@ -196,7 +263,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Stop" Color="Color.Error" />
                                     <div>
                                         <MudText Typo="Typo.body2"><strong>Finished</strong></MudText>
-                                        <MudText Typo="Typo.caption">@_details.Activity.EndTime.Value.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                        <MudText Typo="Typo.caption">@_details.Activity.EndTime.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</MudText>
                                     </div>
                                 </div>
                             }
@@ -294,7 +361,7 @@
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd DataLabel="Time">
-                                    <MudText Typo="Typo.caption">@context.Timestamp.ToString("HH:mm:ss")</MudText>
+                                    <MudText Typo="Typo.caption">@context.Timestamp.ToLocalTime().ToString("HH:mm:ss")</MudText>
                                 </MudTd>
                                 <MudTd DataLabel="Speed">
                                     <MudText Typo="Typo.body2">@context.CurrentSpeed.ToString("F1") km/h</MudText>
@@ -423,5 +490,52 @@
         _editingTitle = false;
         _editedTitle = string.Empty;
         StateHasChanged();
+    }
+
+    private async Task DeleteActivity()
+    {
+        if (_details?.Activity == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the activity '{_details.Activity.Name}'? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["ButtonColor"] = Color.Error
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Activity", parameters, options);
+        var result = await dialog.Result;
+
+        if (result.Data != null && (bool)result.Data)
+        {
+            try
+            {
+                _loading = true;
+                StateHasChanged();
+
+                var deleteResult = await ActivityService.DeleteActivityAsync(_details.Activity.Id);
+                
+                if (deleteResult?.IsSuccess == true)
+                {
+                    Snackbar.Add($"Activity '{_details.Activity.Name}' deleted successfully", Severity.Success);
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    var errorMessage = deleteResult?.Message ?? "Unknown error";
+                    Snackbar.Add($"Failed to delete activity: {errorMessage}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting activity: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
     }
 }
