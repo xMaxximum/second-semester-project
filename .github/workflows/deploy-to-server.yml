@@ -90,9 +90,11 @@ jobs:
           # Show disk usage after cleanup
           echo "📊 Docker disk usage after cleanup:"
           docker system df
+
+          export COMPOSE_BAKE=true
           
           # Build containers with cache optimization
-          echo "🔨 Building containers with cache..."
+          echo "🔨 Building containers..."
           docker compose build
           
           # Start containers
