@@ -1,0 +1,249 @@
+@page "/devices"
+@rendermode InteractiveWebAssembly
+@using Microsoft.AspNetCore.Authorization
+@using Shared.Models
+@using System.Text.Json
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@implements IDisposable
+
+<PageTitle>Manage Devices</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-6">
+    <!-- Back Button and Header -->
+    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-6">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
+                          Color="Color.Primary" 
+                          OnClick="GoBack"
+                          Title="Go back" />
+            <MudText Typo="Typo.h4" Class="mb-0">
+                <MudIcon Icon="@Icons.Material.Filled.Memory" Class="me-2" />
+                My Devices
+            </MudText>
+        </MudStack>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Add" 
+                  OnClick="OpenAddDeviceDialog">
+            Add New Device
+        </MudButton>
+    </MudStack>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-center py-8">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else if (devices?.Count == 0)
+    {
+        <MudPaper Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Large" Class="mb-4 mud-text-secondary" />
+            <MudText Typo="Typo.h6" Class="mb-2">No devices registered</MudText>
+            <MudText Typo="Typo.body1" Class="mb-4 mud-text-secondary">Add your first device to start tracking activities</MudText>
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      StartIcon="@Icons.Material.Filled.Add" 
+                      OnClick="OpenAddDeviceDialog">
+                Add Device
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var device in devices!)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Class="h-100">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@device.Name</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="() => ShowEditDevice(device)">
+                                        Edit Name
+                                    </MudMenuItem>
+                                    <MudDivider />
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="() => ConfirmDelete(device)">
+                                        <span style="color: var(--mud-palette-error);">Delete</span>
+                                    </MudMenuItem>
+                                </MudMenu>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <div class="mb-3">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Device ID:</MudText>
+                                <MudText Typo="Typo.body2" Class="font-monospace text-break">@device.DeviceId</MudText>
+                            </div>
+                            <div class="mb-3">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Status:</MudText>
+                                <div>
+                                    @if (device.HasAuthToken)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">
+                                            Registered
+                                        </MudChip>
+                                    }
+                                    else if (device.HasPendingActivation)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Schedule">
+                                            Pending Activation
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Icon="@Icons.Material.Filled.Error">
+                                            Not Activated
+                                        </MudChip>
+                                    }
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Added:</MudText>
+                                <MudText Typo="Typo.body2">@device.RegisteredAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</MudText>
+                            </div>
+                            @if (!string.IsNullOrEmpty(device.FirmwareVersion))
+                            {
+                                <div class="mb-3">
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Firmware:</MudText>
+                                    <MudText Typo="Typo.body2">v@device.FirmwareVersion</MudText>
+                                </div>
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<DeviceDto>? devices = new();
+    private bool isLoading = true;
+    private Timer? countdownTimer;
+    private DateTime currentTime = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDevices();
+        
+        // Start a timer to update the current time every second for the countdown
+        countdownTimer = new Timer(UpdateTime, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private void UpdateTime(object? state)
+    {
+        currentTime = DateTime.Now;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        countdownTimer?.Dispose();
+    }
+
+    private async Task LoadDevices()
+    {
+        try
+        {
+            isLoading = true;
+            var response = await Http.GetAsync("api/device");
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                devices = JsonSerializer.Deserialize<List<DeviceDto>>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading devices: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task OpenAddDeviceDialog()
+    {
+        var dialog = await DialogService.ShowAsync<AddDeviceDialog>("Add New Device", 
+            new DialogOptions { 
+                MaxWidth = MaxWidth.Medium, 
+                FullWidth = true,
+                CloseButton = true,
+                BackdropClick = true,
+            });
+        
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadDevices();
+        }
+    }
+
+    private async Task ShowEditDevice(DeviceDto device)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Device"] = device
+        };
+        
+        var dialog = await DialogService.ShowAsync<EditDeviceDialog>("Edit Device", parameters,
+            new DialogOptions { 
+                MaxWidth = MaxWidth.Small, 
+                FullWidth = true,
+                CloseButton = true 
+            });
+        
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadDevices();
+        }
+    }
+
+    private async Task ConfirmDelete(DeviceDto device)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{device.Name}'? This action cannot be undone.");
+        if (confirmed)
+        {
+            await DeleteDevice(device.DeviceId);
+        }
+    }
+
+    private async Task DeleteDevice(string deviceId)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"api/device/{deviceId}");
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Device deleted successfully", Severity.Success);
+                await LoadDevices();
+            }
+            else
+            {
+                Snackbar.Add("Error deleting device", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting device: {ex.Message}", Severity.Error);
+        }
+    }
+}

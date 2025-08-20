@@ -312,32 +312,23 @@ namespace Server.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DeviceType")
-                        .HasMaxLength(50)
+                    b.Property<string>("ActivationCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ActivationCodeExpiry")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuthToken")
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FirmwareVersion")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("HardwareVersion")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
-
-                    b.Property<double?>("LastKnownBatteryLevel")
-                        .HasColumnType("REAL");
-
-                    b.Property<string>("LastKnownLocation")
-                        .HasColumnType("TEXT");
-
-                    b.Property<double?>("LastKnownTemperature")
-                        .HasColumnType("REAL");
-
-                    b.Property<DateTime>("LastSeenAt")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -345,10 +336,6 @@ namespace Server.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("RegisteredAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Settings")
-                        .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
                     b.Property<long>("UserId")

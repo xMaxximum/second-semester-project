@@ -263,8 +263,8 @@
             </MudButton>
         </MudTd>
         <MudTd DataLabel="Date">
-            <MudText Typo="Typo.body2">@element.Date.ToString("MMM dd, yyyy")</MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary">@element.Date.ToString("HH:mm")</MudText>
+            <MudText Typo="Typo.body2">@element.Date.ToLocalTime().ToString("MMM dd, yyyy")</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@element.Date.ToLocalTime().ToString("HH:mm")</MudText>
         </MudTd>
         <MudTd DataLabel="Distance">
             <MudText Typo="Typo.body2" Style="font-weight: 500;">@element.Distance km</MudText>
@@ -330,7 +330,7 @@
             return true;
 
         // Search in formatted dates (multiple formats)
-        var date = activity.Date;
+        var date = activity.Date.ToLocalTime(); // Convert to local time for search
         var dateFormats = new[]
         {
             date.ToString("yyyy-MM-dd"), // 2025-08-12

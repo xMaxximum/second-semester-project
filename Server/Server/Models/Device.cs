@@ -9,7 +9,6 @@ namespace Server.Models
         [StringLength(50)]
         public string DeviceId { get; set; } = string.Empty; // ESP32 MAC address or unique ID (Primary Key)
 
-        [Required]
         [StringLength(100)]
         public string Name { get; set; } = string.Empty; // User-friendly name like "My ESP32 Bike Tracker"
 
@@ -20,25 +19,18 @@ namespace Server.Models
         public User User { get; set; } = null!;
 
         [StringLength(50)]
-        public string? HardwareVersion { get; set; }
+        public string? FirmwareVersion { get; set; } = "1.0";
 
-        [StringLength(50)]
-        public string? FirmwareVersion { get; set; }
+        [StringLength(128)]
+        public string? AuthToken { get; set; } // Permanent authentication token for device API calls
 
-        [StringLength(50)]
-        public string? DeviceType { get; set; } = "ESP32"; // Future: could support different device types
+        [StringLength(10)]
+        public string? ActivationCode { get; set; } // Temporary activation code (6-8 digits)
 
-        public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
+        public DateTime? ActivationCodeExpiry { get; set; } // When the activation code expires
+
         public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
         public bool IsActive { get; set; } = true;
 
-        // Device status
-        public double? LastKnownBatteryLevel { get; set; } // 0-100%
-        public string? LastKnownLocation { get; set; } // JSON with lat/lng
-        public double? LastKnownTemperature { get; set; }
-
-        // Device settings (JSON)
-        [StringLength(1000)]
-        public string? Settings { get; set; } // JSON for device-specific settings
     }
 }
