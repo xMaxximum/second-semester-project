@@ -1,0 +1,511 @@
+@using System.Text.Json
+@using Shared.Models
+@using MudBlazor
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IDisposable
+
+<MudDialog DisableSidePadding="true" Class="device-dialog">
+    <DialogContent>
+        @if (currentStep == DialogStep.ActivationCode)
+        {
+            <div class="pa-6 dialog-step">
+                <MudText Typo="Typo.h6" Class="mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Memory" Class="me-2" />
+                    Connect Your Device
+                </MudText>
+                
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    <MudText Typo="Typo.body2">
+                        Enter this activation code on your device to connect it to your account.
+                        The code will expire in 10 minutes.
+                    </MudText>
+                </MudAlert>
+
+                <!-- Large, prominent activation code display -->
+                <MudCard Class="mb-4 activation-code-card" Style="background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-lighten) 100%);">
+                    <MudCardContent Class="pa-6 text-center">
+                        <MudText Typo="Typo.caption" Class="mb-2" Style="color: rgba(255,255,255,0.7);">
+                            ACTIVATION CODE
+                        </MudText>
+                        <MudText Typo="Typo.h2" 
+                                 Class="font-monospace mb-3" 
+                                 Style="letter-spacing: 0.5em; font-weight: bold; color: white;">
+                            @activationCode?.ActivationCode
+                        </MudText>
+                        <MudButton Variant="Variant.Outlined" 
+                                  StartIcon="@Icons.Material.Filled.ContentCopy" 
+                                  OnClick="CopyActivationCode"
+                                  Style="color: white; border-color: white;">
+                            Copy Code
+                        </MudButton>
+                    </MudCardContent>
+                </MudCard>
+                <div class="d-flex justify-center align-center mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="me-2 mud-text-secondary" />
+                    @if (timeRemaining.TotalSeconds > 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            Code expires in @((int)timeRemaining.TotalMinutes):@(timeRemaining.Seconds.ToString("D2"))
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Error">
+                            Code has expired
+                        </MudText>
+                    }
+                </div>
+
+                @if (deviceConnected && !deviceNamed)
+                {
+                    <!-- Device connected, automatically transitioning -->
+                    <MudAlert Severity="Severity.Success" Class="mb-4 success-bounce">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="me-2" />
+                            <div>
+                                <MudText Typo="Typo.subtitle1" Class="mb-1">Device Connected!</MudText>
+                                <MudText Typo="Typo.body2">Automatically proceeding to naming step...</MudText>
+                            </div>
+                        </div>
+                    </MudAlert>
+                }
+                else if (timeRemaining.TotalSeconds <= 0)
+                {
+                    <!-- Expired state -->
+                    <MudAlert Severity="Severity.Error" Class="mb-4">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" />
+                            <div>
+                                <MudText Typo="Typo.subtitle1" Class="mb-1">Activation Code Expired</MudText>
+                                <MudText Typo="Typo.body2">The activation code has expired. Please generate a new one.</MudText>
+                            </div>
+                        </div>
+                    </MudAlert>
+                }
+                else
+                {
+                    <!-- Waiting state -->
+                    <MudCard Class="pa-4 pulse-glow" Style="border: 2px dashed var(--mud-palette-primary); background-color: rgba(var(--mud-palette-primary-rgb), 0.05);">
+                        <div class="d-flex align-center">
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-3" />
+                            <div>
+                                <MudText Typo="Typo.subtitle1" Class="mb-1">Waiting for device...</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                    Enter the activation code on your device to complete the connection.
+                                </MudText>
+                            </div>
+                        </div>
+                    </MudCard>
+                }
+            </div>
+        }
+        else if (currentStep == DialogStep.DeviceNaming)
+        {
+            <div class="pa-6 dialog-step">
+                <div class="d-flex align-center mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Class="me-2" />
+                    <MudText Typo="Typo.h6">Name Your Device</MudText>
+                </div>
+                
+                <MudAlert Severity="Severity.Success" Class="mb-4">
+                    <MudText Typo="Typo.body2">
+                        Great! Your device is now connected. Give it a memorable name to identify it easily.
+                    </MudText>
+                </MudAlert>
+
+                <MudForm @ref="form">
+                    <MudTextField @bind-Value="deviceName" 
+                                 Label="Device Name" 
+                                 Placeholder="e.g., My Cycling Tracker"
+                                 Required="true"
+                                 RequiredError="Device name is required"
+                                 FullWidth="true"
+                                 Class="mb-3" />
+                </MudForm>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    This name will help you identify your device in the dashboard.
+                </MudText>
+            </div>
+        }
+        else if (currentStep == DialogStep.Success)
+        {
+            <div class="pa-6 text-center">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" 
+                         Color="Color.Success" 
+                         Size="Size.Large" 
+                         Class="mb-3" />
+                <MudText Typo="Typo.h6" Class="mb-2">Device Added Successfully!</MudText>
+                <MudText Typo="Typo.body1" Class="mb-4 mud-text-secondary">
+                    Your device "@deviceName" has been added to your account and is ready to use.
+                </MudText>
+                
+                @if (deviceStatus?.HasAuthToken == true)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <MudText Typo="Typo.body2">
+                            <strong>Remember:</strong> Your device is now configured with its authentication token. 
+                            You can find it in the device management section if needed later.
+                        </MudText>
+                    </MudAlert>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (currentStep == DialogStep.ActivationCode)
+        {
+            @if (timeRemaining.TotalSeconds <= 0)
+            {
+                <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+                <MudButton Color="Color.Primary" 
+                          Variant="Variant.Filled" 
+                          OnClick="GenerateActivationCode"
+                          StartIcon="@Icons.Material.Filled.Refresh">
+                    Generate New Code
+                </MudButton>
+            }
+            else
+            {
+                <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+            }
+        }
+        else if (currentStep == DialogStep.DeviceNaming)
+        {
+            <MudButton OnClick="GoBackToActivation" Variant="Variant.Text">Back</MudButton>
+            <MudButton Color="Color.Primary" 
+                      Variant="Variant.Filled"
+                      OnClick="SaveDeviceName" 
+                      Disabled="@isSavingDevice">
+                @if (isSavingDevice)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                }
+                Save Device
+            </MudButton>
+        }
+        else if (currentStep == DialogStep.Success)
+        {
+            <MudButton Color="Color.Success" 
+                      Variant="Variant.Filled" 
+                      OnClick="CloseDialog"
+                      StartIcon="@Icons.Material.Filled.Check">
+                Done
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    
+    private MudForm form = default!;
+    private string deviceName = "";
+    private bool isGeneratingCode = false;
+    private bool isSavingDevice = false;
+    private ActivationCodeResponse? activationCode;
+    private Timer? countdownTimer;
+    private Timer? statusCheckTimer;
+    private DateTime currentTime = DateTime.Now;
+    private DialogStep currentStep = DialogStep.ActivationCode; // Start with activation code
+    private DeviceDto? deviceStatus;
+    private bool deviceConnected = false;
+    private bool deviceNamed = false;
+
+    private TimeSpan timeRemaining => activationCode?.ExpiresAt.ToLocalTime() > currentTime 
+        ? activationCode.ExpiresAt.ToLocalTime() - currentTime 
+        : TimeSpan.Zero;
+
+    protected override void OnInitialized()
+    {
+        // Start a timer to update the current time every second for proper countdown
+        countdownTimer = new Timer(UpdateTime, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        // Generate activation code immediately when dialog opens
+        _ = Task.Run(GenerateActivationCodeOnStart);
+    }
+
+    private void UpdateTime(object? state)
+    {
+        currentTime = DateTime.Now;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task GenerateActivationCodeOnStart()
+    {
+        await GenerateActivationCode();
+    }
+
+    private async Task GenerateActivationCode()
+    {
+        try
+        {
+            isGeneratingCode = true;
+            var response = await Http.PostAsync("api/device/generate-temp-activation-code", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                activationCode = JsonSerializer.Deserialize<ActivationCodeResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                currentStep = DialogStep.ActivationCode;
+                Snackbar.Add("Activation code generated successfully!", Severity.Success);
+                
+                // Start polling for device status
+                StartStatusPolling();
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error generating activation code: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isGeneratingCode = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void StartStatusPolling()
+    {
+        if (activationCode == null) return;
+        
+        statusCheckTimer?.Dispose();
+        statusCheckTimer = new Timer(CheckDeviceStatus, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+    }
+
+    private async void CheckDeviceStatus(object? state)
+    {
+        if (activationCode == null) return;
+
+        try
+        {
+            var response = await Http.GetAsync($"api/device/check-temp-activation/{activationCode.ActivationCode}");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var tempDeviceInfo = JsonSerializer.Deserialize<JsonElement>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (tempDeviceInfo.TryGetProperty("connected", out var connectedProp) && connectedProp.GetBoolean())
+                {
+                    if (!deviceConnected)
+                    {
+                        // Device just connected
+                        deviceConnected = true;
+                        await InvokeAsync(() =>
+                        {
+                            Snackbar.Add("Device connected successfully!", Severity.Success);
+                            StateHasChanged();
+                        });
+
+                        // Wait 2 seconds to let user see the success message, then auto-proceed to naming
+                        await Task.Delay(2000);
+                        await InvokeAsync(() =>
+                        {
+                            currentStep = DialogStep.DeviceNaming;
+                            StateHasChanged();
+                        });
+                        
+                        // Stop polling once we've moved to naming step
+                        statusCheckTimer?.Dispose();
+                        return;
+                    }
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Silently continue polling on errors
+            Console.WriteLine($"Status check error: {ex.Message}");
+        }
+    }
+
+    private void GoBackToActivation()
+    {
+        currentStep = DialogStep.ActivationCode;
+        deviceConnected = false;
+        
+        // Restart status polling if we go back
+        StartStatusPolling();
+    }
+
+    private async Task SaveDeviceName()
+    {
+        if (string.IsNullOrWhiteSpace(deviceName))
+        {
+            Snackbar.Add("Please enter a device name", Severity.Warning);
+            return;
+        }
+
+        if (activationCode == null) return;
+
+        try
+        {
+            isSavingDevice = true;
+            var request = new { 
+                ActivationCode = activationCode.ActivationCode, 
+                DeviceName = deviceName 
+            };
+            var response = await Http.PostAsJsonAsync("api/device/complete-activation", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                deviceNamed = true;
+                currentStep = DialogStep.Success;
+                Snackbar.Add("Device added successfully!", Severity.Success);
+                
+                // Get the final device status
+                var content = await response.Content.ReadAsStringAsync();
+                deviceStatus = JsonSerializer.Deserialize<DeviceDto>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error saving device: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSavingDevice = false;
+        }
+    }
+
+    private async Task CopyActivationCode()
+    {
+        if (activationCode?.ActivationCode != null)
+        {
+            await CopyToClipboard(activationCode.ActivationCode, "Activation code copied to clipboard!");
+        }
+    }
+
+    private async Task CopyToClipboard(string text, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add(message, Severity.Info);
+        }
+        catch
+        {
+            // Fallback for older browsers
+            await JS.InvokeVoidAsync("eval", $"document.execCommand('copy')");
+            Snackbar.Add(message, Severity.Info);
+        }
+    }
+
+    private void CloseDialog()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    public void Dispose()
+    {
+        countdownTimer?.Dispose();
+        statusCheckTimer?.Dispose();
+    }
+
+    private enum DialogStep
+    {
+        ActivationCode,
+        DeviceNaming,
+        Success
+    }
+}
+
+<style>
+.device-dialog .mud-dialog-content {
+    padding: 0 !important;
+}
+
+.device-dialog .mud-dialog-actions {
+    border-top: 1px solid var(--mud-palette-divider);
+}
+
+/* Smooth fade-in animation for dialog steps */
+.dialog-step {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+@@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Pulse animation for waiting states */
+.pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(var(--mud-palette-primary-rgb), 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(var(--mud-palette-primary-rgb), 0.6);
+    }
+}
+
+/* Success state animation */
+.success-bounce {
+    animation: successBounce 0.6s ease-out;
+}
+
+@@keyframes successBounce {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Enhanced activation code display */
+.activation-code-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.activation-code-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shine 3s linear infinite;
+}
+
+@@keyframes shine {
+    0% { transform: rotate(45deg) translateX(-100%); }
+    100% { transform: rotate(45deg) translateX(100%); }
+}
+</style>

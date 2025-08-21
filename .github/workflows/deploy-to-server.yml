@@ -44,9 +44,10 @@ jobs:
           git config core.sshCommand "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
           git config pull.rebase false
           
-          # Pull latest changes from main branch
+          # Pull latest changes from main branch (force overwrite local changes)
           echo "📥 Pulling latest changes..."
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
           
           # Clean up the deploy key
           rm -f ~/.ssh/deploy_key
@@ -67,17 +68,34 @@ jobs:
           echo "🛑 Stopping existing containers..."
           docker compose down
           
-          # Clean up old images (keep cache layers)
-          echo "🧹 Cleaning up old images..."
+          # Comprehensive Docker cleanup to prevent disk space issues
+          echo "🧹 Performing comprehensive Docker cleanup..."
+          
+          # Show current disk usage
+          echo "📊 Current Docker disk usage:"
+          docker system df
+          
+
+          echo "🗑️  Removing stopped containers..."
+          docker container prune -f
+          
+          # Remove any dangling images that might still exist
+          echo "🏷️  Removing dangling images..."
           docker image prune -f
           
-          # Enable BuildKit for better caching
-          export DOCKER_BUILDKIT=1
-          export COMPOSE_DOCKER_CLI_BUILD=1
+          # Remove unused build cache (keeps recent cache layers)
+          echo "💾 Cleaning build cache..."
+          docker builder prune -f --keep-storage 2GB
+          
+          # Show disk usage after cleanup
+          echo "📊 Docker disk usage after cleanup:"
+          docker system df
+
+          export COMPOSE_BAKE=true
           
           # Build containers with cache optimization
-          echo "🔨 Building containers with cache..."
-          docker compose build --parallel
+          echo "🔨 Building containers..."
+          docker compose build
           
           # Start containers
           echo "🚀 Starting containers..."
@@ -91,11 +109,11 @@ jobs:
           echo "✅ Checking container status..."
           docker compose ps
           
-          # Check Caddy logs for SSL certificate status
-          echo "🔒 Checking SSL certificate status..."
-          docker compose logs caddy | tail -10
+          # Final container status check
+          echo "✅ Final container status check..."
+          docker compose ps
           
-          # Check container logs for any immediate errors
+          # Show recent logs one more time for confirmation
           echo "📋 Recent container logs:"
           docker compose logs --tail=20
           

@@ -1,0 +1,184 @@
+@using Shared.Models
+
+<style>
+    .centered-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .responsive-divider {
+        background-color: rgba(0, 0, 0, 0.12);
+        width: 100%;
+        height: 0.0625rem;
+    }
+
+    .divider-container {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0;
+    }
+
+    .left-pane,
+    .right-pane {
+        padding: 0.5rem 0;
+        border: none;
+    }
+
+    @@media (min-width: 60rem) {
+        .responsive-grid {
+            display: flex;
+            flex-wrap: nowrap;
+            margin-top: auto;
+        }
+
+        .left-pane {
+            border-right: 0.0625rem solid rgba(0, 0, 0, 0.12);
+            padding-right: 0;
+            flex: 1;
+        }
+
+        .right-pane {
+            padding-left: 0;
+            flex: 1;
+        }
+
+        .divider-container {
+            display: none;
+        }
+    }
+</style>
+
+@if (IsLoading)
+{
+    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
+        <div class="centered-content">
+            <MudProgressCircular Size="Size.Large" Indeterminate="true"/>
+            <MudText Style="margin-top: 1rem;">Loading weather data...</MudText>
+        </div>
+    </MudPaper>
+}
+else if (WeatherData is null)
+{
+    <MudPaper Elevation="3" Style="padding: 1.5rem; height: auto;">
+        <MudStack Spacing="2" Class="centered-content">
+            <MudText Color="Color.Error">Failed to load weather data.</MudText>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       OnClick="OnReset">
+                Try Different Location
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <!-- Weather Display -->
+    <MudPaper Elevation="3" Style="padding: 1.5rem;">
+        <MudStack Spacing="2">
+            <!-- Header with location and reset button -->
+            <MudStack Row="true" Style="justify-content: space-between; align-items: center">
+                <MudText Typo="Typo.h6" Color="Color.Primary">Current Weather</MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           OnClick="OnReset">Change Location
+                </MudButton>
+            </MudStack>
+
+            <MudGrid Class="responsive-grid">
+                <!-- Left Column -->
+                <MudItem xs="12" md="6" Class="left-pane">
+                    <MudStack Spacing="2" Class="centered-content">
+                        <MudText Typo="Typo.subtitle1" Color="Color.Dark" Align="Align.Center">
+                            @WeatherData.City, @WeatherData.CountryCode
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Dark">@WeatherData.Datetime</MudText>
+
+                        <MudStack Row="true" Spacing="3" Class="centered-content">
+                            <MudIcon Icon="@GetIcon(WeatherData.Condition)" Size="Size.Large" Color="Color.Primary"/>
+                            <MudStack Spacing="0" Style="align-items: flex-start;">
+                                <MudText Typo="Typo.h4">@WeatherData.Temperature°C</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Dark">@WeatherData.Description</MudText>
+                            </MudStack>
+                        </MudStack>
+                    </MudStack>
+                </MudItem>
+
+                <!-- Responsive Divider - only shows on mobile -->
+                <MudItem xs="12" Class="divider-container">
+                    <div class="responsive-divider"></div>
+                </MudItem>
+
+                <!-- Right Column -->
+                <MudItem xs="12" md="6" Class="right-pane">
+                    <MudStack Spacing="2">
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Color="Color.Dark">Feels Like:</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@WeatherData.FeelsLike°C</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.InvertColors" Size="Size.Small"
+                                             Color="Color.Info"/>
+                                    <MudText Color="Color.Dark">Humidity:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@WeatherData.Humidity%</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                             Color="Color.Default"/>
+                                    <MudText Color="Color.Dark">Cloud Coverage:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@WeatherData.CloudCoverage%</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Air" Size="Size.Small" Color="Color.Success"/>
+                                    <MudText Color="Color.Dark">Wind Speed:</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Align="Align.Right">@WeatherData.WindSpeed m/s @WeatherData.WindDirection</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public WeatherData? WeatherData { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+
+    private string GetIcon(WeatherCondition condition) => condition switch
+    {
+        WeatherCondition.Sunny => Icons.Material.Filled.WbSunny,
+        WeatherCondition.Cloudy => Icons.Material.Filled.Cloud,
+        WeatherCondition.Rainy => Icons.Material.Filled.CloudQueue,
+        WeatherCondition.PartlyCloudy => Icons.Material.Filled.Cloud,
+        _ => Icons.Material.Filled.Cloud
+    };
+}

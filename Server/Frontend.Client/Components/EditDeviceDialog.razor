@@ -1,0 +1,88 @@
+@using Shared.Models
+@using MudBlazor
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-4">Edit Device</MudText>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="deviceName" 
+                         Label="Device Name" 
+                         Required="true"
+                         RequiredError="Device name is required"
+                         FullWidth="true"
+                         Class="mb-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                  Variant="Variant.Filled"
+                  OnClick="UpdateDevice" 
+                  Disabled="@isUpdating">
+            @if (isUpdating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Update Device
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public DeviceDto Device { get; set; } = default!;
+    
+    private MudForm form = default!;
+    private string deviceName = "";
+    private bool isUpdating = false;
+
+    protected override void OnInitialized()
+    {
+        if (Device != null)
+        {
+            deviceName = Device.Name;
+        }
+    }
+
+    private async Task UpdateDevice()
+    {
+        if (string.IsNullOrWhiteSpace(deviceName)) 
+        {
+            Snackbar.Add("Please enter a device name", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            isUpdating = true;
+            var request = new { Name = deviceName };
+            var response = await Http.PutAsJsonAsync($"api/device/{Device.DeviceId}", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Device updated successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error updating device: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

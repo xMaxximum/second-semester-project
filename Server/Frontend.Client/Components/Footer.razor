@@ -1,0 +1,108 @@
+﻿<MudPaper Class="site-footer" Elevation="0" Square="true">
+  <MudContainer MaxWidth="MaxWidth.False" Class="p-0">
+    <MudGrid GutterSize="3">
+
+      <!-- Features -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Features</div>
+        <ul>
+          <li>Dark/Light Mode</li>
+          <li>Logo & Branding</li>
+          <li>Responsive Layout</li>
+          <li>Reusable Components</li>
+          <li>Privacy & Impressum</li>
+        </ul>
+      </MudItem>
+
+      <!-- Quick Links -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Quick Links</div>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/carbscounter">Carbs Calculator</a></li>
+          <li><a href="/profile">Profile</a></li>
+        </ul>
+      </MudItem>
+
+      <!-- Legal -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Legal</div>
+        <ul>
+          <li><a href="/legal">Legal Notice</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/terms">Terms and Conditions</a></li>
+        </ul>
+      </MudItem>
+
+      <!-- Contact -->
+      <MudItem xs="12" sm="6" md="3">
+        <div class="footer-header">Contact</div>
+        <ul>
+          <li>scharfl.tin24@student.dhbw-heidenheim.de</li>
+        </ul>
+      </MudItem>
+
+    </MudGrid>
+
+    <!-- Bottom -->
+    <div class="footer-bottom">
+      &copy; @DateTime.Now.Year Cyclone, Inc. — All rights reserved.
+    </div>
+  </MudContainer>
+</MudPaper>
+
+<style>
+  html, body { height: 100%; }
+  .site-footer { flex: 0 0 auto; margin-top: auto; position: static; }
+
+  .site-footer {
+    background-color: #594AE2;
+    color: #FFF;
+    padding: 3rem 1rem;
+  }
+
+  /* Category headings */
+  .site-footer .footer-header {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #FFF;
+  }
+
+  /* List reset and alignment */
+  .site-footer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    line-height: 2;
+    padding-left: 1rem;
+  }
+  .site-footer ul li {
+    margin: 0;
+  }
+
+  /* Footer link styles */
+  .site-footer a {
+    color: #FFF;
+    text-decoration: none;
+    font-weight: 400;
+    transition: color 0.2s, text-decoration 0.2s;
+  }
+  .site-footer a:hover,
+  .site-footer a:focus {
+    color: #DDD;
+    text-decoration: underline;
+    outline: none;
+  }
+
+  /* Bottom area */
+  .site-footer .footer-bottom {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #AAA;
+  }
+
+  @@media (max-width: 600px) {
+  .site-footer { padding: 2rem 1rem; }
+  }
+</style>

@@ -1,4 +1,8 @@
 ﻿@using Heron.MudCalendar
+@using Shared.Models
+@inject ActivityService ActivityService
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
 
 <style>
     .mud-cal-toolbar {
@@ -7,6 +11,55 @@
         gap: 8px;
         align-items: center;
         justify-content: center;
+        padding: 16px;
+        background: linear-gradient(135deg, var(--mud-palette-primary-lighten) 0%, var(--mud-palette-primary) 100%);
+        border-radius: 0;
+        color: white;
+    }
+    
+    .mud-calendar {
+        border-radius: 0;
+    }
+    
+    .calendar-container {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+    }
+
+    .calendar-header {
+        background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-darken) 100%);
+        padding: 16px;
+        color: white;
+        text-align: center;
+    }
+
+    .activity-event {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-radius: 4px;
+        padding: 2px 6px;
+        margin: 1px 0;
+        font-size: 0.75rem;
+        background: linear-gradient(135deg, var(--mud-palette-success-lighten) 0%, var(--mud-palette-success) 100%);
+        color: white;
+        border: none;
+    }
+
+    .activity-event:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        filter: brightness(1.1);
+    }
+
+    .calendar-stats {
+        padding: 12px 16px;
+        background: var(--mud-palette-grey-lighten-5);
+        border-top: 1px solid var(--mud-palette-divider);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     @@media (max-width: 600px) {
@@ -15,12 +68,128 @@
             left: 50% !important;
             transform: translateX(-50%) !important;
         }
+        
+        .calendar-stats {
+            flex-direction: column;
+            gap: 8px;
+        }
     }
 </style>
 
-<MudCalendar T="CalendarItem"
-             Elevation="3"
-             Class="pa-4"
-             Height="475"
-             ShowDropdownViewSelector="true"
-             ShowDatePicker="true"/>
+<div class="calendar-container">
+    <div class="calendar-header">
+        <MudText Typo="Typo.h6" Style="font-weight: 600; margin: 0;" Class="icon-header">
+            <MudIcon Icon="@Icons.Material.Filled.Event" Style="margin-right: 8px;" />
+            Activity Calendar
+        </MudText>
+    </div>
+    
+    <MudCalendar T="CalendarItem"
+                 Elevation="0"
+                 Class="pa-0"
+                 ShowDropdownViewSelector="true"
+                 ShowDatePicker="true"
+                 Items="calendarItems"
+                 CellClicked="OnCellClicked"
+                 ItemClicked="OnItemClicked" />
+    
+    <div class="calendar-stats">
+        <div class="d-flex align-items-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" />
+            <MudText Typo="Typo.caption" Style="font-weight: 500;">
+                @{
+                    var now = DateTime.Now;
+                    var thisMonthCount = calendarItems.Count(item =>
+                        item.Start.Month == now.Month && item.Start.Year == now.Year
+                        || (item.End?.Month == now.Month && item.End?.Year == now.Year)
+                    );
+                }
+                @thisMonthCount activities this month
+            </MudText>
+        </div>
+        
+        <div class="d-flex align-items-center gap-1">
+            @if (_loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Typo="Typo.caption">Loading...</MudText>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" />
+                <MudText Typo="Typo.caption">
+                    Updated @_lastRefresh.ToString("HH:mm")
+                </MudText>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<CalendarItem> calendarItems = new();
+    private bool _loading = true;
+    private DateTime _lastRefresh = DateTime.Now;
+    private Dictionary<long, ActivityResponse> _activityLookup = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadActivities();
+    }
+
+    private async Task LoadActivities()
+    {
+        _loading = true;
+        try
+        {
+            var resp = await ActivityService.GetActivitiesAsync(page: 1, pageSize: 100);
+            if (resp?.IsSuccess == true)
+            {
+                _activityLookup = resp.Activities.ToDictionary(a => a.Id, a => a);
+                calendarItems = resp.Activities.Select(a => new CalendarItem
+                {
+                    Text = string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name,
+                    Start = a.StartTime.ToLocalTime(),
+                    End = (a.EndTime ?? a.StartTime.AddHours(1)).ToLocalTime()
+                }).ToList();
+                _lastRefresh = DateTime.Now;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load activities: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnCellClicked(DateTime date)
+    {
+        // Could add functionality to create new activity on this date
+        var activitiesOnDate = calendarItems.Where(item => 
+            item.Start.Date == date.Date || 
+            (item.End?.Date == date.Date)).ToList();
+        
+        if (activitiesOnDate.Any())
+        {
+            Snackbar.Add($"Found {activitiesOnDate.Count} activities on {date:MMM dd}", Severity.Info);
+        }
+    }
+
+    private void OnItemClicked(CalendarItem item)
+    {
+        // Find activity by name since we can't store ID in CalendarItem
+        var activity = _activityLookup.Values.FirstOrDefault(a => 
+            (string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name) == item.Text);
+        
+        if (activity != null)
+        {
+            Nav.NavigateTo($"/activity/{activity.Id}");
+        }
+        else
+        {
+            Snackbar.Add($"Opening: {item.Text}", Severity.Info);
+        }
+    }
+}

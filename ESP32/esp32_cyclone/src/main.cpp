@@ -6,6 +6,8 @@
 #include <HTTPClient.h>
 #include "string.h"
 #include <Preferences.h>
+#include "TinyGPS++.h"
+#include <Arduino.h>
 
 // write the full array (before esp panics because of full RAM) sensorData to sdcard (every ~8 minutes, takes 220ms)
 void writeSensorDataBlock();
@@ -24,6 +26,15 @@ void uploadSensorDataToBackend();
 // uncomment pinMode in setup() for other esp dev kit (has enough pins)
 
 #define CUSTOM_MOSI 16
+// setup GPS serial connection
+void setupGPS();
+void readGPSData();
+void displayInfo();
+void updateAllData();
+
+#define CUSTOM_TX_GPS 17
+#define CUSTOM_RX_GPS 16
+#define CUSTOM_MOSI 18
 #define CUSTOM_MISO 4
 #define CUSTOM_SCK 15
 #define CUSTOM_CS 2
@@ -37,7 +48,7 @@ void uploadSensorDataToBackend();
 #define API_STOP_ACTIVITY "/api/sensor/stop-activity"
 
 // magnet sensor
-#define PIN_MAGNET 17
+#define PIN_MAGNET 13
 #define WHEEL_DIAMETER 0.6 // 26 inch wheel
 
 // defines the task of the esp (record data every 200ms or upload data at once)
@@ -64,18 +75,33 @@ int lastState = LOW, currentState, flankCount = 0, rpm, speed;
 
 // only get data every 200ms
 unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dtTo1000ms = 0, dtTo200ms = 0;
+ // GPS Serial
+TinyGPSPlus gps;
+
+struct gpsData{
+  double latitude;
+  double longitude;
+  double height;
+  time_t time;
+};
+gpsData gpsdata;
 
 void setup()
 {
   Serial.begin(115200);
   // wait for serial monitor to connect
-  delay(3000);
+  delay(8000);
 
   setupWlan();
   setupFileSystem();
+  setupGPS();
 
-  // reserve memory for sensor data
+
+  Serial.println("Setup complete. Starting main loop...");
+
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
+  pinMode(2, OUTPUT);
+  
 
   // digital input for rpm sensor (magnet sensor)
   // pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
@@ -85,23 +111,28 @@ void loop()
 {
   if (recordOrUpload)
   {
-    currentTime = millis();
-
     getSpeed();
+    readGPSData();
 
+    currentTime = millis();
     dtTo200ms = currentTime - lastReadTime200ms;
     if (dtTo200ms >= 200)
     {
 
       sensorData[bufferCounter] = 0; // temperature
       sensorData[bufferCounter + 1] = (float)speed;
-      sensorData[bufferCounter + 2] = 0; // latitude
-      sensorData[bufferCounter + 3] = 0;
-      sensorData[bufferCounter + 4] = 0;
+      sensorData[bufferCounter + 2] = gpsdata.latitude; // latitude
+      sensorData[bufferCounter + 3] = gpsdata.longitude; // longitude
+      sensorData[bufferCounter + 4] = gpsdata.height;
       sensorData[bufferCounter + 5] = 0;
       sensorData[bufferCounter + 6] = 0;
       sensorData[bufferCounter + 7] = 0;
-      sensorData[bufferCounter + 8] = speed; // checksum is only speed right now
+      // create the checksum
+      for (size_t i = 0; i < SENSOR_DATA_SIZE; i++)
+        sensorData[bufferCounter + 8] += sensorData[i];
+  {
+    timePoint1 = millis();
+      sensorData[bufferCounter + 8] = ; // checksum is only speed right now
       bufferCounter += SENSOR_DATA_SIZE;     // move the current index one sensor packet further (9 values)
       lastReadTime200ms = currentTime;
     }
@@ -115,8 +146,8 @@ void loop()
     }
   }
   else
-  {
-    // for testing
+  {  
+    // this is for testing the upload procedure directly without waiting to collect real data first      
     savedBufferToSdcardCount = 1;
     // fill sensor data for testing (2000 sensorData packets)
     for (size_t i = 0; i < RAM_ARR; i = i + 9)
@@ -345,3 +376,51 @@ void openFile(const char *filename, const char *mode)
     openFile(filename, mode);
   }
 }
+
+
+void setupGPS(){
+  Serial2.begin(9600);
+  Serial.println("GPS Serial started");
+}
+
+void readGPSData() {
+    while (Serial2.available() > 0) { 
+      if (gps.encode(Serial2.read())) { 
+        displayInfo(); 
+        Serial2.flush(); // clear the serial buffer after reading GPS data
+      }
+  }
+}
+
+void displayInfo() { 
+  // Displaying Google Maps link with latitude and longitude information if GPS location is valid 
+  if (gps.location.isValid() && gps.time.isValid()) { 
+    updateAllData();
+  }
+}
+
+void updateAllData(){
+  gpsdata.latitude = gps.location.lat();
+  gpsdata.longitude = gps.location.lng();
+  gpsdata.height = trunc(gps.altitude.meters());
+
+  int year = gps.date.year();
+  int month = gps.date.month();
+  int day = gps.date.day();
+  int hour = gps.time.hour();
+  int minute = gps.time.minute();
+  int second = gps.time.second();
+  
+  struct tm timeinfo;
+  timeinfo.tm_year = year - 1900; // Year since 1900
+  timeinfo.tm_mon = month - 1;    // Month from 0 to 11
+  timeinfo.tm_mday = day;
+  timeinfo.tm_hour = hour;
+  timeinfo.tm_min = minute;
+  timeinfo.tm_sec = second;
+  timeinfo.tm_isdst = 0; // No daylight saving time
+
+  // Convert to epoch time
+  time_t epochTime = mktime(&timeinfo);
+  gpsdata.time = epochTime;
+  }

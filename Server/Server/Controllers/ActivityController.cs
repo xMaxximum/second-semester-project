@@ -1,25 +1,30 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Hosting;
 using Server.Data;
 using Server.Models;
 using Shared.Models;
 using System.Security.Claims;
+using System.Text.Json;
+using System.Xml;
 
 namespace Server.Controllers
 {
     [ApiController]
-    [Route(Constants.DefaultRoute + "/activities")]
     [Authorize]
+    [Route(Constants.RoutePrefix + "/activities")]
     public class ActivityController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ActivityController> _logger;
+        private readonly IWebHostEnvironment _env;
 
-        public ActivityController(ApplicationDbContext context, ILogger<ActivityController> logger)
+        public ActivityController(ApplicationDbContext context, ILogger<ActivityController> logger, IWebHostEnvironment env)
         {
             _context = context;
             _logger = logger;
+            _env = env;
         }
 
         [HttpGet]
@@ -42,26 +47,28 @@ namespace Server.Controllers
 
                 var totalCount = await query.CountAsync();
                 
-                var activities = await query
+                var activityEntities = await query
                     .Include(a => a.SensorDataPackets)
                     .OrderByDescending(a => a.StartTime)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .Select(a => new ActivityResponse
-                    {
-                        Id = a.Id,
-                        Name = a.Name,
-                        Description = a.Description,
-                        StartTime = a.StartTime,
-                        EndTime = a.EndTime,
-                        Status = a.Status,
-                        Duration = a.EndTime.HasValue ? a.EndTime.Value - a.StartTime : null,
-                        IsActive = a.Status == ActivityStatus.InProgress,
-                        DataPacketCount = a.SensorDataPackets.Count,
-                        CreatedAt = a.CreatedAt,
-                        UpdatedAt = a.UpdatedAt
-                    })
                     .ToListAsync();
+
+                var activities = activityEntities.Select(a => new ActivityResponse
+                {
+                    Id = a.Id,
+                    Name = a.Name,
+                    Description = a.Description,
+                    StartTime = a.StartTime,
+                    EndTime = a.EndTime,
+                    Status = a.Status,
+                    Duration = a.EndTime.HasValue ? a.EndTime.Value - a.StartTime : null,
+                    IsActive = a.Status == ActivityStatus.InProgress,
+                    DataPacketCount = a.SensorDataPackets.Count,
+                    CreatedAt = a.CreatedAt,
+                    UpdatedAt = a.UpdatedAt,
+                    Analytics = CalculateAnalytics(a.SensorDataPackets.OrderBy(s => s.Timestamp).ToList())
+                }).ToList();
 
                 return Ok(new ActivityListResponse
                 {
@@ -127,17 +134,13 @@ namespace Server.Controllers
                     CurrentSpeed = s.CurrentSpeed,
                     Latitude = s.Latitude,
                     Longitude = s.Longitude,
-                    AveragedAccelerationX = s.AveragedAccelerationX,
-                    AveragedAccelerationY = s.AveragedAccelerationY,
-                    AveragedAccelerationZ = s.AveragedAccelerationZ,
-                    PeakAccelerationX = s.PeakAccelerationX,
-                    PeakAccelerationY = s.PeakAccelerationY,
-                    PeakAccelerationZ = s.PeakAccelerationZ,
+                    ElevationGain = s.ElevationGain,
+                    AccelerationX = s.AccelerationX,
+                    AccelerationY = s.AccelerationY,
+                    AccelerationZ = s.AccelerationZ,
                     Checksum = s.Checksum,
                     IsChecksumValid = s.IsChecksumValid,
                     DeviceId = s.DeviceId,
-                    TotalAcceleration = s.TotalAcceleration,
-                    TotalPeakAcceleration = s.TotalPeakAcceleration
                 }).ToList();
 
                 return Ok(new ActivityDetailsResponse
@@ -160,6 +163,7 @@ namespace Server.Controllers
         }
 
         // POST: api/activities
+        // only for testing right now
         [HttpPost]
         public async Task<ActionResult<ApiResponse<ActivityResponse>>> CreateActivity(ActivityCreateRequest request)
         {
@@ -178,9 +182,10 @@ namespace Server.Controllers
                 var activity = new Activity
                 {
                     UserId = userId.Value,
+                    DeviceId = request.DeviceId,
                     Name = request.Name,
                     Description = request.Description,
-                    StartTime = request.StartTime ?? DateTime.UtcNow,
+                    StartTime = request.StartTime?.ToUniversalTime() ?? DateTime.UtcNow,
                     Status = ActivityStatus.InProgress,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -245,7 +250,7 @@ namespace Server.Controllers
                     activity.Description = request.Description;
                 
                 if (request.EndTime.HasValue)
-                    activity.EndTime = request.EndTime.Value;
+                    activity.EndTime = request.EndTime.Value.ToUniversalTime();
                 
                 if (request.Status.HasValue)
                     activity.Status = request.Status.Value;
@@ -306,6 +311,274 @@ namespace Server.Controllers
                 _logger.LogError(ex, "Error deleting activity {ActivityId}", id);
                 return StatusCode(500, ApiResponse<object>.Failure("Internal server error"));
             }
+        }
+
+        // POST: api/activities/seed
+        [HttpPost("seed")]
+        public async Task<ActionResult<ApiResponse<ActivityResponse>>> SeedActivity([FromBody] SeedActivityRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized(ApiResponse<ActivityResponse>.Failure("User not found"));
+
+                var startTime = request.StartTime?.ToUniversalTime() ?? DateTime.UtcNow;
+                var interval = TimeSpan.FromSeconds(Math.Max(0.1, request.IntervalSeconds));
+                var sampleCount = Math.Clamp(request.SampleCount, 10, 5000);
+
+                // Create activity first
+                var activity = new Activity
+                {
+                    UserId = userId.Value,
+                    DeviceId = string.IsNullOrWhiteSpace(request.DeviceId) ? "test-device" : request.DeviceId,
+                    Name = string.IsNullOrWhiteSpace(request.Title) ? $"Test Activity {DateTime.UtcNow:yyyy-MM-dd HH:mm}" : request.Title!,
+                    Description = request.Description,
+                    StartTime = startTime,
+                    Status = ActivityStatus.InProgress,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Activities.Add(activity);
+                await _context.SaveChangesAsync();
+
+                // Build sensor data
+                var csvPoints = request.UseTestdata
+                    ? await ReadTestdataCsvPointsAsync(sampleCount)
+                    : GenerateRandomCsvPoints(sampleCount);
+
+                var packets = new List<SensorDataPacket>(csvPoints.Count);
+                for (int i = 0; i < csvPoints.Count; i++)
+                {
+                    var p = csvPoints[i];
+                    var ts = startTime.AddTicks(interval.Ticks * i);
+                    packets.Add(new SensorDataPacket
+                    {
+                        ActivityId = activity.Id,
+                        Timestamp = ts,
+                        TimeSinceStart = XmlConvert.ToString(ts - startTime),
+                        CurrentTemperature = p.CurrentTemperature,
+                        CurrentSpeed = p.CurrentSpeed,
+                        Latitude = p.Latitude,
+                        Longitude = p.Longitude,
+                        ElevationGain = p.ElevationGain,
+                        AccelerationX = p.AccelerationX,
+                        AccelerationY = p.AccelerationY,
+                        AccelerationZ = p.AccelerationZ,
+                        Checksum = p.Checksum,
+                        IsChecksumValid = true,
+                        DeviceId = activity.DeviceId,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                await _context.SensorDataPackets.AddRangeAsync(packets);
+                activity.EndTime = packets.Count > 0 ? packets[^1].Timestamp : startTime.AddMinutes(5);
+                activity.Status = ActivityStatus.Completed;
+                activity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                var response = new ActivityResponse
+                {
+                    Id = activity.Id,
+                    Name = activity.Name,
+                    Description = activity.Description,
+                    StartTime = activity.StartTime,
+                    EndTime = activity.EndTime,
+                    Status = activity.Status,
+                    Duration = activity.Duration,
+                    IsActive = activity.IsActive,
+                    DataPacketCount = activity.DataPacketCount,
+                    CreatedAt = activity.CreatedAt,
+                    UpdatedAt = activity.UpdatedAt,
+                    Analytics = CalculateAnalytics(packets)
+                };
+
+                return Ok(ApiResponse<ActivityResponse>.Success(response, "Seed activity created"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error seeding activity");
+                return StatusCode(500, ApiResponse<ActivityResponse>.Failure("Internal server error"));
+            }
+        }
+        
+        // GET: api/activities/weekly-distance}
+        [HttpGet("weekly-distance")]
+        public async Task<ActionResult<ApiResponse<List<WeeklyDistanceResponse>>>> GetWeeklyDistance()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized(ApiResponse<List<WeeklyDistanceResponse>>.Failure("User not found"));
+
+                // get current week 
+                var weekStart = GetStartOfWeek(DateTime.UtcNow);
+                var weekEnd = weekStart.AddDays(7);
+
+                // Get all completed activities for the week
+                var activities = await _context.Activities
+                    .Include(a => a.SensorDataPackets)
+                    .Where(a => a.UserId == userId.Value && 
+                                a.Status == ActivityStatus.Completed &&
+                                a.StartTime >= weekStart && 
+                                a.StartTime < weekEnd)
+                    .ToListAsync();
+
+                // group activities by weekday 
+                var weeklyData = new List<WeeklyDistanceResponse>();
+                var daysOfWeek = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        
+                for (int i = 0; i < 7; i++)
+                {
+                    var currentDay = weekStart.AddDays(i);
+                    var dayActivities = activities.Where(a => a.StartTime.Date == currentDay.Date).ToList();
+            
+                    double totalDistance = 0;
+                    foreach (var activity in dayActivities)
+                    {
+                        var analytics = CalculateAnalytics(activity.SensorDataPackets.OrderBy(s => s.Timestamp).ToList());
+                        totalDistance += analytics.TotalDistance;
+                    }
+
+                    weeklyData.Add(new WeeklyDistanceResponse
+                    {
+                        Day = daysOfWeek[i],
+                        Distance = Math.Round(totalDistance / 1000, 2),
+                    });
+                }
+                return Ok(ApiResponse<List<WeeklyDistanceResponse>>.Success(weeklyData, "Weekly distance data retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving weekly distance data");
+                return StatusCode(500, ApiResponse<List<WeeklyDistanceResponse>>.Failure("Internal server error"));
+            }
+        }
+        
+        private DateTime GetStartOfWeek(DateTime date)
+        {
+            // get monday as start of week 
+            var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+            return date.AddDays(-1 * diff).Date;
+        }
+
+        private async Task<List<CsvDataPoint>> ReadTestdataCsvPointsAsync(int max)
+        {
+            var result = new List<CsvDataPoint>(max);
+            try
+            {
+                // Try typical locations for the Testdata folder
+                var candidates = new[]
+                {
+                    Path.Combine(_env.ContentRootPath, "..", "..", "Testdata", "testdata.json"),
+                    Path.Combine(_env.ContentRootPath, "Testdata", "testdata.json"),
+                };
+
+                string? path = candidates.FirstOrDefault(System.IO.File.Exists);
+                if (path == null)
+                {
+                    _logger.LogWarning("testdata.json not found; falling back to random data");
+                    return GenerateRandomCsvPoints(max);
+                }
+
+                await using var stream = System.IO.File.OpenRead(path);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+                await foreach (var item in JsonSerializer.DeserializeAsyncEnumerable<TestSample>(stream, options))
+                {
+                    if (item == null) continue;
+                    result.Add(new CsvDataPoint
+                    {
+                        CurrentTemperature = item.current_temperature,
+                        CurrentSpeed = item.current_speed,
+                        Latitude = item.current_coordinates?.latitude ?? 0,
+                        Longitude = item.current_coordinates?.longitude ?? 0,
+                        ElevationGain = item.current_coordinates?.height ?? 0,
+                        AccelerationX = item.peak_acceleration_x,
+                        AccelerationY = item.peak_acceleration_y,
+                        AccelerationZ = item.peak_acceleration_z,
+                        Checksum = item.checksum
+                    });
+                    if (result.Count >= max) break;
+                }
+
+                if (result.Count == 0)
+                {
+                    _logger.LogWarning("No items read from testdata.json; generating random points");
+                    return GenerateRandomCsvPoints(max);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed reading testdata.json; using random data");
+                return GenerateRandomCsvPoints(max);
+            }
+        }
+
+        private List<CsvDataPoint> GenerateRandomCsvPoints(int count)
+        {
+            var rnd = new Random();
+            // Start at a base coordinate; small random drift
+            double lat = 51.0 + rnd.NextDouble() * 0.02;
+            double lon = 8.0 + rnd.NextDouble() * 0.02;
+            var points = new List<CsvDataPoint>(count);
+            for (int i = 0; i < count; i++)
+            {
+                lat += (rnd.NextDouble() - 0.5) * 0.05;
+                lon += (rnd.NextDouble() - 0.5) * 0.05;
+                var temp = 20 + rnd.NextDouble() * 10;
+                var speed = Math.Abs(Normal(rnd, mean: 15, stddev: 5));
+                var ax = (rnd.NextDouble() - 0.5) * 10;
+                var ay = (rnd.NextDouble() - 0.5) * 10;
+                var az = (rnd.NextDouble() - 0.5) * 10;
+                var elev = 400 + (rnd.NextDouble() - 0.5) * 5;
+                var checksum = temp + speed + lat + lon + elev + ax + ay + az;
+                points.Add(new CsvDataPoint
+                {
+                    CurrentTemperature = temp,
+                    CurrentSpeed = speed,
+                    Latitude = lat,
+                    Longitude = lon,
+                    ElevationGain = elev,
+                    AccelerationX = ax,
+                    AccelerationY = ay,
+                    AccelerationZ = az,
+                    Checksum = checksum
+                });
+            }
+            return points;
+        }
+
+        private static double Normal(Random rnd, double mean = 0, double stddev = 1)
+        {
+            // Box-Muller transform
+            var u1 = 1.0 - rnd.NextDouble();
+            var u2 = 1.0 - rnd.NextDouble();
+            var randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+            return mean + stddev * randStdNormal;
+        }
+
+        private class TestSample
+        {
+            public double current_temperature { get; set; }
+            public double current_speed { get; set; }
+            public Coordinates? current_coordinates { get; set; }
+            public double peak_acceleration_x { get; set; }
+            public double peak_acceleration_y { get; set; }
+            public double peak_acceleration_z { get; set; }
+            public double checksum { get; set; }
+        }
+
+        private class Coordinates
+        {
+            public double latitude { get; set; }
+            public double longitude { get; set; }
+            public double height { get; set; }
         }
 
         private long? GetCurrentUserId()

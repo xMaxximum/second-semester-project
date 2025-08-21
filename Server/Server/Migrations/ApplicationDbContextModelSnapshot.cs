@@ -129,6 +129,10 @@ namespace Server.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("TEXT");
 
@@ -308,32 +312,23 @@ namespace Server.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DeviceType")
-                        .HasMaxLength(50)
+                    b.Property<string>("ActivationCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ActivationCodeExpiry")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuthToken")
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FirmwareVersion")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("HardwareVersion")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
-
-                    b.Property<double?>("LastKnownBatteryLevel")
-                        .HasColumnType("REAL");
-
-                    b.Property<string>("LastKnownLocation")
-                        .HasColumnType("TEXT");
-
-                    b.Property<double?>("LastKnownTemperature")
-                        .HasColumnType("REAL");
-
-                    b.Property<DateTime>("LastSeenAt")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -341,10 +336,6 @@ namespace Server.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("RegisteredAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Settings")
-                        .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
                     b.Property<long>("UserId")
@@ -390,17 +381,17 @@ namespace Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<double>("AccelerationX")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("AccelerationY")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("AccelerationZ")
+                        .HasColumnType("REAL");
+
                     b.Property<long>("ActivityId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<double>("AveragedAccelerationX")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("AveragedAccelerationY")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("AveragedAccelerationZ")
-                        .HasColumnType("REAL");
 
                     b.Property<double>("Checksum")
                         .HasColumnType("REAL");
@@ -418,6 +409,9 @@ namespace Server.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<double>("ElevationGain")
+                        .HasColumnType("REAL");
+
                     b.Property<bool>("IsChecksumValid")
                         .HasColumnType("INTEGER");
 
@@ -427,15 +421,6 @@ namespace Server.Migrations
 
                     b.Property<double>("Longitude")
                         .HasPrecision(18, 10)
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("PeakAccelerationX")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("PeakAccelerationY")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("PeakAccelerationZ")
                         .HasColumnType("REAL");
 
                     b.Property<string>("TimeSinceStart")
@@ -646,14 +631,7 @@ namespace Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Server.Models.Device", "Device")
-                        .WithMany("SensorDataPackets")
-                        .HasForeignKey("DeviceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Activity");
-
-                    b.Navigation("Device");
                 });
 
             modelBuilder.Entity("Server.Models.Activity", b =>
@@ -668,11 +646,6 @@ namespace Server.Migrations
             modelBuilder.Entity("Server.Models.ActivityTag", b =>
                 {
                     b.Navigation("ActivityTagAssignments");
-                });
-
-            modelBuilder.Entity("Server.Models.Device", b =>
-                {
-                    b.Navigation("SensorDataPackets");
                 });
 #pragma warning restore 612, 618
         }

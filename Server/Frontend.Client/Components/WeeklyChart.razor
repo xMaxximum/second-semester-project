@@ -1,4 +1,8 @@
-﻿@using ApexCharts
+﻿@using System.Net
+@using ApexCharts
+@using MudBlazor.Extensions
+@using Shared.Models
+@inject HttpClient Http
 
 <ApexChart TItem="MyData"
            Options="chartOptions" Height="150">
@@ -14,7 +18,6 @@
 </ApexChart>
 
 @code {
-    // TODO: Implement Connection to End Point and fetch the distance data for every weekday
     private List<MyData> Data { get; set; } = new();
 
     private ApexChartOptions<MyData> chartOptions = new()
@@ -34,13 +37,33 @@
     
     protected override async Task OnInitializedAsync()
     {
-        Data.Add(new MyData { Category = "Mon", Distance = 12 });
-        Data.Add(new MyData { Category = "Tue", Distance = 43 });
-        Data.Add(new MyData { Category = "Wed", Distance = 112 });
-        Data.Add(new MyData { Category = "Thu", Distance = 0 });
-        Data.Add(new MyData { Category = "Fri", Distance = 112 });
-        Data.Add(new MyData { Category = "Sat", Distance = 22 });
-        Data.Add(new MyData { Category = "Sun", Distance = 112 });
+        await LoadWeeklyData();
+    }
+    
+    private async Task LoadWeeklyData()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<WeeklyDistanceResponse>>>(
+                "/api/activities/weekly-distance");
+
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                Data = response.Data.Select(item => new MyData()
+                {
+                    Category = item.Day,
+                    Distance = (int)Math.Round(item.Distance)
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading weekly distance data: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 
     public class MyData

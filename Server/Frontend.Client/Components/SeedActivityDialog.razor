@@ -1,0 +1,73 @@
+@using Shared.Models
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ActivityService ActivityService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6">Create Test Activity</MudText>
+            <MudTextField @bind-Value="_title" Label="Title" Placeholder="Optional" />
+            <MudTextField @bind-Value="_description" Label="Description" Placeholder="Optional" />
+            <MudDatePicker @bind-Date="_date" Label="Start Date" />
+            <MudTimePicker @bind-Time="_time" Label="Start Time" />
+            <MudTextField @bind-Value="_deviceId" Label="Device Id" />
+            <MudSwitch T="bool" @bind-Checked="_useTestdata" Color="Color.Primary" Label="Use Testdata.json" />
+            <MudNumericField T="int" @bind-Value="_sampleCount" Label="Sample Count" Min="10" Max="2000" />
+            <MudNumericField @bind-Value="_intervalSeconds" Label="Interval (s)" Min="0.1" Max="5" T="double" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_submitting" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string? _title;
+    private string? _description;
+    private DateTime? _date = DateTime.Today;
+    private TimeSpan? _time = new TimeSpan(10, 0, 0);
+    private string _deviceId = "test-device";
+    private bool _useTestdata = true;
+    private int _sampleCount = 180;
+    private double _intervalSeconds = 1.0;
+    private bool _submitting = false;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        _submitting = true;
+        try
+        {
+            var start = (_date ?? DateTime.Today).Date + (_time ?? new TimeSpan(10,0,0));
+            var req = new SeedActivityRequest
+            {
+                Title = _title,
+                Description = _description,
+                StartTime = DateTime.SpecifyKind(start, DateTimeKind.Local),
+                DeviceId = _deviceId,
+                UseTestdata = _useTestdata,
+                SampleCount = _sampleCount,
+                IntervalSeconds = _intervalSeconds
+            };
+
+            var resp = await ActivityService.SeedActivityAsync(req);
+            if (resp?.IsSuccess == true)
+            {
+                Snackbar.Add("Activity created", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+                return;
+            }
+            Snackbar.Add(resp?.Message ?? "Failed to create activity", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

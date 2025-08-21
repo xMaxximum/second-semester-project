@@ -8,6 +8,9 @@ namespace Shared.Models
         [Required]
         [StringLength(100, MinimumLength = 1)]
         public string Name { get; set; } = string.Empty;
+        
+        [Required]
+        public string? DeviceId { get; set; }
 
         [StringLength(500)]
         public string? Description { get; set; }
@@ -29,6 +32,13 @@ namespace Shared.Models
         public DateTime? EndTime { get; set; }
 
         public ActivityStatus? Status { get; set; }
+    }
+    
+    // temporary model to stop activity - need to implement service that stops activity for inactive sensor 
+    public class StopActivityRequest
+    {
+        [Required]
+        public long UserId { get; set; }
     }
 
     public class ActivityResponse
@@ -60,6 +70,12 @@ namespace Shared.Models
         public double MaxAcceleration { get; set; }
         public List<CoordinatePoint> Route { get; set; } = new();
     }
+    
+    public class WeeklyDistanceResponse
+    {
+        public string Day { get; set; } = string.Empty;
+        public double Distance { get; set; } 
+    }
 
     public class CoordinatePoint
     {
@@ -74,51 +90,31 @@ namespace Shared.Models
     public class SensorDataPacketRequest
     {
         [Required]
-        public long ActivityId { get; set; }
-
-        [Required]
-        [StringLength(50)]
-        public string TimeSinceStart { get; set; } = string.Empty;
-
-        [Required]
-        [Range(-50.0, 100.0)]
+        public string CsvData { get; set; } = string.Empty;
+    }
+    
+    // csv data point for parsing 
+    public class CsvDataPoint
+    {
         public double CurrentTemperature { get; set; }
-
-        [Required]
-        [Range(0.0, 200.0)]
         public double CurrentSpeed { get; set; }
-
-        [Required]
-        [Range(-90.0, 90.0)]
         public double Latitude { get; set; }
-
-        [Required]
-        [Range(-180.0, 180.0)]
         public double Longitude { get; set; }
-
-        [Required]
-        public double AveragedAccelerationX { get; set; }
-
-        [Required]
-        public double AveragedAccelerationY { get; set; }
-
-        [Required]
-        public double AveragedAccelerationZ { get; set; }
-
-        [Required]
-        public double PeakAccelerationX { get; set; }
-
-        [Required]
-        public double PeakAccelerationY { get; set; }
-
-        [Required]
-        public double PeakAccelerationZ { get; set; }
-
-        [Required]
+        public double ElevationGain { get; set; }
+        public double AccelerationX { get; set; }
+        public double AccelerationY { get; set; }
+        public double AccelerationZ { get; set; }
         public double Checksum { get; set; }
-
-        [StringLength(50)]
-        public string? DeviceId { get; set; }
+    }
+    
+    public class DeviceRegistrationRequest
+    {
+        [Required]
+        public string DeviceId { get; set; } = string.Empty;
+        
+        public string? DeviceName { get; set; }
+        
+        public string? Description { get; set; }
     }
 
     public class SensorDataPacketResponse
@@ -130,19 +126,18 @@ namespace Shared.Models
         public double CurrentTemperature { get; set; }
         public double CurrentSpeed { get; set; }
         public double Latitude { get; set; }
+        public double ElevationGain { get; set; }
         public double Longitude { get; set; }
-        public double AveragedAccelerationX { get; set; }
-        public double AveragedAccelerationY { get; set; }
-        public double AveragedAccelerationZ { get; set; }
-        public double PeakAccelerationX { get; set; }
-        public double PeakAccelerationY { get; set; }
-        public double PeakAccelerationZ { get; set; }
+        public double AccelerationX { get; set; }
+        public double AccelerationY { get; set; }
+        public double AccelerationZ { get; set; }
         public double Checksum { get; set; }
         public bool IsChecksumValid { get; set; }
         public string? DeviceId { get; set; }
         public double TotalAcceleration { get; set; }
         public double TotalPeakAcceleration { get; set; }
     }
+    
 
     // Common Response Models
     public class ActivityListResponse
@@ -161,6 +156,18 @@ namespace Shared.Models
         public string Message { get; set; } = string.Empty;
         public ActivityResponse? Activity { get; set; }
         public List<SensorDataPacketResponse> SensorData { get; set; } = new();
+    }
+
+    // Seeding request for creating demo activities
+    public class SeedActivityRequest
+    {
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public DateTime? StartTime { get; set; }
+        public string DeviceId { get; set; } = "test-device";
+        public bool UseTestdata { get; set; } = true;
+        public int SampleCount { get; set; } = 180; // number of data points
+        public double IntervalSeconds { get; set; } = 1.0; // spacing between points
     }
 
     public class SensorDataResponse
