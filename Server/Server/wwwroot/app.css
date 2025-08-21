@@ -74,3 +74,17 @@ h1:focus {
     white-space: nowrap;
     justify-content: flex-start;
 }
+
+:root, body,
+.mud-appbar, .mud-drawer, .mud-paper, .mud-card,
+.mud-typography, .mud-button-root, .mud-table, .mud-chip,
+.mud-input, .mud-select, .mud-popover, .mud-dialog, .mud-snackbar {
+    transition-property: background-color, color, border-color, box-shadow, fill, stroke;
+    transition-duration: 220ms;
+    transition-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+}
+
