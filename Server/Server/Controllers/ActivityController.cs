@@ -617,7 +617,10 @@ namespace Server.Controllers
             analytics.CaloriesBurned = analytics.AverageSpeed * durationHours * 50; // Rough estimation
 
             // Calculate elevation gain (would need altitude data from GPS or barometric sensor)
-            analytics.ElevationGain = 0; // TODO: Implement when altitude data is available
+            // TODO check for validity of this method
+            //analytics.ElevationGain = sensorData.Sum(s => s.ElevationGain);
+            
+            analytics.ElevationGain = sensorData.Max(s => s.ElevationGain) -  sensorData.Min(s => s.ElevationGain);
 
             return analytics;
         }
