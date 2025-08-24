@@ -159,7 +159,7 @@ void loop()
       sensorData[i + 7] = 4;
       sensorData[i + 8] = 45.5;
     }
-    // write 20 times to the sdcard 40 Minutes activity in sum
+    // write 20 times to the sdcard with 133 Minutes activity (20*2000/5/60=133, 20 buffers * 2000 floats / 5 packets per second / 60 seconds = 133 minutes) 
     for (size_t i = 0; i < savedBufferToSdcardCount; i++)
       writeSensorDataBlock();
     uploadSensorDataToBackend();
