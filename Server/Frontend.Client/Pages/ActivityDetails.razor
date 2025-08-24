@@ -397,13 +397,6 @@
                                 GPS Route (@_details.SensorData.Count GPS points)
                             </MudText>
                         </CardHeaderContent>
-                        <CardHeaderActions>
-                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                <MudChip T="string" Size="Size.Small" Color="Color.Info">🚴‍♂️ Cycling Map</MudChip>
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success">📊 Elevation Profile</MudChip>
-                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">🌡️ Temperature Markers</MudChip>
-                            </div>
-                        </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent>
                         <div class="map-container" style="position: relative;">
@@ -434,13 +427,6 @@
                                 </div>
                             }
                         </div>
-
-                        @if (HasValidSensorData())
-                        {
-                            <div class="speed-legend" style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;">
-                                <!-- your legend blocks -->
-                            </div>
-                        }
 
                     </MudCardContent>
                 </MudCard>
@@ -614,9 +600,9 @@
             {
                 latitude = s.Latitude,
                 longitude = s.Longitude,
-                elevation = s.ElevationGain,        // ← Fixed: map to 'elevation' not 'elevationGain'
-                speed = s.CurrentSpeed,             // ← Fixed: map to 'speed' not 'currentSpeed'  
-                temperature = s.CurrentTemperature, // ← Fixed: map to 'temperature' not 'currentTemperature'
+                elevation = s.ElevationGain,
+                speed = s.CurrentSpeed,
+                temperature = s.CurrentTemperature,
                 timestamp = s.Timestamp.ToString("O"),
                 accelerationX = s.AccelerationX,
                 accelerationY = s.AccelerationY,

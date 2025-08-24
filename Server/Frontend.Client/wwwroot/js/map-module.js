@@ -7,14 +7,14 @@ const instancePromises = new Map();    // elementId -> Promise<API>
 
 // CDN URLs
 const CDN_URLS = {
-    leafletCss: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-    leafletJs: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',           // classic script
-    markerClusterCss: 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
-    markerClusterDefaultCss: 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
-    markerClusterJs: 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js', // classic
-    elevationCss: 'https://unpkg.com/@raruto/leaflet-elevation@2.2.1/dist/leaflet-elevation.css',
-    elevationEsm: 'https://unpkg.com/@raruto/leaflet-elevation@2.2.1/dist/leaflet-elevation.min.js', // ES module
-    d3: 'https://unpkg.com/d3@7.8.5/dist/d3.min.js' // classic, exposed as window.d3 (helps elevation)
+  leafletCss: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  leafletJs:  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  markerClusterCss: 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
+  markerClusterDefaultCss: 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
+  markerClusterJs: 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+  d3: 'https://unpkg.com/d3@6.7.0/dist/d3.min.js',              // <- d3 v6 is safest with the plugin
+  elevationCss: 'https://unpkg.com/@raruto/leaflet-elevation/dist/leaflet-elevation.css',
+  elevationJs:  'https://unpkg.com/@raruto/leaflet-elevation/dist/leaflet-elevation.js' // <- UMD
 };
 
 // Tile layers
@@ -74,36 +74,33 @@ function loadScript(src) {
 
 // Load Leaflet + plugins (compat-safe)
 async function loadLeaflet() {
-    if (leafletLoaded) return;
-    if (leafletLoadPromise) return leafletLoadPromise;
+  if (leafletLoaded) return;
+  if (leafletLoadPromise) return leafletLoadPromise;
 
-    leafletLoadPromise = (async () => {
-        // CSS
-        await Promise.all([
-            loadCSS(CDN_URLS.leafletCss),
-            loadCSS(CDN_URLS.markerClusterCss),
-            loadCSS(CDN_URLS.markerClusterDefaultCss),
-            loadCSS(CDN_URLS.elevationCss)
-        ]);
+  leafletLoadPromise = (async () => {
+    // CSS first
+    await Promise.all([
+      loadCSS(CDN_URLS.leafletCss),
+      loadCSS(CDN_URLS.markerClusterCss),
+      loadCSS(CDN_URLS.markerClusterDefaultCss),
+      loadCSS(CDN_URLS.elevationCss)
+    ]);
 
-        // Leaflet classic -> defines window.L (extensible)
-        await loadScript(CDN_URLS.leafletJs);
-        if (!window.L) throw new Error('Leaflet failed to load');
+    // Scripts in order
+    await loadScript(CDN_URLS.leafletJs);
+    await loadScript(CDN_URLS.markerClusterJs);
+    await loadScript(CDN_URLS.d3);
+    await loadScript(CDN_URLS.elevationJs); // <- classic UMD
 
-        // MarkerCluster classic -> augments window.L (needs extensible L)
-        await loadScript(CDN_URLS.markerClusterJs);
+    if (!window.L || !window.L.control || !window.L.control.elevation) {
+      throw new Error('leaflet-elevation failed to attach to L');
+    }
 
-        // D3 classic (some builds of elevation expect global d3)
-        await loadScript(CDN_URLS.d3);
+    leafletLoaded = true;
+    console.log('✅ Leaflet + MarkerCluster + D3 + Elevation loaded');
+  })();
 
-        // Elevation as **ES module** (so its internal relative imports resolve)
-        await import(CDN_URLS.elevationEsm);
-
-        leafletLoaded = true;
-        console.log('✅ Leaflet and cycling plugins loaded successfully');
-    })();
-
-    return leafletLoadPromise;
+  return leafletLoadPromise;
 }
 
 // Color helpers
@@ -200,31 +197,42 @@ function createCyclingMarkers(coordinates, enableClustering = true, clusterDista
     return L.layerGroup(markers);
 }
 
-// Elevation profile
 function createElevationProfile(map, coordinates) {
-    if (!window.L.control || !window.L.control.elevation) {
-        console.warn('Elevation plugin not loaded');
-        return null;
-    }
-    const ctrl = L.control.elevation({
-        position: 'bottomright',
-        theme: 'steelblue-theme',
-        detached: true,
-        elevationDiv: '#elevation-profile',
-        width: Math.min(350, window.innerWidth - 40), 
-        height: 150,
-        margins: { top: 20, right: 30, bottom: 30, left: 50 },
-        imperial: false,
-        summary: 'inline'
-    }).addTo(map);
+  if (!window.L.control || !window.L.control.elevation) {
+    console.warn('Elevation plugin not loaded');
+    return null;
+  }
 
-    const geojson = {
-        type: 'LineString',
-        coordinates: coordinates.map(p => [p.longitude, p.latitude, p.elevation ?? 0])
-    };
-    ctrl.addData(geojson);
-    return ctrl;
+  const elevationControl = L.control.elevation({
+    position: 'bottomright',
+    theme: 'lightblue-theme',
+    detached: true,
+    elevationDiv: '#elevation-profile',
+    imperial: false,
+    reverseCoords: false,               // we're passing [lon,lat,ele]
+    preferCanvas: true,
+    summary: 'inline',
+    autofitBounds: false                // we fit bounds ourselves
+  }).addTo(map);
+
+  // Build a proper GeoJSON "Feature" with 3D coordinates
+  const feature = {
+    type: 'Feature',
+    properties: { name: 'Track' },
+    geometry: {
+      type: 'LineString',
+      coordinates: coordinates.map(p => [
+        p.longitude,
+        p.latitude,
+        p.elevation
+      ])
+    }
+  };
+
+  elevationControl.addData(feature);
+  return elevationControl;
 }
+
 
 // Map wrapper
 class CyclingMap {
@@ -437,7 +445,7 @@ class CyclingMap {
         L.DomEvent.disableScrollPropagation(controlDiv);
 
         const clusterBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
-        // Set initial state based on config (now defaults to false)
+
         clusterBtn.innerHTML = this.config.EnableClustering === true ? '📍 Clustering ON' : '📍 Clustering OFF';
         clusterBtn.title = 'Toggle marker clustering';
         if (this.config.EnableClustering === true) {
@@ -465,9 +473,9 @@ class CyclingMap {
         this.coordinates = coords.map(c => ({
             latitude: c.latitude,
             longitude: c.longitude,
-            elevation: c.elevation ?? c.elevationGain ?? 0, // Handle both field names  
-            speed: c.speed ?? c.currentSpeed ?? 0,         // Handle both field names
-            temperature: c.temperature ?? c.currentTemperature ?? 20, // Handle both field names
+            elevation: c.elevation,
+            speed: c.speed,
+            temperature: c.temperature,
             timestamp: c.timestamp,
             acceleration: Math.sqrt(
                 (c.accelerationX || 0) ** 2 +
