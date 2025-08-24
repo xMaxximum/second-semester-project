@@ -9,6 +9,8 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 
 
 
@@ -28,7 +30,7 @@ String urlDC(String input);
 #define setupMode true
 
 // interface used for sdcard (false is SPI)
-#define SDMMC true
+#define SDMMC false
 #define CUSTOM_MOSI 16
 // setup GPS serial connection
 void setupGPS();
@@ -318,7 +320,10 @@ void updateAllData(){
 
 void checkFirstTimeConfig(){
   preferences.begin("credentials", false);
-
+  if(setupMode){
+    setupSequence();
+    return;
+  } 
   if(!preferences.getBool("setup_done")){
     setupSequence();
   }
@@ -354,112 +359,90 @@ String urlDC(String input) {
 
 
 void setupSequence() {
-  WiFiServer server(80);
+  AsyncWebServer server(80);
+  SPI.begin(CUSTOM_SCK, CUSTOM_MISO, CUSTOM_MOSI, CUSTOM_CS);
+
+if (!SD.begin(CUSTOM_CS, SPI)) {
+      Serial.println("SD card mount failed! in first time setup");
+      return;
+  }
+
+  // Start AP
+  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
+  WiFi.softAP("CycloneSetup", "INF2024AI");
+  Serial.println("Access Point started: CycloneSetup / INF2024AI");
+
+  // Variables to store user input
   String wifiSSID = "";
   String wifiPassword = "";
   String userNumber = "";
-  Serial.println("Running setup sequence...");
-  // Start AP
-
-  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP("CycloneSetup", "INF2024AI");
-  server.begin();
-
-  Serial.println("Access Point started: CycloneSetup / INF2024AI");
 
   bool setupFinished = false;
-  unsigned long previousTime = millis();
-  const unsigned long timeoutTime = 300000; // 5 minutes timeout
+  unsigned long startTime = millis();
+  const unsigned long timeoutTime = 300000; // 5 minutes
 
-  while (!setupFinished) {
-    WiFiClient client = server.available();
-    if (!client) continue;
-
-    Serial.println("New client connected");
-    String request = "";
-    unsigned long currentTime = millis();
-    previousTime = currentTime;
-
-    while (client.connected() && (millis() - previousTime <= timeoutTime)) {
-      if (client.available()) {
-        char c = client.read();
-        request += c;
-
-        if (c == '\n') {
-          // End of headers
-          if (request.endsWith("\r\n\r\n")) {
-            break;
-          }
-        }
+  // GET handler: serve index.html from SD
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+      File file = SD.open("/index.html");
+      if (!file) {
+          request->send(500, "text/plain", "Failed to open file");
+          return;
       }
-    }
 
-    // Check for POST data
-    if (request.indexOf("POST") >= 0) {
-      // Extract body
-      int bodyIndex = request.indexOf("\r\n\r\n");
-      if (bodyIndex >= 0) {
-        String body = request.substring(bodyIndex + 4);
-
-        // Expecting form data like: ssid=MyWiFi&password=abc123&number=42
-        int ssidIndex = body.indexOf("ssid=");
-        int passIndex = body.indexOf("password=");
-        int numIndex  = body.indexOf("number=");
-        
-        if (ssidIndex >= 0 && passIndex >= 0 && numIndex >= 0) {
-          wifiSSID = urlDC(body.substring(ssidIndex + 5, body.indexOf("&", ssidIndex)));
-          wifiPassword = urlDC(body.substring(passIndex + 9, body.indexOf("&", passIndex)));
-          userNumber = body.substring(numIndex + 7);
-          authenticationNumber = userNumber; // Store the authentication number
-
-          Serial.println("Received configuration:");
-          Serial.println("SSID: " + wifiSSID);
-          Serial.println("Password: " + wifiPassword);
-          Serial.println("Number: " + userNumber);
-
-          setupFinished = true;
-        }
-      }
-    }
-
-    // Serve HTML page
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-type:text/html");
-    client.println("Connection: close");
-    client.println();
-
-    file = SD.open("/website.html", FILE_READ);
-    if (!file) {
-      Serial.println("Error opening website.html");
-      client.println("<!DOCTYPE html><html><body><h1>Error</h1><p>Failed to open website.html</p> <p>SDCard not found or file defective</p></body></html>");
-    } else {
-      while (file.available()) {
-        client.write(file.read());
-      }
+      String html = file.readString();
       file.close();
-    }
 
-    client.stop();
-    Serial.println("Client disconnected");
+      request->send(200, "text/html", html);
+  });
+
+  // POST handler: receive form data
+  server.on("/", HTTP_POST, [&](AsyncWebServerRequest *request){
+      if (request->hasParam("ssid", true)) {
+          wifiSSID = request->getParam("ssid", true)->value();
+      }
+      if (request->hasParam("password", true)) {
+          wifiPassword = request->getParam("password", true)->value();
+      }
+      if (request->hasParam("number", true)) {
+          userNumber = request->getParam("number", true)->value();
+      }
+
+      Serial.println("Received form submission:");
+      Serial.println("SSID: " + wifiSSID);
+      Serial.println("Password: " + wifiPassword);
+      Serial.println("Number: " + userNumber);
+
+      // Save to Preferences
+      preferences.begin("credentials", false);
+      preferences.putString("ssid", wifiSSID);
+      preferences.putString("pass", wifiPassword);
+      preferences.putString("number", userNumber);
+      preferences.putBool("setup_done", true);
+      preferences.end();
+
+      request->send(200, "text/plain", "Data received. SSID=" + wifiSSID + ", Number=" + userNumber);
+
+      setupFinished = true;  // Mark setup as done
+  });
+
+  server.begin();
+  Serial.println("Web server started. Waiting for user input...");
+
+  // Wait loop until setup finished or timeout
+  while (!setupFinished && (millis() - startTime < timeoutTime)) {
+      delay(100);
   }
 
-  // Save setup state to Preferences
-  preferences.begin("credentials", false);
-  preferences.putString("ssid", wifiSSID);
-  preferences.putString("pass", wifiPassword);
-  preferences.putBool("setup_done", true);
-  Serial.println("Network credentials saved using Preferences");
-  preferences.end();
-  
-  // Stop the AP
+  // Stop AP
   WiFi.softAPdisconnect(true);
   WiFi.disconnect();
 
   Serial.println("Setup complete. Stored credentials:");
   Serial.println("SSID: " + wifiSSID);
   Serial.println("Password: " + wifiPassword);
-  Serial.println("Number: " + String(userNumber));
+  Serial.println("Number: " + userNumber);
   Serial.println("You can now connect the ESP to your WiFi network.");
+
 }
 
 // Helper function to decode URL-encoded strings (e.g. spaces as '+', %20, etc.)
