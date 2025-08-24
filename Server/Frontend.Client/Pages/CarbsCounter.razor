@@ -499,40 +499,65 @@
                 SortOrder = 0
             });
 
-            // During ride - only if longer than 1 hour
-            if (config.Duration.TotalHours > 1)
+            // During ride - real-life cadence: carbs every 45 min, hydration every 20 min
             {
-                var intervals = Math.Ceiling(config.Duration.TotalHours);
-                for (int i = 1; i <= intervals; i++)
-                {
-                    var timePoint = TimeSpan.FromHours(i);
-                    if (timePoint <= config.Duration)
-                    {
-                        // Carbs
-                        var carbSource = GetCarbSource(preferences, i);
-                        timeline.Add(new NutritionTimelineItem
-                        {
-                            Time = $"{timePoint.Hours}:{timePoint.Minutes:D2}",
-                            Description = carbSource.Name,
-                            Instructions = carbSource.Instructions,
-                            Type = NutritionItemType.Carbs,
-                            Carbs = carbsPerHour,
-                            Calories = carbsPerHour * 4,
-                            SortOrder = i * 10
-                        });
+                var rideDuration = config.Duration;
+                var foodBuffer = TimeSpan.FromMinutes(15); // last food at least 15 min before finish
 
-                        // Hydration
-                        var fluidSource = GetFluidSource(preferences);
-                        timeline.Add(new NutritionTimelineItem
-                        {
-                            Time = $"{timePoint.Hours}:{timePoint.Minutes:D2}",
-                            Description = fluidSource.Name,
-                            Instructions = fluidSource.Instructions,
-                            Type = NutritionItemType.Hydration,
-                            Fluids = fluidsPerHour,
-                            SortOrder = i * 10 + 1
-                        });
-                    }
+                // Carb events at 00:45, 01:30, 02:15, ... but not within last 15 minutes
+                var carbTimes = new List<TimeSpan>();
+                var carbStep = TimeSpan.FromMinutes(45);
+                for (var t = carbStep; t <= rideDuration - foodBuffer; t += carbStep)
+                {
+                    carbTimes.Add(t);
+                }
+
+                // Hydration events at 00:20, 00:40, 01:00, 01:20, ... up to ride end
+                var drinkTimes = new List<TimeSpan>();
+                var drinkStep = TimeSpan.FromMinutes(20);
+                for (var d = drinkStep; d <= rideDuration; d += drinkStep)
+                {
+                    drinkTimes.Add(d);
+                }
+
+                // Distribute totals evenly across events so timeline sums match targets
+                var totalCarbs = carbsPerHour * rideDuration.TotalHours;
+                var totalFluids = fluidsPerHour * rideDuration.TotalHours;
+
+                var carbsPerEvent = carbTimes.Count > 0 ? totalCarbs / carbTimes.Count : 0.0;
+                var fluidsPerEvent = drinkTimes.Count > 0 ? totalFluids / drinkTimes.Count : 0.0;
+
+                // Add carb events
+                for (int i = 0; i < carbTimes.Count; i++)
+                {
+                    var timePoint = carbTimes[i];
+                    var carbSource = GetCarbSource(preferences, i + 1);
+                    timeline.Add(new NutritionTimelineItem
+                    {
+                        Time = $"{timePoint.Hours}:{timePoint.Minutes:D2}",
+                        Description = carbSource.Name,
+                        Instructions = $"{carbSource.Instructions} Target ~{carbsPerEvent:F0}g at this stop.",
+                        Type = NutritionItemType.Carbs,
+                        Carbs = carbsPerEvent,
+                        Calories = carbsPerEvent * 4,
+                        SortOrder = (int)timePoint.TotalMinutes
+                    });
+                }
+
+                // Add hydration events
+                for (int i = 0; i < drinkTimes.Count; i++)
+                {
+                    var timePoint = drinkTimes[i];
+                    var fluidSource = GetFluidSource(preferences);
+                    timeline.Add(new NutritionTimelineItem
+                    {
+                        Time = $"{timePoint.Hours}:{timePoint.Minutes:D2}",
+                        Description = fluidSource.Name,
+                        Instructions = $"{fluidSource.Instructions} Aim ~{fluidsPerEvent:F2}L at this mark.",
+                        Type = NutritionItemType.Hydration,
+                        Fluids = fluidsPerEvent,
+                        SortOrder = (int)timePoint.TotalMinutes + 1 // ensure hydration after carbs if on same minute
+                    });
                 }
             }
 
@@ -660,11 +685,29 @@
                 sourceIndex++;
             }
 
-            // Ensure sports drinks appear if enabled but somehow missed
-            if (preferences.AllowSportsDrinks && !shoppingList.Any(item => item.Item.ToLower().Contains("sports")))
+            // Sports drink volume based on hydration cadence (every 20 min ~ 0.1L per sip)
+            if (preferences.AllowSportsDrinks)
             {
-                var minSportsDrink = Math.Max(0.5, totalCarbsNeeded * 0.15 / 30); // At least 15% of carbs from sports drinks (30g per 500ml)
-                shoppingList.Add(new ShoppingListItem { Item = "Sports Drink", Amount = $"{minSportsDrink:F1}L" });
+                var drinkEvents = Math.Floor(config.Duration.TotalMinutes / 20.0);
+                var sipSizeL = 0.1; // 100 ml per sip
+                var baseVolumeBySips = Math.Min(plan.TotalFluids, drinkEvents * sipSizeL);
+                // Ensure at least 15% of carbs can come from sports drink (30g per 500ml => 60g/L)
+                var minVolumeByCarbShare = totalCarbsNeeded * 0.15 / 60.0; // liters
+                var computedSportsDrinkL = Math.Max(baseVolumeBySips, minVolumeByCarbShare);
+                var sportsDrinkL = Math.Round(computedSportsDrinkL, 1, MidpointRounding.AwayFromZero);
+
+                if (sportsDrinkL > 0)
+                {
+                    var existing = shoppingList.FirstOrDefault(s => s.Item.Contains("Sports Drink"));
+                    if (existing != null)
+                    {
+                        existing.Amount = $"{sportsDrinkL:F1}L";
+                    }
+                    else
+                    {
+                        shoppingList.Add(new ShoppingListItem { Item = "Sports Drink", Amount = $"{sportsDrinkL:F1}L" });
+                    }
+                }
             }
 
             // Add hydration (separate from carb sources)
