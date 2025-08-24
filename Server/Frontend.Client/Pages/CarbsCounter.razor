@@ -1,35 +1,36 @@
 ﻿@page "/carbscounter"
-@using System.ComponentModel.DataAnnotations
 
 <div class="page-container">
     <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
-        <MudText Typo="Typo.h3" Align="Align.Center" Class="mb-2">
-            <MudIcon Icon="@Icons.Material.Filled.DirectionsBike" Class="me-2" Color="Color.Primary" />
-            Cycling Carbs Calculator
-        </MudText>
-        <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-6 mud-text-secondary">
-            Plan your nutrition strategy for optimal cycling performance
-        </MudText>
+        <MudPaper Class="pa-4 mb-4" Style="display: grid; justify-content: center" Elevation="3">
+            <MudText Typo="Typo.h3" Align="Align.Center" Class="mb-2 icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.DirectionsBike" Class="me-2" Color="Color.Primary" />
+                Cycling Carbs Calculator
+            </MudText>
+            <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-2 mud-text-secondary">
+                Plan your nutrition strategy for optimal cycling performance
+            </MudText>
+        </MudPaper>
 
         <MudGrid>
             <!-- Input Section -->
             <MudItem xs="12" md="6">
-                <MudPaper Class="pa-4 mb-4" Elevation="2">
-                    <MudText Typo="Typo.h5" Class="mb-4">
+                <MudPaper Class="pa-4 mb-4" Elevation="3">
+                    <MudText Typo="Typo.h5" Class="mb-4 icon-header">
                         <MudIcon Icon="@Icons.Material.Filled.Settings" Class="me-2" />
                         Ride Configuration
                     </MudText>
 
-                    <MudTabs Elevation="0" Rounded="true" Centered="true" @bind-ActivePanelIndex="activeTab">
+                    <MudTabs Elevation="0" Rounded="true" Centered="true" @bind-ActivePanelIndex="_activeTab">
                         <MudTabPanel Text="Distance">
                             <MudStack Spacing="3" Class="mt-4">
-                                <MudNumericField @bind-Value="rideDistance" 
+                                <MudNumericField @bind-Value="_rideDistance" 
                                                Label="Distance (km)" 
                                                Min="1" Max="500"
                                                Adornment="Adornment.End" 
                                                AdornmentText="km"
                                                Variant="Variant.Outlined" />
-                                <MudNumericField @bind-Value="averageSpeed" 
+                                <MudNumericField @bind-Value="_averageSpeed" 
                                                Label="Expected Average Speed" 
                                                Min="10" Max="60"
                                                Adornment="Adornment.End" 
@@ -42,12 +43,12 @@
                         </MudTabPanel>
                         <MudTabPanel Text="Time">
                             <MudStack Spacing="3" Class="mt-4">
-                                <MudTextField @bind-Value="rideDurationInput" 
+                                <MudTextField @bind-Value="_rideDurationInput" 
                                             Label="Ride Duration (HH:MM)" 
                                             Placeholder="2:30"
                                             Variant="Variant.Outlined"
                                             HelperText="Format: Hours:Minutes (e.g., 2:30 for 2.5 hours)" />
-                                <MudNumericField @bind-Value="intensityFactor" 
+                                <MudNumericField @bind-Value="_intensityFactor" 
                                                Label="Intensity Factor" 
                                                Min="0.5" Max="1.0" Step="0.05"
                                                Adornment="Adornment.End" 
@@ -62,13 +63,13 @@
 
                     <MudText Typo="Typo.h6" Class="mb-3">Personal Settings</MudText>
                     <MudStack Spacing="3">
-                        <MudNumericField @bind-Value="bodyWeight" 
+                        <MudNumericField @bind-Value="_bodyWeight" 
                                        Label="Body Weight" 
                                        Min="40" Max="150"
                                        Adornment="Adornment.End" 
                                        AdornmentText="kg"
                                        Variant="Variant.Outlined" />
-                        <MudSelect @bind-Value="fitnessLevel" Label="Fitness Level" Variant="Variant.Outlined">
+                        <MudSelect @bind-Value="_fitnessLevel" Label="Fitness Level" Variant="Variant.Outlined">
                             <MudSelectItem Value="@FitnessLevel.Beginner">Beginner</MudSelectItem>
                             <MudSelectItem Value="@FitnessLevel.Intermediate">Intermediate</MudSelectItem>
                             <MudSelectItem Value="@FitnessLevel.Advanced">Advanced</MudSelectItem>
@@ -88,27 +89,27 @@
                 </MudPaper>
 
                 <!-- Nutrition Preferences -->
-                <MudPaper Class="pa-4" Elevation="2">
-                    <MudText Typo="Typo.h6" Class="mb-3">
+                <MudPaper Class="pa-4" Elevation="3">
+                    <MudText Typo="Typo.h6" Class="mb-3 icon-header">
                         <MudIcon Icon="@Icons.Material.Filled.Tune" Class="me-2" />
                         Nutrition Preferences
                     </MudText>
                     
                     <MudStack Spacing="2">
-                        <MudSwitch T="bool" @bind-Value="preferences.AllowGels" Color="Color.Primary" Label="Energy Gels" />
-                        <MudSwitch T="bool" @bind-Value="preferences.AllowSportsDrinks" Color="Color.Primary" Label="Sports Drinks" />
-                        <MudSwitch T="bool" @bind-Value="preferences.AllowBananas" Color="Color.Primary" Label="Bananas" />
-                        <MudSwitch T="bool" @bind-Value="preferences.AllowEnergyBars" Color="Color.Primary" Label="Energy Bars" />
-                        <MudSwitch T="bool" @bind-Value="preferences.AllowDates" Color="Color.Primary" Label="Dates" />
-                        <MudSwitch T="bool" @bind-Value="preferences.PreferNaturalFoods" Color="Color.Primary" Label="Prefer Natural Foods" />
+                        <MudSwitch T="bool" @bind-Value="_preferences.AllowGels" Color="Color.Primary" Label="Energy Gels" />
+                        <MudSwitch T="bool" @bind-Value="_preferences.AllowSportsDrinks" Color="Color.Primary" Label="Sports Drinks" />
+                        <MudSwitch T="bool" @bind-Value="_preferences.AllowBananas" Color="Color.Primary" Label="Bananas" />
+                        <MudSwitch T="bool" @bind-Value="_preferences.AllowEnergyBars" Color="Color.Primary" Label="Energy Bars" />
+                        <MudSwitch T="bool" @bind-Value="_preferences.AllowDates" Color="Color.Primary" Label="Dates" />
+                        <MudSwitch T="bool" @bind-Value="_preferences.PreferNaturalFoods" Color="Color.Primary" Label="Prefer Natural Foods" />
                     </MudStack>
 
                     <MudDivider Class="my-3" />
                     
                     <MudText Typo="Typo.subtitle2" Class="mb-2">Hydration Preferences</MudText>
                     <MudStack Spacing="2">
-                        <MudSwitch T="bool" @bind-Value="preferences.IncludeElectrolytes" Color="Color.Primary" Label="Electrolyte Drinks" />
-                        <MudNumericField @bind-Value="preferences.FluidIntensity" 
+                        <MudSwitch T="bool" @bind-Value="_preferences.IncludeElectrolytes" Color="Color.Primary" Label="Electrolyte Drinks" />
+                        <MudNumericField @bind-Value="_preferences.FluidIntensity" 
                                        Label="Hydration Intensity" 
                                        Min="0.5" Max="2.0" Step="0.1"
                                        Variant="Variant.Outlined"
@@ -119,39 +120,39 @@
 
             <!-- Results Section -->
             <MudItem xs="12" md="6">
-                @if (nutritionPlan != null)
+                @if (_nutritionPlan != null)
                 {
                     <!-- Summary Cards -->
                     <MudGrid Class="mb-4">
-                        <MudItem xs="4">
-                            <MudPaper Class="pa-3 text-center primary-gradient">
-                                <MudText Typo="Typo.h4" Style="color: white; font-weight: bold;">@nutritionPlan.TotalCarbs.ToString("F0")</MudText>
-                                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">g Carbs</MudText>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Class="pa-4 text-center primary-gradient summary-card" Elevation="3">
+                                <MudText Typo="Typo.h4" Class="summary-value">@_nutritionPlan.TotalCarbs.ToString("F0")</MudText>
+                                <MudText Typo="Typo.body2" Class="summary-label">g Carbs</MudText>
                             </MudPaper>
                         </MudItem>
-                        <MudItem xs="4">
-                            <MudPaper Class="pa-3 text-center secondary-gradient">
-                                <MudText Typo="Typo.h4" Style="color: white; font-weight: bold;">@nutritionPlan.TotalFluids.ToString("F1")</MudText>
-                                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">L Fluids</MudText>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Class="pa-4 text-center secondary-gradient summary-card" Elevation="3">
+                                <MudText Typo="Typo.h4" Class="summary-value">@_nutritionPlan.TotalFluids.ToString("F1")</MudText>
+                                <MudText Typo="Typo.body2" Class="summary-label">L Fluids</MudText>
                             </MudPaper>
                         </MudItem>
-                        <MudItem xs="4">
-                            <MudPaper Class="pa-3 text-center success-gradient">
-                                <MudText Typo="Typo.h4" Style="color: white; font-weight: bold;">@nutritionPlan.TotalCalories.ToString("F0")</MudText>
-                                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">kcal</MudText>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Class="pa-4 text-center success-gradient summary-card" Elevation="3">
+                                <MudText Typo="Typo.h4" Class="summary-value">@_nutritionPlan.TotalCalories.ToString("F0")</MudText>
+                                <MudText Typo="Typo.body2" Class="summary-label">kcal</MudText>
                             </MudPaper>
                         </MudItem>
                     </MudGrid>
 
                     <!-- Timeline -->
-                    <MudPaper Class="pa-4 mb-4" Elevation="2">
-                        <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudPaper Class="pa-4 mb-4" Elevation="3">
+                        <MudText Typo="Typo.h6" Class="mb-3 icon-header">
                             <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="me-2" />
                             Nutrition Timeline
                         </MudText>
                         
                         <MudTimeline TimelineOrientation="TimelineOrientation.Vertical" TimelinePosition="TimelinePosition.Start">
-                            @foreach (var item in nutritionPlan.Timeline)
+                            @foreach (var item in _nutritionPlan.Timeline)
                             {
                                 <MudTimelineItem Color="@GetTimelineColor(item.Type)" Size="Size.Small">
                                     <ItemContent>
@@ -175,24 +176,26 @@
                     </MudPaper>
 
                     <!-- Shopping List -->
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudPaper Class="pa-4" Elevation="3">
+                        <MudText Typo="Typo.h6" Class="mb-3 icon-header">
                             <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Class="me-2" />
                             Shopping List
                         </MudText>
                         
                         <MudGrid>
-                            @foreach (var item in nutritionPlan.ShoppingList)
+                            @foreach (var item in _nutritionPlan.ShoppingList)
                             {
-                                <MudItem xs="6">
-                                    <MudCard Class="pa-3 shopping-card">
-                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                            <div>
-                                                <MudText Typo="Typo.subtitle2">@item.Item</MudText>
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@item.Amount</MudText>
-                                            </div>
-                                            <MudIcon Icon="@GetItemIcon(item.Item)" Color="Color.Primary" />
-                                        </MudStack>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudCard Class="shopping-card" Elevation="3">
+                                        <MudCardContent Class="pa-3">
+                                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                                <div>
+                                                    <MudText Typo="Typo.subtitle2" Class="font-weight-medium">@item.Item</MudText>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@item.Amount</MudText>
+                                                </div>
+                                                <MudIcon Icon="@GetItemIcon(item.Item)" Color="Color.Primary" Size="Size.Medium" />
+                                            </MudStack>
+                                        </MudCardContent>
                                     </MudCard>
                                 </MudItem>
                             }
@@ -215,69 +218,69 @@
 </div>
 
 @code {
-    private int activeTab = 0;
-    private double rideDistance = 50;
-    private double averageSpeed = 25;
-    private string rideDurationInput = "2:00";
-    private double intensityFactor = 0.7;
-    private double bodyWeight = 70;
-    private FitnessLevel fitnessLevel = FitnessLevel.Intermediate;
+    private int _activeTab;
+    private double _rideDistance = 50;
+    private double _averageSpeed = 25;
+    private string _rideDurationInput = "2:00";
+    private double _intensityFactor = 0.7;
+    private double _bodyWeight = 70;
+    private FitnessLevel _fitnessLevel = FitnessLevel.Intermediate;
     
-    private NutritionPreferences preferences = new();
-    private NutritionPlan? nutritionPlan;
+    private NutritionPreferences _preferences = new();
+    private NutritionPlan? _nutritionPlan;
 
     private void CalculateNutrition()
     {
-        var duration = activeTab == 0 ? CalculateRideDurationTimeSpan() : ParseDuration(rideDurationInput);
+        var duration = _activeTab == 0 ? CalculateRideDurationTimeSpan() : ParseDuration(_rideDurationInput);
         if (duration == TimeSpan.Zero) return;
 
         // Ensure at least some basic options are available
-        if (!preferences.AllowGels && !preferences.AllowSportsDrinks && 
-            !preferences.AllowBananas && !preferences.AllowEnergyBars && 
-            !preferences.AllowDates)
+        if (!_preferences.AllowGels && !_preferences.AllowSportsDrinks && 
+            !_preferences.AllowBananas && !_preferences.AllowEnergyBars && 
+            !_preferences.AllowDates)
         {
-            preferences.AllowSportsDrinks = true; // Fallback to sports drinks
+            _preferences.AllowSportsDrinks = true; // Fallback to sports drinks
         }
 
         var calculator = new CyclingNutritionCalculator();
         var rideConfig = new RideConfiguration
         {
             Duration = duration,
-            Distance = activeTab == 0 ? rideDistance : CalculateDistanceFromTime(duration),
-            IntensityFactor = intensityFactor,
-            BodyWeight = bodyWeight,
-            FitnessLevel = fitnessLevel
+            Distance = _activeTab == 0 ? _rideDistance : CalculateDistanceFromTime(duration),
+            IntensityFactor = _intensityFactor,
+            BodyWeight = _bodyWeight,
+            FitnessLevel = _fitnessLevel
         };
 
-        nutritionPlan = calculator.CalculateNutritionPlan(rideConfig, preferences);
+        _nutritionPlan = calculator.CalculateNutritionPlan(rideConfig, _preferences);
     }
 
     private bool IsInputValid()
     {
-        if (activeTab == 0)
+        if (_activeTab == 0)
         {
-            return rideDistance > 0 && averageSpeed > 0 && bodyWeight > 0;
+            return _rideDistance > 0 && _averageSpeed > 0 && _bodyWeight > 0;
         }
         else
         {
-            return !string.IsNullOrEmpty(rideDurationInput) && 
-                   ParseDuration(rideDurationInput) != TimeSpan.Zero && 
-                   bodyWeight > 0;
+            return !string.IsNullOrEmpty(_rideDurationInput) && 
+                   ParseDuration(_rideDurationInput) != TimeSpan.Zero && 
+                   _bodyWeight > 0;
         }
     }
 
     private string CalculateRideDuration()
     {
-        if (rideDistance <= 0 || averageSpeed <= 0) return "0:00";
-        var hours = rideDistance / averageSpeed;
+        if (_rideDistance <= 0 || _averageSpeed <= 0) return "0:00";
+        var hours = _rideDistance / _averageSpeed;
         var timeSpan = TimeSpan.FromHours(hours);
         return $"{(int)timeSpan.TotalHours}:{timeSpan.Minutes:D2}";
     }
 
     private TimeSpan CalculateRideDurationTimeSpan()
     {
-        if (rideDistance <= 0 || averageSpeed <= 0) return TimeSpan.Zero;
-        return TimeSpan.FromHours(rideDistance / averageSpeed);
+        if (_rideDistance <= 0 || _averageSpeed <= 0) return TimeSpan.Zero;
+        return TimeSpan.FromHours(_rideDistance / _averageSpeed);
     }
 
     private double CalculateDistanceFromTime(TimeSpan duration)
@@ -324,7 +327,7 @@
 
     private string GetItemIcon(string item)
     {
-        var lowerItem = item?.ToLower() ?? "";
+        var lowerItem = item.ToLower();
         
         if (lowerItem.Contains("gel")) return Icons.Material.Filled.Science;
         if (lowerItem.Contains("drink") || lowerItem.Contains("sports")) return Icons.Material.Filled.LocalDrink;
@@ -343,11 +346,11 @@
     {
         public bool AllowGels { get; set; } = true;
         public bool AllowSportsDrinks { get; set; } = true;
-        public bool AllowBananas { get; set; } = false;
+        public bool AllowBananas { get; set; }
         public bool AllowEnergyBars { get; set; } = true;
-        public bool AllowDates { get; set; } = false;
-        public bool PreferNaturalFoods { get; set; } = false;
-        public bool IncludeElectrolytes { get; set; } = false;
+        public bool AllowDates { get; set; }
+        public bool PreferNaturalFoods { get; set; }
+        public bool IncludeElectrolytes { get; set; }
         public double FluidIntensity { get; set; } = 1.0;
     }
 
@@ -793,5 +796,15 @@
 
 .shopping-card {
     border-left: 4px solid #594ae2 !important;
+}
+
+.summary-card {
+    display: grid;
+    justify-content: center;
+    color: white;
+}
+
+.summary-label .summary-value {
+    color: white !important;
 }
 </style>
