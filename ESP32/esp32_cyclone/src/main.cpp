@@ -6,9 +6,9 @@
 #include "string.h"
 #include "TinyGPS++.h"
 #include <Arduino.h>
-#include <EEPROM.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 
 
 
@@ -53,6 +53,7 @@ void updateAllData();
 // this is the address to where the sensor data is stored in the heap (96kB of RAM)
 float *sensorData;
 uint bufferCount = 0;
+Preferences preferences;
 
 // filesystem
 uint timeBeforeWrite, timeAfterWrite;
@@ -80,10 +81,9 @@ gpsData gpsdata;
 void setup()
 {
   if(setupMode){
-    EEPROM.begin(128);
-    EEPROM.write(0, 0); // Mark setup as not done
-    EEPROM.commit();
-    EEPROM.end();
+    preferences.begin("credentials", false);
+    preferences.clear(); // clear previous credentials
+    preferences.end();
   }
   Serial.begin(115200);
   // wait for serial monitor to connect
@@ -198,10 +198,10 @@ void setupFileSystem()
 void setupWlan()
 {
   String ssid, password;
-  EEPROM.begin(128);
-  // read the ssid and password from the sdcard 
-  ssid = EEPROM.readString(1);
-  password = EEPROM.readString(64);
+  preferences.begin("credentials", false);
+  preferences.getString("ssid", ssid);
+  preferences.getString("pass", password);
+  preferences.end();
 
   password.trim();
   ssid.trim();
@@ -317,14 +317,14 @@ void updateAllData(){
 
 
 void checkFirstTimeConfig(){
-  EEPROM.begin(128);
-  
-  if(EEPROM.read(0) != 1){
+  preferences.begin("credentials", false);
+
+  if(!preferences.getBool("setup_done")){
     setupSequence();
   }
   else{
     Serial.println("Setup already done, skipping setup sequence.");
-    file.close();
+    
   }
 }
 
@@ -443,12 +443,13 @@ void setupSequence() {
     Serial.println("Client disconnected");
   }
 
-  // Save setup state to EEPROM
-  EEPROM.write(0, 1);
-  EEPROM.put(1, wifiSSID);
-  EEPROM.put(64, wifiPassword); 
-  EEPROM.commit();
-  EEPROM.end();
+  // Save setup state to Preferences
+  preferences.begin("credentials", false);
+  preferences.putString("ssid", wifiSSID);
+  preferences.putString("pass", wifiPassword);
+  preferences.putBool("setup_done", true);
+  Serial.println("Network credentials saved using Preferences");
+  preferences.end();
   
   // Stop the AP
   WiFi.softAPdisconnect(true);
@@ -528,13 +529,12 @@ void registerDevice(){
         const char* token = doc["authToken"];
         const char* devId = doc["deviceId"];
 
-        if (token) {
+        if (token && strlen(token) > 0 && token != "null" && token != nullptr) {
           authToken = String(token); // Store globally for later API calls
           Serial.println("Token extracted: " + authToken);
-          EEPROM.begin(128+256);
-          EEPROM.put(128, authToken); // Store token in EEPROM
-          EEPROM.commit();
-          EEPROM.end();
+          preferences.begin("credentials", false);
+          preferences.putString("authToken", authToken);
+          preferences.end();
         }
         if (devId) {
           Serial.println("Device ID confirmed: " + String(devId));
