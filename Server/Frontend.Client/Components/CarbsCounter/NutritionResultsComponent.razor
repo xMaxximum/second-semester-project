@@ -1,0 +1,101 @@
+@using Frontend.Client.Models.CarbsCounter
+@using Frontend.Client.Services.CarbsCounter
+
+<MudItem xs="12" md="6">
+    @if (NutritionPlan != null)
+    {
+        <!-- Summary Cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4 text-center primary-gradient summary-card" Elevation="3">
+                    <MudText Typo="Typo.h4" Class="summary-value">@NutritionPlan.TotalCarbs.ToString("F0")</MudText>
+                    <MudText Typo="Typo.body2" Class="summary-label">g Carbs</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4 text-center secondary-gradient summary-card" Elevation="3">
+                    <MudText Typo="Typo.h4" Class="summary-value">@NutritionPlan.TotalFluids.ToString("F1")</MudText>
+                    <MudText Typo="Typo.body2" Class="summary-label">L Fluids</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4 text-center success-gradient summary-card" Elevation="3">
+                    <MudText Typo="Typo.h4" Class="summary-value">@NutritionPlan.TotalCalories.ToString("F0")</MudText>
+                    <MudText Typo="Typo.body2" Class="summary-label">kcal</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Timeline -->
+        <MudPaper Class="pa-4 mb-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="mb-3 icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="me-2" />
+                Nutrition Timeline
+            </MudText>
+            
+            <MudTimeline TimelineOrientation="TimelineOrientation.Vertical" TimelinePosition="TimelinePosition.Start">
+                @foreach (var item in NutritionPlan.Timeline)
+                {
+                    <MudTimelineItem Color="@NutritionDisplayHelper.GetTimelineColor(item.Type)" Size="Size.Small">
+                        <ItemContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                                <div>
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold">
+                                        @item.Time (@item.Description)
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                        @item.Instructions
+                                    </MudText>
+                                </div>
+                                <MudChip T="string" Color="@NutritionDisplayHelper.GetTimelineColor(item.Type)" Size="Size.Small">
+                                    @NutritionDisplayHelper.GetNutrientInfo(item)
+                                </MudChip>
+                            </MudStack>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+            </MudTimeline>
+        </MudPaper>
+
+        <!-- Shopping List -->
+        <MudPaper Class="pa-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="mb-3 icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Class="me-2" />
+                Shopping List
+            </MudText>
+            
+            <MudGrid>
+                @foreach (var item in NutritionPlan.ShoppingList)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="shopping-card" Elevation="3">
+                            <MudCardContent Class="pa-3">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Class="font-weight-medium">@item.Item</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@item.Amount</MudText>
+                                    </div>
+                                    <MudIcon Icon="@NutritionDisplayHelper.GetItemIcon(item.Item)" Color="Color.Primary" Size="Size.Medium" />
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-6 text-center" Elevation="1" Style="border: 2px dashed #ccc;">
+            <MudIcon Icon="@Icons.Material.Filled.Calculate" Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
+            <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">Ready to Calculate</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Fill in your ride details and click "Calculate Nutrition Plan" to get personalized recommendations
+            </MudText>
+        </MudPaper>
+    }
+</MudItem>
+
+@code {
+    [Parameter] public NutritionPlan? NutritionPlan { get; set; }
+}

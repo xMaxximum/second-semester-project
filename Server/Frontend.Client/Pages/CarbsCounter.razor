@@ -1,12 +1,80 @@
 ﻿@page "/carbscounter"
+@using Frontend.Client.Models.CarbsCounter
+@using Frontend.Client.Services.CarbsCounter
+@using Frontend.Client.Components.CarbsCounter
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex justify-center align-center" Style="height: 100vh;">
-    <MudCard Outlined="true" Class="pa-6" Style="text-align: center;" Elevation="3">
-        <MudCardMedia Image="https://i.pinimg.com/originals/aa/57/46/aa574640b0f3e2c22a4798233212e35d.gif" Height="200" />
-        <MudCardContent>
-            <MudText Typo="Typo.h5" Align="Align.Center">
-                Page coming soon...
+<PageTitle>Cycling Carbs Calculator</PageTitle>
+
+<div class="page-container">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+        <MudPaper Class="pa-4 mb-4" Style="display: grid; justify-content: center" Elevation="3">
+            <MudText Typo="Typo.h3" Align="Align.Center" Class="mb-2 icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.DirectionsBike" Class="me-2" Color="Color.Primary" />
+                Cycling Carbs Calculator
             </MudText>
-        </MudCardContent>
-    </MudCard>
-</MudContainer>
+            <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-2 mud-text-secondary">
+                Plan your nutrition strategy for optimal cycling performance
+            </MudText>
+        </MudPaper>
+
+        <MudGrid>
+            <!-- Input Section -->
+            <RideConfigurationComponent @bind-ActiveTab="_activeTab"
+                                      @bind-RideDistance="_rideDistance"
+                                      @bind-AverageSpeed="_averageSpeed"
+                                      @bind-RideDurationInput="_rideDurationInput"
+                                      @bind-IntensityFactor="_intensityFactor"
+                                      @bind-BodyWeight="_bodyWeight"
+                                      @bind-FitnessLevel="_fitnessLevel"
+                                      @bind-Preferences="_preferences"
+                                      OnCalculateClicked="CalculateNutrition" />
+
+            <!-- Results Section -->
+            <NutritionResultsComponent NutritionPlan="_nutritionPlan" />
+        </MudGrid>
+    </MudContainer>
+</div>
+
+@code {
+    private int _activeTab;
+    private double _rideDistance = 50;
+    private double _averageSpeed = 25;
+    private string _rideDurationInput = "2:00";
+    private double _intensityFactor = 0.7;
+    private double _bodyWeight = 70;
+    private FitnessLevel _fitnessLevel = FitnessLevel.Intermediate;
+    
+    private NutritionPreferences _preferences = new();
+    private NutritionPlan? _nutritionPlan;
+
+    private readonly CyclingNutritionCalculator _calculator = new();
+    private readonly RideCalculationService _rideCalculationService = new();
+
+    private void CalculateNutrition()
+    {
+        var duration = _activeTab == 0 
+            ? _rideCalculationService.CalculateRideDurationTimeSpan(_rideDistance, _averageSpeed) 
+            : _rideCalculationService.ParseDuration(_rideDurationInput);
+            
+        if (duration == TimeSpan.Zero) return;
+
+        // Ensure at least some basic options are available
+        if (!_preferences.AllowGels && !_preferences.AllowSportsDrinks && 
+            !_preferences.AllowBananas && !_preferences.AllowEnergyBars && 
+            !_preferences.AllowDates)
+        {
+            _preferences.AllowSportsDrinks = true; // Fallback to sports drinks
+        }
+
+        var rideConfig = new RideConfiguration
+        {
+            Duration = duration,
+            Distance = _activeTab == 0 ? _rideDistance : _rideCalculationService.CalculateDistanceFromTime(duration),
+            IntensityFactor = _intensityFactor,
+            BodyWeight = _bodyWeight,
+            FitnessLevel = _fitnessLevel
+        };
+
+        _nutritionPlan = _calculator.CalculateNutritionPlan(rideConfig, _preferences);
+    }
+}
