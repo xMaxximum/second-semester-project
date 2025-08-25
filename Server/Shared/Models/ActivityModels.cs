@@ -76,6 +76,25 @@ namespace Shared.Models
         public string Day { get; set; } = string.Empty;
         public double Distance { get; set; } 
     }
+    
+    public class KpiDataResponse
+    {
+        public string ActivityCount { get; set; } = "0";
+        public string ActivityTrend { get; set; } = "0%";
+        public bool ActivityTrendUp { get; set; } = true;
+    
+        public string TotalDistance { get; set; } = "0km";
+        public string DistanceTrend { get; set; } = "0%";
+        public bool DistanceTrendUp { get; set; } = true;
+    
+        public string TotalTime { get; set; } = "0h";
+        public string TimeTrend { get; set; } = "0%";
+        public bool TimeTrendUp { get; set; } = true;
+    
+        public string TotalElevation { get; set; } = "0m";
+        public string ElevationTrend { get; set; } = "0%";
+        public bool ElevationTrendUp { get; set; } = true;
+    }
 
     public class CoordinatePoint
     {
