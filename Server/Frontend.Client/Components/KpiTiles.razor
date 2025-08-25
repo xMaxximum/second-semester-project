@@ -22,6 +22,7 @@
             <MudText Typo="Typo.body2">Loading KPIs…</MudText>
         </MudPaper>
     </MudItem>
+
 }
 else
 {
@@ -42,37 +43,80 @@ else
 
 
 @code {
-    // TODO: Implement Connection to End Point and calculate sums for KPIs in the last week
-    
     private bool _loading = true;
-    private List<ActivityResponse> _activities = new();
-    public List<KPIModel> KPIs = new(); 
+    private DateTime _lastRefresh = DateTime.Now;
 
-    private ChartOptions options = new ChartOptions();
-
-    public List<ChartSeries> Series = new List<ChartSeries>()
-    {
-        new ChartSeries() { Name = "Series 1", Data = new double[] { 90, 79, 72, 69, 62, 62, 55 } },
-    };
-
-    public string[] XAxisLabels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+    public List<KPIModel> KPIs = new();
 
     protected override async Task OnInitializedAsync()
     {
-        options.InterpolationOption = InterpolationOption.NaturalSpline;
-        options.YAxisFormat = "0 km";
-        options.ShowLegend = false;
-
-        await LoadKpisAsync();
+        await LoadActivities();
     }
+
+    private async Task LoadActivities()
+    {
+        _loading = true;
+        try
+        {
+            var kpi = await ActivityService.GetKpiDataAsync();
+
+            if (kpi?.IsSuccess == true && kpi.Data is not null)
+            {
+                var d = kpi.Data;
+
+                KPIs = new()
+                {
+                    new KPIModel("Activities", d.ActivityCount, d.ActivityTrend,
+                        d.ActivityTrendUp ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
+                        d.ActivityTrendUp ? Color.Success : Color.Error),
+
+                    new KPIModel("Distance", d.TotalDistance, d.DistanceTrend,
+                        d.DistanceTrendUp ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
+                        d.DistanceTrendUp ? Color.Success : Color.Error),
+
+                    new KPIModel("Time", d.TotalTime, d.TimeTrend,
+                        d.TimeTrendUp ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
+                        d.TimeTrendUp ? Color.Success : Color.Error),
+
+                    new KPIModel("Elevation", d.TotalElevation, d.ElevationTrend,
+                        d.ElevationTrendUp ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
+                        d.ElevationTrendUp ? Color.Success : Color.Error),
+                };
+
+                _lastRefresh = DateTime.Now;
+            }
+            else
+            {
+                Snackbar.Add(kpi?.Message ?? "KPI-Daten konnten nicht geladen werden.", Severity.Error);
+                KPIs = BuildFallback();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Fehler beim Laden der KPI-Daten: {ex.Message}", Severity.Error);
+            KPIs = BuildFallback();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static List<KPIModel> BuildFallback() => new()
+    {
+        new KPIModel("Activities", "0", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
+        new KPIModel("Distance", "0km", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
+        new KPIModel("Time", "0h", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
+        new KPIModel("Elevation", "0m", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
+    };
 
     public class KPIModel
     {
-        public string Title { get; set; }
-        public string Value { get; set; }
-        public string Trend { get; set; }
-        public string TrendIcon { get; set; }
-        public Color TrendColor { get; set; }
+        public string Title { get; }
+        public string Value { get; }
+        public string Trend { get; }
+        public string TrendIcon { get; }
+        public Color TrendColor { get; }
 
         public KPIModel(string title, string value, string trend, string trendIcon, Color trendColor)
         {
@@ -83,135 +127,4 @@ else
             TrendColor = trendColor;
         }
     }
-    
-    private async Task LoadKpisAsync()
-{
-    _loading = true;
-    try
-    {
-        // viele Elemente laden
-        var resp = await ActivityService.GetActivitiesAsync(page: 1, pageSize: 500);
-        if (resp?.IsSuccess != true || resp.Activities == null)
-        {
-            Snackbar.Add("Konnte Activities nicht laden.", Severity.Error);
-            KPIs = BuildFallback();
-            return;
-        }
-
-        _activities = resp.Activities;
-
-        // die letzten 7 Tage vs. die Tage davor
-        var today = DateTime.Today;
-        var thisStart = today.AddDays(-6);
-        var thisEnd = today.AddDays(1).AddTicks(-1);
-        var prevStart = thisStart.AddDays(-7);
-        var prevEnd = thisStart.AddTicks(-1);
-
-        bool InRange(ActivityResponse a, DateTime start, DateTime end)
-            => a.StartTime >= start && a.StartTime <= end;
-
-        var thisWeek = _activities.Where(a => InRange(a, thisStart, thisEnd)).ToList();
-        var prevWeek = _activities.Where(a => InRange(a, prevStart, prevEnd)).ToList();
-
-        // Berechnungen
-        double Km(IEnumerable<ActivityResponse> xs)
-            => xs.Sum(a => (a.Analytics?.TotalDistance ?? 0) / 1000.0); // Meter → km
-
-        TimeSpan Dur(ActivityResponse a)
-            => a.Duration ?? ((a.EndTime ?? a.StartTime) - a.StartTime);
-
-        TimeSpan TotalDur(IEnumerable<ActivityResponse> xs)
-            => xs.Aggregate(TimeSpan.Zero, (acc, a) => acc + Dur(a));
-
-        double Elev(IEnumerable<ActivityResponse> xs)
-            => xs.Sum(a => a.Analytics?.ElevationGain ?? 0);
-
-        int Count(IEnumerable<ActivityResponse> xs) => xs.Count();
-
-        var thisActivities = Count(thisWeek);
-        var prevActivities = Count(prevWeek);
-
-        var thisKm = Km(thisWeek);
-        var prevKm = Km(prevWeek);
-
-        var thisDur = TotalDur(thisWeek);
-        var prevDur = TotalDur(prevWeek);
-
-        var thisElev = Elev(thisWeek);
-        var prevElev = Elev(prevWeek);
-        
-        
-        var tActivities = TrendPct(thisActivities, prevActivities);
-        var tKm = TrendPct(thisKm, prevKm);
-        var tDur = TrendPct(thisDur.TotalMinutes, prevDur.TotalMinutes);
-        var tElev = TrendPct(thisElev, prevElev);
-        
-        KPIs = new List<KPIModel>
-        {
-            new KPIModel(
-                title: "Activities",
-                value: thisActivities.ToString(),
-                trend: FormatTrend(tActivities),
-                trendIcon: tActivities >= 0 ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
-                trendColor: tActivities >= 0 ? Color.Success : Color.Error
-            ),
-            new KPIModel(
-                title: "Distance",
-                value: $"{thisKm:0.##} km",
-                trend: FormatTrend(tKm),
-                trendIcon: tKm >= 0 ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
-                trendColor: tKm >= 0 ? Color.Success : Color.Error
-            ),
-            new KPIModel(
-                title: "Time",
-                value: FormatDuration(thisDur),
-                trend: FormatTrend(tDur),
-                trendIcon: tDur >= 0 ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
-                trendColor: tDur >= 0 ? Color.Success : Color.Error
-            ),
-            new KPIModel(
-                title: "Elevation",
-                value: $"{thisElev:0} m",
-                trend: FormatTrend(tElev),
-                trendIcon: tElev >= 0 ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward,
-                trendColor: tElev >= 0 ? Color.Success : Color.Error
-            ),
-        };
-    }
-    catch (Exception ex)
-    {
-        Snackbar.Add($"Fehler beim Laden der KPIs: {ex.Message}", Severity.Error);
-        KPIs = BuildFallback();
-    }
-    finally
-    {
-        _loading = false;
-        StateHasChanged();
-    }
-}
-    private static string FormatDuration(TimeSpan ts)
-    {
-        var totalHours = (int)Math.Floor(ts.TotalHours);
-        return $"{totalHours}:{ts.Minutes:00} h";
-    }
-
-    private static double TrendPct(double current, double previous)
-    {
-        if (previous == 0 && current == 0) return 0;
-        if (previous == 0) return 100; 
-        return ((current - previous) / Math.Abs(previous)) * 100.0;
-    }
-
-    private static string FormatTrend(double pct)
-        => $"{(pct >= 0 ? "+" : "")}{pct:0}%";
-
-    private static List<KPIModel> BuildFallback() => new()
-    {
-        new KPIModel("Activities", "0", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
-        new KPIModel("Distance", "0 km", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
-        new KPIModel("Time", "0:00 h", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
-        new KPIModel("Elevation", "0 m", "0%", Icons.Material.Filled.HorizontalRule, Color.Default),
-    };
-
-
 }
