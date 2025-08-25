@@ -31,7 +31,7 @@ String urlDC(String input);
 
 // interface used for sdcard (false is SPI)
 #define SDMMC false
-#define CUSTOM_MOSI 16
+
 // setup GPS serial connection
 void setupGPS();
 void readGPSData();
@@ -43,6 +43,7 @@ void updateAllData();
 #define CUSTOM_MISO 4
 #define CUSTOM_SCK 15
 #define CUSTOM_CS 2
+#define CUSTOM_MOSI 18
 #define RAM_ARR 24000 // 2000 sensorData packets (2000 * 12 count of sensor values is 24000)
 // 24000 * 4 bytes for a float is 96kB of RAM
 #define SENSOR_DATA_SIZE 12
@@ -361,11 +362,13 @@ String urlDC(String input) {
 void setupSequence() {
   AsyncWebServer server(80);
   SPI.begin(CUSTOM_SCK, CUSTOM_MISO, CUSTOM_MOSI, CUSTOM_CS);
-
-if (!SD.begin(CUSTOM_CS, SPI)) {
-      Serial.println("SD card mount failed! in first time setup");
-      return;
-  }
+    while (!SD.begin())
+    {
+      Serial.println("Card Mount Failed");
+      delay(1000);
+      
+    }
+    
 
   // Start AP
   WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
@@ -379,7 +382,7 @@ if (!SD.begin(CUSTOM_CS, SPI)) {
 
   bool setupFinished = false;
   unsigned long startTime = millis();
-  const unsigned long timeoutTime = 300000; // 5 minutes
+  const unsigned long timeoutTime = 300000; //+ 5 minutes
 
   // GET handler: serve index.html from SD
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
