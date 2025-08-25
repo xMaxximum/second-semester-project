@@ -374,23 +374,38 @@ class CyclingMap {
         .cycling-popup div { font-size:12px; }
         
         .leaflet-bottom .leaflet-left .map-controls { 
-          margin-bottom: 8px; 
-          margin-left: 8px; 
-          gap: 6px; 
+          margin-bottom: 10px; 
+          margin-left: 10px; 
+          gap: 8px; 
+          flex-direction: row;
+          flex-wrap: wrap;
+          max-width: calc(100vw - 20px);
         }
         
         .map-control-btn { 
-          padding:6px 10px; 
-          font-size:11px; 
-          min-width:90px; 
+          padding: 8px 12px; 
+          font-size: 12px; 
+          min-width: 120px;
+          flex: 1;
+          max-width: 200px;
+          text-align: center;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        
+        .map-control-btn:active {
+          transform: translateY(0px);
+          background: #e0e0e0;
         }
         
         #elevation-profile { 
-          bottom:70px; 
-          right:10px; 
-          left:10px; 
-          width:auto; 
-          max-width:none; 
+          bottom: 80px; 
+          right: 10px; 
+          left: 10px; 
+          width: auto; 
+          max-width: none; 
+          max-height: 40vh;
+          overflow: auto;
         }
       }
       
@@ -399,25 +414,72 @@ class CyclingMap {
         .cycling-popup div { font-size:11px; }
         
         .leaflet-bottom .leaflet-left .map-controls { 
-          margin-bottom: 6px; 
-          margin-left: 6px; 
-          gap: 4px; 
+          margin-bottom: 8px; 
+          margin-left: 8px; 
+          gap: 6px; 
           flex-direction: column;
-          align-items: flex-start;
+          align-items: stretch;
+          width: calc(100vw - 16px);
+          max-width: 300px;
         }
         
         .map-control-btn { 
-          padding:4px 8px; 
-          font-size:10px; 
-          min-width:80px; 
+          padding: 10px 12px; 
+          font-size: 13px; 
+          min-width: auto;
+          width: 100%;
+          flex: none;
+          border-radius: 6px;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        
+        .map-control-btn:active {
+          transform: scale(0.98);
+          background: #e0e0e0;
         }
         
         .start-marker, .end-marker { font-size:14px; }
         
         #elevation-profile { 
-          bottom:60px; 
-          right:5px; 
-          left:5px; 
+          bottom: 70px; 
+          right: 5px; 
+          left: 5px; 
+          max-height: 35vh;
+          overflow: auto;
+        }
+        
+        #elevation-profile .elevation-drag-handle {
+          height: 30px;
+          font-size: 13px;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+      }
+      
+      /* Extra small screens */
+      @media (max-width:360px) {
+        .leaflet-bottom .leaflet-left .map-controls {
+          margin-left: 5px;
+          margin-bottom: 5px;
+          width: calc(100vw - 10px);
+        }
+        
+        .map-control-btn {
+          font-size: 12px;
+          padding: 8px 10px;
+          min-height: 40px;
+        }
+        
+        #elevation-profile {
+          bottom: 60px;
+          right: 2px;
+          left: 2px;
+          max-height: 30vh;
         }
       }
     `;

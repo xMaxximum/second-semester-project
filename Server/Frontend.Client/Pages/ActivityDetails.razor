@@ -588,9 +588,6 @@
                 ShowSpeedColors = true,
                 ShowTemperatureMarkers = true
             };
-
-            Console.WriteLine($"🗺️ Initializing cycling map with {sensorData.Count} GPS points...");
-
             // Initialize the map
             _mapInstance = await MapService.InitializeMapAsync("cycling-map", firstPoint.Latitude, firstPoint.Longitude, config);
             _mapInitialized = true;
@@ -612,8 +609,7 @@
             // Add route data to map
             await MapService.AddRouteDataAsync(coordinates);
             
-            Console.WriteLine($"✅ Cycling map initialized successfully with {coordinates.Length} GPS points");
-            StateHasChanged();
+                        StateHasChanged();
         }
         catch (Exception ex)
         {
