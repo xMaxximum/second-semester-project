@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 @inject AuthService AuthService
 
-<MudThemeProvider />
+<MudThemeProvider @ref="_mudThemeProvider" IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -39,8 +39,11 @@
         <MudText Typo="Typo.h6" Class="text-uppercase mb-0"
                  Style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); cursor:pointer;"
                  @onclick="GoHome">CYCLONE</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.DirectionsBike" Color="Color.Inherit" OnClick="GoHome"
-                       Style="position:absolute; right:16px; top:50%; transform:translateY(-50%);" AriaLabel="Home" />
+        <MudIconButton Icon="@Icons.Material.Filled.DirectionsBike" 
+                       Color="Color.Inherit" 
+                       OnClick="ToggleDarkMode"
+                       Style="position:absolute; right:16px; top:50%; transform:translateY(-50%);" 
+                       AriaLabel="Toggle Dark Mode" />
       </MudContainer>
     </MudAppBar>
     
@@ -128,5 +131,13 @@
   protected override void OnInitialized()
   {
     Navigation.LocationChanged += (_, __) => { _drawerOpen = false; InvokeAsync(StateHasChanged); };
+  }
+  
+  private MudThemeProvider _mudThemeProvider;
+  private bool _isDarkMode = false;
+
+  private void ToggleDarkMode()
+  {
+    _isDarkMode = !_isDarkMode; 
   }
 }
