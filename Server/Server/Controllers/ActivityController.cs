@@ -457,6 +457,88 @@ namespace Server.Controllers
                 return StatusCode(500, ApiResponse<List<WeeklyDistanceResponse>>.Failure("Internal server error"));
             }
         }
+
+        [HttpGet("kpi-data")]
+        public async Task<ActionResult<ApiResponse<KpiDataResponse>>> GetKpiData()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized(ApiResponse<KpiDataResponse>.Failure("User not found"));
+
+                var currentWeekStart = GetStartOfWeek(DateTime.UtcNow);
+                var currentWeekEnd = currentWeekStart.AddDays(7);
+                var previousWeekStart = currentWeekStart.AddDays(-7);
+
+                // Gget activities for current and previous week 
+                var currentWeekActivities = await _context.Activities
+                    .Include(a => a.SensorDataPackets)
+                    .Where(a => a.UserId == userId.Value && 
+                               a.Status == ActivityStatus.Completed &&
+                               a.StartTime >= currentWeekStart && 
+                               a.StartTime < currentWeekEnd)
+                    .ToListAsync();
+
+                var previousWeekActivities = await _context.Activities
+                    .Include(a => a.SensorDataPackets)
+                    .Where(a => a.UserId == userId.Value && 
+                               a.Status == ActivityStatus.Completed &&
+                               a.StartTime >= previousWeekStart && 
+                               a.StartTime < currentWeekStart)
+                    .ToListAsync();
+
+                // calculate current week stats
+                var currentActivityCount = currentWeekActivities.Count;
+                var currentTime = CalculateTotalTime(currentWeekActivities);
+                var currentDistance = 0.0;
+                var currentElevation = 0.0;
+                foreach (var a in currentWeekActivities)
+                {
+                    var analytics = CalculateAnalytics(a.SensorDataPackets.ToList());
+                    currentDistance += analytics.TotalDistance / 1000;
+                    currentElevation += analytics.ElevationGain;
+                }
+
+                // calculate previous week stats
+                var previousActivityCount = previousWeekActivities.Count;
+                var previousTime = CalculateTotalTime(previousWeekActivities);
+                var previousDistance = 0.0;
+                var previousElevation = 0.0;
+                foreach (var a in previousWeekActivities)
+                {
+                    var analytics = CalculateAnalytics(a.SensorDataPackets.ToList());
+                    previousDistance += analytics.TotalDistance / 1000;
+                    previousElevation += analytics.ElevationGain;
+                }
+
+                var response = new KpiDataResponse
+                {
+                    ActivityCount = currentActivityCount.ToString(),
+                    ActivityTrend = CalculatePercentageChange(currentActivityCount, previousActivityCount),
+                    ActivityTrendUp = currentActivityCount >= previousActivityCount,
+
+                    TotalDistance = $"{currentDistance:F1}km",
+                    DistanceTrend = CalculatePercentageChange(currentDistance, previousDistance),
+                    DistanceTrendUp = currentDistance >= previousDistance,
+
+                    TotalTime = FormatTimeForDisplay(currentTime),
+                    TimeTrend = CalculatePercentageChange(currentTime, previousTime),
+                    TimeTrendUp = currentTime >= previousTime,
+
+                    TotalElevation = $"{currentElevation:F0}m",
+                    ElevationTrend = CalculatePercentageChange(currentElevation, previousElevation),
+                    ElevationTrendUp = currentElevation >= previousElevation
+                };
+
+                return Ok(ApiResponse<KpiDataResponse>.Success(response, "KPI data retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving KPI data");
+                return StatusCode(500, ApiResponse<KpiDataResponse>.Failure("Internal server error"));
+            }
+        }
         
         private DateTime GetStartOfWeek(DateTime date)
         {
@@ -617,7 +699,10 @@ namespace Server.Controllers
             analytics.CaloriesBurned = analytics.AverageSpeed * durationHours * 50; // Rough estimation
 
             // Calculate elevation gain (would need altitude data from GPS or barometric sensor)
-            analytics.ElevationGain = 0; // TODO: Implement when altitude data is available
+            // TODO check for validity of this method
+            //analytics.ElevationGain = sensorData.Sum(s => s.ElevationGain);
+            
+            analytics.ElevationGain = sensorData.Max(s => s.ElevationGain) -  sensorData.Min(s => s.ElevationGain);
 
             return analytics;
         }
@@ -634,6 +719,43 @@ namespace Server.Controllers
                     route[i].Latitude, route[i].Longitude);
             }
             return totalDistance;
+        }
+        
+        private double CalculateTotalTime(List<Activity> activities)
+        {
+            double totalHours = 0;
+            foreach (var activity in activities)
+            {
+                if (activity.EndTime.HasValue)
+                {
+                    totalHours += (activity.EndTime.Value - activity.StartTime).TotalHours;
+                }
+            }
+            return totalHours;
+        }
+        
+        private string CalculatePercentageChange(double current, double previous)
+        {
+            if (previous == 0)
+            {
+                return current > 0 ? "+100%" : "0%";
+            }
+    
+            var change = ((current - previous) / previous) * 100;
+            var sign = change >= 0 ? "+" : "";
+            return $"{sign}{change:F0}%";
+        }
+
+        private string FormatTimeForDisplay(double hours)
+        {
+            if (hours < 1)
+            {
+                return $"{(int)(hours * 60)}min";
+            }
+    
+            var wholeHours = (int)hours;
+            var minutes = (int)((hours - wholeHours) * 60);
+            return $"{wholeHours}:{minutes:D2}h";
         }
 
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
