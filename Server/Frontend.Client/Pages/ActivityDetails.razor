@@ -1,9 +1,13 @@
 @page "/activity/{Id:long}"
 @using Shared.Models
+@using Frontend.Client.Services
+@using Microsoft.JSInterop
 @inject ActivityService ActivityService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject MapService MapService
+@implements IAsyncDisposable
 
 <PageTitle>@(_details?.Activity?.Name ?? "Activity Details")</PageTitle>
 
@@ -27,6 +31,87 @@
     .error-container {
         min-height: 60vh;
         gap: 16px;
+    }
+    
+    /* Responsive Map Styles */
+    .map-container {
+        position: relative;
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    #cycling-map {
+        height: 500px;
+        width: 100%;
+        min-height: 300px;
+        border-radius: 8px;
+    }
+    
+    /* Mobile responsive adjustments */
+    @@media (max-width: 768px) {
+        #cycling-map {
+            height: 400px;
+            min-height: 250px;
+        }
+        
+        .map-container {
+            border-radius: 6px;
+        }
+        
+        /* Make speed legend more mobile-friendly */
+        .speed-legend {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 6px !important;
+        }
+        
+        .speed-legend small {
+            font-size: 11px !important;
+        }
+    }
+    
+    @@media (max-width: 480px) {
+        #cycling-map {
+            height: 350px;
+            min-height: 200px;
+        }
+        
+        .speed-legend {
+            gap: 4px !important;
+        }
+        
+        .speed-legend small {
+            font-size: 10px !important;
+        }
+    }
+    
+    /* Ensure map controls are responsive */
+    .leaflet-control-container .leaflet-top {
+        top: 10px;
+    }
+    
+    .leaflet-control-container .leaflet-right {
+        right: 10px;
+    }
+    
+    @@media (max-width: 768px) {
+        .leaflet-control-container .leaflet-top {
+            top: 5px;
+        }
+        
+        .leaflet-control-container .leaflet-right {
+            right: 5px;
+        }
+        
+        .leaflet-control-layers {
+            max-width: calc(100vw - 20px) !important;
+        }
+        
+        .leaflet-control-zoom {
+            font-size: 14px;
+        }
     }
 </style>
 
@@ -302,6 +387,51 @@
                 </MudCard>
             </MudItem>
             
+            <!-- GPS Route Map -->
+            <MudItem xs="12">
+                <MudCard Elevation="3">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6" Class="icon-header">
+                                <MudIcon Icon="@Icons.Material.Filled.Map" Class="mr-2" />
+                                GPS Route (@_details.SensorData.Count GPS points)
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <div class="map-container" style="position: relative;">
+                            <div id="cycling-map" @key="Id"
+                                 style="height: 500px; width: 100%; border-radius: 8px; overflow: hidden; min-height: 300px;">
+                            </div>
+
+                            @if (!_mapInitialized && _loading)
+                            {
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;">
+                                    <MudProgressCircular Size="Size.Large" Color="Color.Primary" />
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(_mapError))
+                            {
+                                <div style="position: absolute; top: 10px; right: 10px; z-index: 1000;">
+                                    <MudAlert Severity="Severity.Warning" Dense="true">
+                                        <MudText Typo="Typo.caption">Map Error: @_mapError</MudText>
+                                    </MudAlert>
+                                </div>
+                            }
+
+                            @if (!HasValidSensorData() && !_loading)
+                            {
+                                <div style="position: absolute; inset: 0; display:flex; align-items:center; justify-content:center;">
+                                    <MudText Typo="Typo.body2" Style="color:#888">No GPS data available.</MudText>
+                                </div>
+                            }
+                        </div>
+
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
             <!-- Sensor Data Table -->
             <MudItem xs="12">
                 <MudCard Elevation="3">
@@ -397,16 +527,109 @@
     private bool _editingTitle = false;
     private string _editedTitle = string.Empty;
 
+    // Map-related fields
+    private IJSObjectReference? _mapInstance;
+    private bool _mapInitialized = false;
+    private string? _mapError;
+    private bool _initializingMap;
+
+    private bool HasValidSensorData() =>
+    _details?.SensorData?.Any(s => s.Latitude != 0 && s.Longitude != 0) == true;
+
     protected override async Task OnParametersSetAsync()
     {
         _loading = true; _error = null;
+
         _details = await ActivityService.GetActivityAsync(Id);
         if (_details is null || !_details.IsSuccess)
-        {
             _error = _details?.Message ?? "Failed to load";
-        }
+
         _loading = false;
+        StateHasChanged(); // triggers OnAfterRender again
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_mapInitialized && !_initializingMap && HasValidSensorData())
+        {
+            _initializingMap = true;
+            try { await InitializeMapAsync(); }
+            finally { _initializingMap = false; }
+        }
+    }
+
+    private async Task InitializeMapAsync()
+    {
+        if (!HasValidSensorData()) return; // safety
+
+        try
+        {
+            _mapError = null;
+            var sensorData = _details.SensorData.Where(s => s.Latitude != 0 && s.Longitude != 0).ToList();
+            if (!sensorData.Any())
+            {
+                _mapError = "No valid GPS coordinates found";
+                StateHasChanged();
+                return;
+            }
+
+            // Use first GPS point as map center
+            var firstPoint = sensorData.First();
+            
+            // Create map configuration for cycling
+            var config = new MapConfiguration
+            {
+                ShowMarkers = true,
+                EnableClustering = false,
+                DefaultTileLayer = "osm",
+                ShowElevationProfile = false,
+                ClusterDistance = 80,
+                MaxZoom = 19,
+                ShowSpeedColors = true,
+                ShowTemperatureMarkers = true
+            };
+            // Initialize the map
+            _mapInstance = await MapService.InitializeMapAsync("cycling-map", firstPoint.Latitude, firstPoint.Longitude, config);
+            _mapInitialized = true;
+
+            // Prepare sensor data for JavaScript
+            var coordinates = sensorData.Select(s => new
+            {
+                latitude = s.Latitude,
+                longitude = s.Longitude,
+                elevation = s.ElevationGain,
+                speed = s.CurrentSpeed,
+                temperature = s.CurrentTemperature,
+                timestamp = s.Timestamp.ToString("O"),
+                accelerationX = s.AccelerationX,
+                accelerationY = s.AccelerationY,
+                accelerationZ = s.AccelerationZ
+            }).ToArray();
+
+            // Add route data to map
+            await MapService.AddRouteDataAsync(coordinates);
+            
+                        StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _mapError = $"Failed to load map: {ex.Message}";
+            Console.WriteLine($"❌ Failed to initialize map: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            StateHasChanged();
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (_mapInstance != null)
+        {
+            await MapService.DisposeMapAsync();
+            _mapInstance = null;
+        }
+        _mapInitialized = false;
+    }
+
 
     private void GoBack()
     {
