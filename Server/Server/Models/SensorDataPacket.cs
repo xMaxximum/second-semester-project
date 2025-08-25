@@ -82,6 +82,14 @@ namespace Server.Models
                 }
             }
         }
+        
+        // calculate total acceleration for data packet 
+        [NotMapped]
+        public double TotalAcceleration => Math.Sqrt(
+            AccelerationX * AccelerationX + 
+            AccelerationY * AccelerationY + 
+            AccelerationZ * AccelerationZ
+        );
 
         // Method to validate checksum
         public bool ValidateChecksum()

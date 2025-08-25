@@ -8,8 +8,10 @@
 <AuthorizeView>
     <Authorized>
         <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle" OnClick="CloseDrawer">Profile</MudNavLink>
+        <MudNavLink Href="/devices" Icon="@Icons.Material.Filled.Memory" OnClick="CloseDrawer">My Devices</MudNavLink>
         <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="@HandleLogout">Logout</MudMenuItem>
     </Authorized>
+
     <NotAuthorized>
         <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login" OnClick="CloseDrawer">Login</MudNavLink>
         <MudNavLink Href="/register" Icon="@Icons.Material.Filled.AppRegistration" OnClick="CloseDrawer">Register</MudNavLink>

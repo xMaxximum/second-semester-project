@@ -1,0 +1,141 @@
+@using Frontend.Client.Models.CarbsCounter
+@using Frontend.Client.Services.CarbsCounter
+
+<MudItem xs="12" md="6">
+    <MudPaper Class="pa-4 mb-4" Elevation="3">
+        <MudText Typo="Typo.h5" Class="mb-4 icon-header">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Class="me-2" />
+            Ride Configuration
+        </MudText>
+
+        <MudTabs Elevation="0" Rounded="true" Centered="true" @bind-ActivePanelIndex="ActiveTab">
+            <MudTabPanel Text="Distance">
+                <MudStack Spacing="3" Class="mt-4">
+                    <MudNumericField @bind-Value="RideDistance" 
+                                   Label="Distance (km)" 
+                                   Min="1" Max="500"
+                                   Adornment="Adornment.End" 
+                                   AdornmentText="km"
+                                   Variant="Variant.Outlined" />
+                    <MudNumericField @bind-Value="AverageSpeed" 
+                                   Label="Expected Average Speed" 
+                                   Min="10" Max="60"
+                                   Adornment="Adornment.End" 
+                                   AdornmentText="km/h"
+                                   Variant="Variant.Outlined" />
+                    <MudAlert Severity="Severity.Info" Class="mt-2">
+                        Estimated ride duration: @RideCalculationService.CalculateRideDuration(RideDistance, AverageSpeed)
+                    </MudAlert>
+                </MudStack>
+            </MudTabPanel>
+            <MudTabPanel Text="Time">
+                <MudStack Spacing="3" Class="mt-4">
+                    <MudTextField @bind-Value="RideDurationInput" 
+                                Label="Ride Duration (HH:MM)" 
+                                Placeholder="2:30"
+                                Variant="Variant.Outlined"
+                                HelperText="Format: Hours:Minutes (e.g., 2:30 for 2.5 hours)" />
+                    <MudNumericField @bind-Value="IntensityFactor" 
+                                   Label="Intensity Factor" 
+                                   Min="0.5" Max="1.0" Step="0.05"
+                                   Adornment="Adornment.End" 
+                                   AdornmentText="IF"
+                                   Variant="Variant.Outlined"
+                                   HelperText="0.5 = Easy, 0.7 = Moderate, 0.85+ = Hard" />
+                </MudStack>
+            </MudTabPanel>
+        </MudTabs>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h6" Class="mb-3">Personal Settings</MudText>
+        <MudStack Spacing="3">
+            <MudNumericField @bind-Value="BodyWeight" 
+                           Label="Body Weight" 
+                           Min="40" Max="150"
+                           Adornment="Adornment.End" 
+                           AdornmentText="kg"
+                           Variant="Variant.Outlined" />
+            <MudSelect @bind-Value="FitnessLevel" Label="Fitness Level" Variant="Variant.Outlined">
+                <MudSelectItem Value="@FitnessLevel.Beginner">Beginner</MudSelectItem>
+                <MudSelectItem Value="@FitnessLevel.Intermediate">Intermediate</MudSelectItem>
+                <MudSelectItem Value="@FitnessLevel.Advanced">Advanced</MudSelectItem>
+                <MudSelectItem Value="@FitnessLevel.Elite">Elite</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Primary" 
+                 StartIcon="@Icons.Material.Filled.Calculate"
+                 FullWidth="true" 
+                 Class="mt-4"
+                 OnClick="OnCalculateClicked"
+                 Disabled="@(!IsInputValid())">
+            Calculate Nutrition Plan
+        </MudButton>
+    </MudPaper>
+
+    <!-- Nutrition Preferences -->
+    <MudPaper Class="pa-4" Elevation="3">
+        <MudText Typo="Typo.h6" Class="mb-3 icon-header">
+            <MudIcon Icon="@Icons.Material.Filled.Tune" Class="me-2" />
+            Nutrition Preferences
+        </MudText>
+        
+        <MudStack Spacing="2">
+            <MudSwitch T="bool" @bind-Value="Preferences.AllowGels" Color="Color.Primary" Label="Energy Gels" />
+            <MudSwitch T="bool" @bind-Value="Preferences.AllowSportsDrinks" Color="Color.Primary" Label="Sports Drinks" />
+            <MudSwitch T="bool" @bind-Value="Preferences.AllowBananas" Color="Color.Primary" Label="Bananas" />
+            <MudSwitch T="bool" @bind-Value="Preferences.AllowEnergyBars" Color="Color.Primary" Label="Energy Bars" />
+            <MudSwitch T="bool" @bind-Value="Preferences.AllowDates" Color="Color.Primary" Label="Dates" />
+            <MudSwitch T="bool" @bind-Value="Preferences.PreferNaturalFoods" Color="Color.Primary" Label="Prefer Natural Foods" />
+        </MudStack>
+
+        <MudDivider Class="my-3" />
+        
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Hydration Preferences</MudText>
+        <MudStack Spacing="2">
+            <MudSwitch T="bool" @bind-Value="Preferences.IncludeElectrolytes" Color="Color.Primary" Label="Electrolyte Drinks" />
+            <MudNumericField @bind-Value="Preferences.FluidIntensity" 
+                           Label="Hydration Intensity" 
+                           Min="0.5" Max="2.0" Step="0.1"
+                           Variant="Variant.Outlined"
+                           HelperText="1.0 = Normal, 1.5 = Hot weather, 0.7 = Cool weather" />
+        </MudStack>
+    </MudPaper>
+</MudItem>
+
+@code {
+    [Parameter] public int ActiveTab { get; set; }
+    [Parameter] public EventCallback<int> ActiveTabChanged { get; set; }
+    
+    [Parameter] public double RideDistance { get; set; } = 50;
+    [Parameter] public EventCallback<double> RideDistanceChanged { get; set; }
+    
+    [Parameter] public double AverageSpeed { get; set; } = 25;
+    [Parameter] public EventCallback<double> AverageSpeedChanged { get; set; }
+    
+    [Parameter] public string RideDurationInput { get; set; } = "2:00";
+    [Parameter] public EventCallback<string> RideDurationInputChanged { get; set; }
+    
+    [Parameter] public double IntensityFactor { get; set; } = 0.7;
+    [Parameter] public EventCallback<double> IntensityFactorChanged { get; set; }
+    
+    [Parameter] public double BodyWeight { get; set; } = 70;
+    [Parameter] public EventCallback<double> BodyWeightChanged { get; set; }
+    
+    [Parameter] public FitnessLevel FitnessLevel { get; set; } = FitnessLevel.Intermediate;
+    [Parameter] public EventCallback<FitnessLevel> FitnessLevelChanged { get; set; }
+    
+    [Parameter] public NutritionPreferences Preferences { get; set; } = new();
+    [Parameter] public EventCallback<NutritionPreferences> PreferencesChanged { get; set; }
+    
+    [Parameter] public EventCallback OnCalculateClicked { get; set; }
+
+    private RideCalculationService RideCalculationService = new();
+
+    private bool IsInputValid()
+    {
+        return RideCalculationService.IsInputValid(ActiveTab, RideDistance, AverageSpeed, RideDurationInput, BodyWeight);
+    }
+}

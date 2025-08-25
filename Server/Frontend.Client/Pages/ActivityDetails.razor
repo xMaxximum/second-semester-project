@@ -1,7 +1,13 @@
 @page "/activity/{Id:long}"
 @using Shared.Models
+@using Frontend.Client.Services
+@using Microsoft.JSInterop
 @inject ActivityService ActivityService
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject MapService MapService
+@implements IAsyncDisposable
 
 <PageTitle>@(_details?.Activity?.Name ?? "Activity Details")</PageTitle>
 
@@ -25,6 +31,87 @@
     .error-container {
         min-height: 60vh;
         gap: 16px;
+    }
+    
+    /* Responsive Map Styles */
+    .map-container {
+        position: relative;
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    #cycling-map {
+        height: 500px;
+        width: 100%;
+        min-height: 300px;
+        border-radius: 8px;
+    }
+    
+    /* Mobile responsive adjustments */
+    @@media (max-width: 768px) {
+        #cycling-map {
+            height: 400px;
+            min-height: 250px;
+        }
+        
+        .map-container {
+            border-radius: 6px;
+        }
+        
+        /* Make speed legend more mobile-friendly */
+        .speed-legend {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 6px !important;
+        }
+        
+        .speed-legend small {
+            font-size: 11px !important;
+        }
+    }
+    
+    @@media (max-width: 480px) {
+        #cycling-map {
+            height: 350px;
+            min-height: 200px;
+        }
+        
+        .speed-legend {
+            gap: 4px !important;
+        }
+        
+        .speed-legend small {
+            font-size: 10px !important;
+        }
+    }
+    
+    /* Ensure map controls are responsive */
+    .leaflet-control-container .leaflet-top {
+        top: 10px;
+    }
+    
+    .leaflet-control-container .leaflet-right {
+        right: 10px;
+    }
+    
+    @@media (max-width: 768px) {
+        .leaflet-control-container .leaflet-top {
+            top: 5px;
+        }
+        
+        .leaflet-control-container .leaflet-right {
+            right: 5px;
+        }
+        
+        .leaflet-control-layers {
+            max-width: calc(100vw - 20px) !important;
+        }
+        
+        .leaflet-control-zoom {
+            font-size: 14px;
+        }
     }
 </style>
 
@@ -70,7 +157,66 @@
                 <MudCard Elevation="3">
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <div class="d-flex align-items-center justify-space-between" style="width: 100%;">
+                            <!-- Mobile Layout (stacked) -->
+                            <div class="d-block d-sm-none">
+                                <div class="d-flex align-items-center mb-3">
+                                    <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
+                                    @if (_editingTitle)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                            <MudTextField @bind-Value="_editedTitle" 
+                                                         Variant="Variant.Outlined" 
+                                                         Margin="Margin.Dense"
+                                                         Style="flex-grow: 1;" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Check" 
+                                                          Color="Color.Success" 
+                                                          Size="Size.Small"
+                                                          OnClick="SaveTitleEdit" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                          Color="Color.Default" 
+                                                          Size="Size.Small"
+                                                          OnClick="CancelTitleEdit" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.h6" Style="margin: 0; flex-grow: 1;">@_details.Activity.Name</MudText>
+                                    }
+                                </div>
+                                <div class="d-flex align-items-center justify-space-between">
+                                    @if (_details.Activity.Status == ActivityStatus.Completed)
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" 
+                                                Icon="@Icons.Material.Filled.CheckCircle" Style="font-weight: bold;">
+                                            Completed!
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Color="@GetStatusColor(_details.Activity.Status)" Size="Size.Small">
+                                            @_details.Activity.Status
+                                        </MudChip>
+                                    }
+                                    @if (!_editingTitle)
+                                    {
+                                        <div class="d-flex gap-2">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                           Color="Color.Primary" 
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => StartEditingTitle())"
+                                                           Title="Edit Activity Name" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                           Color="Color.Error" 
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => DeleteActivity())"
+                                                           Title="Delete Activity" />
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Desktop Layout (horizontal) -->
+                            <div class="d-none d-sm-flex align-items-center justify-space-between" style="width: 100%;">
                                 <div class="d-flex align-items-center flex-grow-1 icon-header">
                                     <MudIcon Icon="@GetActivityIcon()" Class="mr-2" />
                                     @if (_editingTitle)
@@ -116,12 +262,18 @@
                                                        Size="Size.Small"
                                                        OnClick="@(() => StartEditingTitle())"
                                                        Title="Edit Activity Name" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                       Color="Color.Error" 
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => DeleteActivity())"
+                                                       Title="Delete Activity" />
                                     }
                                 </div>
                             </div>
+
                             @if (!string.IsNullOrEmpty(_details.Activity.Description))
                             {
-                                <MudText Typo="Typo.body1" Class="mt-2" Style=" text-align: justify">@_details.Activity.Description</MudText>
+                                <MudText Typo="Typo.body1" Class="mt-2" Style="text-align: justify">@_details.Activity.Description</MudText>
                             }
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -186,7 +338,7 @@
                                 <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" />
                                 <div>
                                     <MudText Typo="Typo.body2"><strong>Started</strong></MudText>
-                                    <MudText Typo="Typo.caption">@_details.Activity.StartTime.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                    <MudText Typo="Typo.caption">@_details.Activity.StartTime.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</MudText>
                                 </div>
                             </div>
                             
@@ -196,7 +348,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Stop" Color="Color.Error" />
                                     <div>
                                         <MudText Typo="Typo.body2"><strong>Finished</strong></MudText>
-                                        <MudText Typo="Typo.caption">@_details.Activity.EndTime.Value.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                        <MudText Typo="Typo.caption">@_details.Activity.EndTime.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</MudText>
                                     </div>
                                 </div>
                             }
@@ -231,6 +383,51 @@
                                 <MudText Typo="Typo.body2"><strong>@Math.Round(_details.Activity.Analytics?.CaloriesBurned ?? 0, 0) kcal</strong></MudText>
                             </MudStack>
                         </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <!-- GPS Route Map -->
+            <MudItem xs="12">
+                <MudCard Elevation="3">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6" Class="icon-header">
+                                <MudIcon Icon="@Icons.Material.Filled.Map" Class="mr-2" />
+                                GPS Route (@_details.SensorData.Count GPS points)
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <div class="map-container" style="position: relative;">
+                            <div id="cycling-map" @key="Id"
+                                 style="height: 500px; width: 100%; border-radius: 8px; overflow: hidden; min-height: 300px;">
+                            </div>
+
+                            @if (!_mapInitialized && _loading)
+                            {
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;">
+                                    <MudProgressCircular Size="Size.Large" Color="Color.Primary" />
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(_mapError))
+                            {
+                                <div style="position: absolute; top: 10px; right: 10px; z-index: 1000;">
+                                    <MudAlert Severity="Severity.Warning" Dense="true">
+                                        <MudText Typo="Typo.caption">Map Error: @_mapError</MudText>
+                                    </MudAlert>
+                                </div>
+                            }
+
+                            @if (!HasValidSensorData() && !_loading)
+                            {
+                                <div style="position: absolute; inset: 0; display:flex; align-items:center; justify-content:center;">
+                                    <MudText Typo="Typo.body2" Style="color:#888">No GPS data available.</MudText>
+                                </div>
+                            }
+                        </div>
+
                     </MudCardContent>
                 </MudCard>
             </MudItem>
@@ -294,7 +491,7 @@
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd DataLabel="Time">
-                                    <MudText Typo="Typo.caption">@context.Timestamp.ToString("HH:mm:ss")</MudText>
+                                    <MudText Typo="Typo.caption">@context.Timestamp.ToLocalTime().ToString("HH:mm:ss")</MudText>
                                 </MudTd>
                                 <MudTd DataLabel="Speed">
                                     <MudText Typo="Typo.body2">@context.CurrentSpeed.ToString("F1") km/h</MudText>
@@ -330,16 +527,109 @@
     private bool _editingTitle = false;
     private string _editedTitle = string.Empty;
 
+    // Map-related fields
+    private IJSObjectReference? _mapInstance;
+    private bool _mapInitialized = false;
+    private string? _mapError;
+    private bool _initializingMap;
+
+    private bool HasValidSensorData() =>
+    _details?.SensorData?.Any(s => s.Latitude != 0 && s.Longitude != 0) == true;
+
     protected override async Task OnParametersSetAsync()
     {
         _loading = true; _error = null;
+
         _details = await ActivityService.GetActivityAsync(Id);
         if (_details is null || !_details.IsSuccess)
-        {
             _error = _details?.Message ?? "Failed to load";
-        }
+
         _loading = false;
+        StateHasChanged(); // triggers OnAfterRender again
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_mapInitialized && !_initializingMap && HasValidSensorData())
+        {
+            _initializingMap = true;
+            try { await InitializeMapAsync(); }
+            finally { _initializingMap = false; }
+        }
+    }
+
+    private async Task InitializeMapAsync()
+    {
+        if (!HasValidSensorData()) return; // safety
+
+        try
+        {
+            _mapError = null;
+            var sensorData = _details.SensorData.Where(s => s.Latitude != 0 && s.Longitude != 0).ToList();
+            if (!sensorData.Any())
+            {
+                _mapError = "No valid GPS coordinates found";
+                StateHasChanged();
+                return;
+            }
+
+            // Use first GPS point as map center
+            var firstPoint = sensorData.First();
+            
+            // Create map configuration for cycling
+            var config = new MapConfiguration
+            {
+                ShowMarkers = true,
+                EnableClustering = false,
+                DefaultTileLayer = "osm",
+                ShowElevationProfile = false,
+                ClusterDistance = 80,
+                MaxZoom = 19,
+                ShowSpeedColors = true,
+                ShowTemperatureMarkers = true
+            };
+            // Initialize the map
+            _mapInstance = await MapService.InitializeMapAsync("cycling-map", firstPoint.Latitude, firstPoint.Longitude, config);
+            _mapInitialized = true;
+
+            // Prepare sensor data for JavaScript
+            var coordinates = sensorData.Select(s => new
+            {
+                latitude = s.Latitude,
+                longitude = s.Longitude,
+                elevation = s.ElevationGain,
+                speed = s.CurrentSpeed,
+                temperature = s.CurrentTemperature,
+                timestamp = s.Timestamp.ToString("O"),
+                accelerationX = s.AccelerationX,
+                accelerationY = s.AccelerationY,
+                accelerationZ = s.AccelerationZ
+            }).ToArray();
+
+            // Add route data to map
+            await MapService.AddRouteDataAsync(coordinates);
+            
+                        StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _mapError = $"Failed to load map: {ex.Message}";
+            Console.WriteLine($"❌ Failed to initialize map: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            StateHasChanged();
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (_mapInstance != null)
+        {
+            await MapService.DisposeMapAsync();
+            _mapInstance = null;
+        }
+        _mapInitialized = false;
+    }
+
 
     private void GoBack()
     {
@@ -423,5 +713,52 @@
         _editingTitle = false;
         _editedTitle = string.Empty;
         StateHasChanged();
+    }
+
+    private async Task DeleteActivity()
+    {
+        if (_details?.Activity == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the activity '{_details.Activity.Name}'? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["ButtonColor"] = Color.Error
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Activity", parameters, options);
+        var result = await dialog.Result;
+
+        if (result.Data != null && (bool)result.Data)
+        {
+            try
+            {
+                _loading = true;
+                StateHasChanged();
+
+                var deleteResult = await ActivityService.DeleteActivityAsync(_details.Activity.Id);
+                
+                if (deleteResult?.IsSuccess == true)
+                {
+                    Snackbar.Add($"Activity '{_details.Activity.Name}' deleted successfully", Severity.Success);
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    var errorMessage = deleteResult?.Message ?? "Unknown error";
+                    Snackbar.Add($"Failed to delete activity: {errorMessage}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting activity: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
     }
 }

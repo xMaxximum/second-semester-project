@@ -50,6 +50,9 @@ namespace Frontend.Client
             builder.Services.AddScoped<WeatherService>();
             builder.Services.AddScoped<GeolocationService>();
             builder.Services.AddScoped<WeatherLocationService>();
+            
+            // Add Map Service
+            builder.Services.AddScoped<MapService>();
 
 
             var app = builder.Build();

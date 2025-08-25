@@ -70,6 +70,12 @@ namespace Shared.Models
         public double MaxAcceleration { get; set; }
         public List<CoordinatePoint> Route { get; set; } = new();
     }
+    
+    public class WeeklyDistanceResponse
+    {
+        public string Day { get; set; } = string.Empty;
+        public double Distance { get; set; } 
+    }
 
     public class CoordinatePoint
     {
@@ -83,10 +89,6 @@ namespace Shared.Models
     // Sensor Data Models
     public class SensorDataPacketRequest
     {
-        [Required]
-        public long UserId { get; set; }
-        [Required]
-        public string DeviceId { get; set; } = string.Empty;
         [Required]
         public string CsvData { get; set; } = string.Empty;
     }

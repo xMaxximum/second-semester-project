@@ -123,7 +123,7 @@ namespace Server.Data
             {
                 entity.HasKey(e => e.DeviceId);
                 entity.Property(e => e.DeviceId).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Name).HasMaxLength(100);
 
                 entity.HasOne(e => e.User)
                       .WithMany()

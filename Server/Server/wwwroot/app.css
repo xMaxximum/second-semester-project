@@ -75,16 +75,40 @@ h1:focus {
     justify-content: flex-start;
 }
 
-:root, body,
-.mud-appbar, .mud-drawer, .mud-paper, .mud-card,
-.mud-typography, .mud-button-root, .mud-table, .mud-chip,
-.mud-input, .mud-select, .mud-popover, .mud-dialog, .mud-snackbar {
-    transition-property: background-color, color, border-color, box-shadow, fill, stroke;
-    transition-duration: 220ms;
-    transition-timing-function: ease;
+.page-container {
+    min-height: calc(100vh - 64px);
 }
 
-@media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; }
+.mud-timeline-item-content {
+    padding-left: 16px;
 }
 
+.font-weight-bold {
+    font-weight: 600 !important;
+}
+
+.shopping-card {
+    border-left: 4px solid #594ae2 !important;
+}
+
+.summary-card {
+    display: grid;
+    justify-content: center;
+    color: white;
+}
+
+.summary-label .summary-value {
+    color: white !important;
+}
+
+.primary-gradient {
+    background: linear-gradient(135deg, #594ae2 0%, #7b68ee 100%) !important;
+}
+
+.secondary-gradient {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%) !important;
+}
+
+.success-gradient {
+    background: linear-gradient(135deg, #51cf66 0%, #69db7c 100%) !important;
+}
