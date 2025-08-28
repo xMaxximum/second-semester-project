@@ -241,12 +241,20 @@ class CyclingMap {
         this.elementId = elementId;
         this.config = config ?? {};
         this.map = null;
-        this.layers = { route: null, markers: null, elevation: null };
+        this.layers = { route: null, markers: null, elevation: null, plannedRoute: null, waypoints: null };
         this.currentTileLayer = null;
         this.coordinates = [];
+        this.waypoints = [];
+        this.routePlanningEnabled = false;
+        this.routePlanningCallbacks = {};
 
         this.initializeMap(centerLat, centerLon);
         this.addCustomCSS();
+        
+        // Initialize route planning if enabled
+        if (this.config.EnableRoutePlanning) {
+            this.enableRoutePlanning(true);
+        }
     }
 
     initializeMap(centerLat, centerLon) {
@@ -289,6 +297,24 @@ class CyclingMap {
       .cycling-cluster { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border:3px solid #fff; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px; box-shadow:0 2px 5px rgba(0,0,0,.3); }
       .cycling-marker { filter:drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
       .start-marker, .end-marker { font-size:16px; }
+      
+      /* Route planning waypoint markers */
+      .waypoint-marker { filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+      .start-waypoint { font-size: 18px; }
+      .end-waypoint { font-size: 18px; }
+      .intermediate-waypoint div {
+        box-shadow: 0 2px 6px rgba(0,0,0,.3);
+        transition: transform 0.2s ease;
+      }
+      .intermediate-waypoint div:hover {
+        transform: scale(1.1);
+      }
+      
+      /* Route line styling */
+      .planned-route {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
       
       /* Custom controls positioned at bottom-left */
       .leaflet-bottom .leaflet-left .map-controls { 
@@ -730,7 +756,7 @@ class CyclingMap {
 
     clearLayers() {
         for (const k of Object.keys(this.layers)) {
-            if (this.layers[k]) {
+            if (this.layers[k] && k !== 'plannedRoute' && k !== 'waypoints' && k !== 'directions') {
                 this.map.removeLayer(this.layers[k]);
                 this.layers[k] = null;
             }
@@ -739,9 +765,277 @@ class CyclingMap {
 
     dispose() {
         this.clearLayers();
+        this.routePlanningEnabled = false;
+        this.waypoints = [];
         if (this.map) { this.map.remove(); this.map = null; }
         const div = document.getElementById('elevation-profile');
         if (div) div.remove();
+    }
+
+    // Route planning functionality
+    enableRoutePlanning(enabled) {
+        this.routePlanningEnabled = enabled;
+        
+        if (enabled) {
+            this.map.getContainer().style.cursor = 'crosshair';
+            this.map.on('click', this.onMapClick, this);
+        } else {
+            this.map.getContainer().style.cursor = '';
+            this.map.off('click', this.onMapClick, this);
+        }
+    }
+
+    onMapClick(e) {
+        if (!this.routePlanningEnabled) return;
+        
+        const waypoint = {
+            latitude: e.latlng.lat,
+            longitude: e.latlng.lng,
+            name: `Waypoint ${this.waypoints.length + 1}`
+        };
+        
+        this.addWaypoint(waypoint.latitude, waypoint.longitude, waypoint.name);
+        
+        // Notify Blazor component about waypoint added
+        if (this.routePlanningCallbacks.onWaypointAdded) {
+            this.routePlanningCallbacks.onWaypointAdded(waypoint);
+        }
+    }
+
+    addWaypoint(latitude, longitude, name = null) {
+        const waypoint = {
+            latitude,
+            longitude,
+            name: name || `Waypoint ${this.waypoints.length + 1}`
+        };
+        
+        this.waypoints.push(waypoint);
+        this.updateWaypointMarkers();
+        
+        return waypoint;
+    }
+
+    clearWaypoints() {
+        this.waypoints = [];
+        this.updateWaypointMarkers();
+    this.clearRoute();
+    this.clearDirections();
+    }
+
+    getWaypoints() {
+        return [...this.waypoints];
+    }
+
+    updateWaypointMarkers() {
+        // Clear existing waypoint markers
+        if (this.layers.waypoints) {
+            this.map.removeLayer(this.layers.waypoints);
+        }
+
+        if (this.waypoints.length === 0) {
+            this.layers.waypoints = null;
+            return;
+        }
+
+        const markers = this.waypoints.map((waypoint, index) => {
+            const isStart = index === 0;
+            const isEnd = index === this.waypoints.length - 1 && this.waypoints.length > 1;
+            
+            let html, className;
+            if (isStart) {
+                html = '🟢';
+                className = 'waypoint-marker start-waypoint';
+            } else if (isEnd) {
+                html = '🔴';
+                className = 'waypoint-marker end-waypoint';
+            } else {
+                html = `<div style="background:#4285F4;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:2px solid white;font-size:12px;font-weight:bold;">${index + 1}</div>`;
+                className = 'waypoint-marker intermediate-waypoint';
+            }
+
+            const marker = L.marker([waypoint.latitude, waypoint.longitude], {
+                icon: L.divIcon({
+                    html,
+                    className,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                }),
+                draggable: true
+            });
+
+            marker.bindPopup(`
+                <div style="min-width:150px;">
+                    <strong>${waypoint.name}</strong><br>
+                    ${waypoint.latitude.toFixed(6)}, ${waypoint.longitude.toFixed(6)}<br>
+                    <button onclick="window.removeWaypoint?.(${index})" style="margin-top:5px;padding:2px 8px;background:#ff4444;color:white;border:none;border-radius:3px;cursor:pointer;">Remove</button>
+                </div>
+            `);
+
+            // Handle dragging
+            marker.on('dragend', (e) => {
+                const newPos = e.target.getLatLng();
+                this.waypoints[index].latitude = newPos.lat;
+                this.waypoints[index].longitude = newPos.lng;
+                
+                if (this.routePlanningCallbacks.onWaypointChanged) {
+                    this.routePlanningCallbacks.onWaypointChanged(index, this.waypoints[index]);
+                }
+            });
+
+            return marker;
+        });
+
+        this.layers.waypoints = L.layerGroup(markers);
+        this.layers.waypoints.addTo(this.map);
+
+        // Set global function for popup buttons
+        window.removeWaypoint = (index) => {
+            this.waypoints.splice(index, 1);
+            this.updateWaypointMarkers();
+            if (this.routePlanningCallbacks.onWaypointRemoved) {
+                this.routePlanningCallbacks.onWaypointRemoved(index);
+            }
+        };
+    }
+
+    showRoute(routeData) {
+        this.clearRoute();
+
+        if (!routeData || !routeData.geometry || routeData.geometry.length === 0) {
+            return;
+        }
+
+        // Convert route points to Leaflet format
+        const latLngs = routeData.geometry.map(point => [point.latitude, point.longitude]);
+
+        // Create main route line
+        const routeLine = L.polyline(latLngs, {
+            color: '#2196F3',
+            weight: 5,
+            opacity: 0.8,
+            smoothFactor: 1.0
+        });
+
+        this.layers.plannedRoute = routeLine;
+        this.layers.plannedRoute.addTo(this.map);
+
+        // Fit map to route bounds if specified
+        if (routeData.bounds) {
+            this.fitBounds(
+                routeData.bounds.minLatitude,
+                routeData.bounds.maxLatitude,
+                routeData.bounds.minLongitude,
+                routeData.bounds.maxLongitude
+            );
+        } else {
+            // Fallback: fit to route line bounds
+            this.map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+        }
+    }
+
+    clearRoute() {
+        if (this.layers.plannedRoute) {
+            this.map.removeLayer(this.layers.plannedRoute);
+            this.layers.plannedRoute = null;
+        }
+    }
+
+    clearDirections() {
+        if (this.layers.directions) {
+            this.map.removeLayer(this.layers.directions);
+            this.layers.directions = null;
+        }
+    }
+
+    showDirections(directions) {
+        // For now, we'll just log the directions
+        // In a full implementation, you might show turn-by-turn markers
+        console.log('Directions:', directions);
+
+        // Clear any previous direction markers before adding new ones
+        this.clearDirections();
+
+        // Add direction markers to the map
+        if (directions && directions.length > 0) {
+            directions.forEach((direction, index) => {
+                if (direction.location) {
+                    const marker = L.circleMarker([direction.location.latitude, direction.location.longitude], {
+                        radius: 4,
+                        color: '#FF9800',
+                        fillColor: '#FF9800',
+                        fillOpacity: 0.8
+                    });
+                    
+                    const dist = direction.distance < 1000
+                        ? `${Math.round(direction.distance)} m`
+                        : `${(direction.distance / 1000).toFixed(direction.distance < 10000 ? 1 : 0)} km`;
+
+                    marker.bindPopup(`
+                        <div style="min-width:200px;">
+                            <strong>Step ${index + 1}</strong><br>
+                            ${direction.instruction}<br>
+                            <small>${dist}</small>
+                        </div>
+                    `);
+                    
+                    if (!this.layers.directions) {
+                        this.layers.directions = L.layerGroup();
+                        this.layers.directions.addTo(this.map);
+                    }
+                    
+                    this.layers.directions.addLayer(marker);
+                }
+            });
+    }
+    }
+
+    // Reset planning-related state for a fresh start
+    resetRoutePlanning() {
+        this.clearWaypoints();
+        this.clearRoute();
+        this.clearDirections();
+        // Keep callbacks registered; enable/disable handled separately
+    }
+
+    fitBounds(minLat, maxLat, minLng, maxLng) {
+        const bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+        this.map.fitBounds(bounds, { padding: [20, 20] });
+    }
+
+    setRoutePlanningCallbacks(callbacks) {
+        // Accept either plain JS function callbacks or a Blazor DotNetObjectReference
+        if (!callbacks) {
+            this.routePlanningCallbacks = {};
+            return;
+        }
+
+        if (callbacks.dotNetRef) {
+            const dot = callbacks.dotNetRef;
+            // Wrap into JS functions that proxy to .NET methods
+            this.routePlanningCallbacks = {
+                onWaypointAdded: (wp) => {
+                    try {
+                        return dot.invokeMethodAsync('OnWaypointAdded', wp.latitude, wp.longitude, wp.name);
+                    } catch (e) { /* no-op */ }
+                },
+                onWaypointChanged: (index, wp) => {
+                    try {
+                        return dot.invokeMethodAsync('OnWaypointChanged', index, wp.latitude, wp.longitude, wp.name);
+                    } catch (e) { /* optional */ }
+                },
+                onWaypointRemoved: (index) => {
+                    try {
+                        return dot.invokeMethodAsync('OnWaypointRemoved', index);
+                    } catch (e) { /* optional */ }
+                }
+            };
+        } else {
+            this.routePlanningCallbacks = callbacks || {};
+        }
+    }
+
+    setMapCenter(lat, lng, zoom = 13) {
+        this.map.setView([lat, lng], zoom);
     }
 }
 
@@ -755,6 +1049,18 @@ function buildApi(cm, elementId) {
         setTileLayer: (layerType) => cm.setTileLayer(layerType),
         toggleClustering: () => cm.toggleClustering(),
         showElevationProfile: () => cm.showElevationProfile(),
+        enableRoutePlanning: (enabled) => cm.enableRoutePlanning(enabled),
+        addWaypoint: (lat, lng, name) => cm.addWaypoint(lat, lng, name),
+        clearWaypoints: () => cm.clearWaypoints(),
+        getWaypoints: () => cm.getWaypoints(),
+        showRoute: (routeData) => cm.showRoute(routeData),
+        clearRoute: () => cm.clearRoute(),
+    clearDirections: () => cm.clearDirections(),
+    resetRoutePlanning: () => cm.resetRoutePlanning(),
+        showDirections: (directions) => cm.showDirections(directions),
+        fitBounds: (minLat, maxLat, minLng, maxLng) => cm.fitBounds(minLat, maxLat, minLng, maxLng),
+        setMapCenter: (lat, lng, zoom) => cm.setMapCenter(lat, lng, zoom),
+        setRoutePlanningCallbacks: (callbacks) => cm.setRoutePlanningCallbacks(callbacks),
         dispose: () => { cm.dispose(); instanceApis.delete(elementId); }
     };
 }

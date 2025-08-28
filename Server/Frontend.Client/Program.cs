@@ -53,6 +53,9 @@ namespace Frontend.Client
             
             // Add Map Service
             builder.Services.AddScoped<MapService>();
+            
+            // Add Route Planning Service
+            builder.Services.AddScoped<IRoutePlannerService, RoutePlannerService>();
 
 
             var app = builder.Build();

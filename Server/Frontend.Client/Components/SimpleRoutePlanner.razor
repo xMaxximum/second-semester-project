@@ -1,0 +1,1081 @@
+@using Shared.Models
+@using Microsoft.JSInterop
+@using Frontend.Client.Services
+@inject IRoutePlannerService RoutePlannerService
+@inject MapService MapService
+@inject GeolocationService GeolocationService
+@inject IJSRuntime JSRuntime
+@inject ILogger<SimpleRoutePlanner> Logger
+@implements IAsyncDisposable
+
+<div class="route-planner">
+    <div class="route-planner-header">
+        <h3>🗺️ Route Planner</h3>
+        <div class="route-controls">
+            <button class="btn @(_routePlanningEnabled ? "btn-danger" : "btn-primary")" @onclick="ToggleRoutePlanning">
+                @if (_routePlanningEnabled)
+                {
+                    <span>🛑 Stop Planning</span>
+                }
+                else
+                {
+                    <span>📍 Start Planning</span>
+                }
+            </button>
+            
+            @if (!_routePlanningEnabled && _waypoints.Count == 0)
+            {
+                <button class="btn btn-outline-primary" @onclick="StartFromMyLocation" disabled="@_gettingLocation">
+                    @if (_gettingLocation)
+                    {
+                        <span>📍 Getting Location...</span>
+                    }
+                    else
+                    {
+                        <span>📍 Start from My Location</span>
+                    }
+                </button>
+            }
+            
+            @if (_waypoints.Count > 0)
+            {
+                <button class="btn btn-outline-secondary" @onclick="ClearWaypoints">
+                    🗑️ Clear
+                </button>
+            }
+            
+            @if (_waypoints.Count >= 2)
+            {
+                <button class="btn btn-success" @onclick="CalculateRoute" disabled="@_calculatingRoute">
+                    @if (_calculatingRoute)
+                    {
+                        <span>⏳ Calculating...</span>
+                    }
+                    else
+                    {
+                        <span>🚀 Calculate Route</span>
+                    }
+                </button>
+            }
+        </div>
+        
+        <!-- Map Controls -->
+        <div class="map-controls">
+            <button class="btn btn-sm @(_showClustering ? "btn-outline-secondary" : "btn-secondary")" @onclick="ToggleClustering">
+                @if (_showClustering)
+                {
+                    <span>🔍 Hide Clustering</span>
+                }
+                else
+                {
+                    <span>🔍 Show Clustering</span>
+                }
+            </button>
+            
+            <button class="btn btn-sm @(_showElevation ? "btn-outline-secondary" : "btn-secondary")" @onclick="ToggleElevation">
+                @if (_showElevation)
+                {
+                    <span>⛰️ Hide Elevation</span>
+                }
+                else
+                {
+                    <span>⛰️ Show Elevation</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    <div class="route-planner-content">
+        @if (_routePlanningEnabled)
+        {
+            <div class="alert alert-info" role="alert">
+                🖱️ Click on the map to add waypoints
+            </div>
+        }
+
+        <!-- Address Search -->
+        <div class="address-search mb-3">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Search Address" 
+                       @bind="_searchQuery" 
+                       @onkeypress="OnSearchKeyPress" 
+                       @oninput="OnSearchInput" />
+                <button class="btn btn-outline-primary" type="button" @onclick="SearchAddress">
+                    🔍 Search
+                </button>
+            </div>
+            
+            @if (_searchResults.Any())
+            {
+                <div class="search-results">
+                    @foreach (var result in _searchResults)
+                    {
+                        <button type="button" class="search-result-item" @onclick="() => AddWaypointFromSearch(result)">
+                            <div class="search-result-content">
+                                <div class="search-result-name">📍 @result.DisplayName</div>
+                                @if (!string.IsNullOrEmpty(result.Address))
+                                {
+                                    <div class="search-result-address">@result.Address</div>
+                                }
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Route Profile Selection -->
+        <div class="route-profile mb-3">
+            <label class="form-label">Route Profile:</label>
+            <select class="form-select" @bind="_selectedProfile">
+                <option value="@RouteProfile.Cycling">🚴 Cycling</option>
+                <option value="@RouteProfile.CyclingMountain">🚵 Mountain Bike</option>
+                <option value="@RouteProfile.CyclingRoad">🚴‍♀️ Road Bike</option>
+                <option value="@RouteProfile.Walking">🚶 Walking</option>
+                <option value="@RouteProfile.Driving">🚗 Driving</option>
+            </select>
+        </div>
+
+        <!-- Route Options -->
+        <div class="route-options mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" @bind="_avoidHighways" id="avoidHighways">
+                <label class="form-check-label" for="avoidHighways">
+                    Avoid Highways
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" @bind="_avoidTolls" id="avoidTolls">
+                <label class="form-check-label" for="avoidTolls">
+                    Avoid Tolls
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" @bind="_avoidFerries" id="avoidFerries">
+                <label class="form-check-label" for="avoidFerries">
+                    Avoid Ferries
+                </label>
+            </div>
+        </div>
+
+        <!-- Waypoints List -->
+        @if (_waypoints.Any())
+        {
+            <div class="waypoints-list mb-3">
+                <h4>📍 Waypoints (@_waypoints.Count)</h4>
+                @for (int i = 0; i < _waypoints.Count; i++)
+                {
+                    var index = i; // Capture for closure
+                    var waypoint = _waypoints[i];
+                    
+                    <div class="waypoint-item">
+                        <div class="waypoint-info">
+                            <div class="waypoint-icon">
+                                @if (index == 0)
+                                {
+                                    <span class="waypoint-start">🟢</span>
+                                }
+                                else if (index == _waypoints.Count - 1 && _waypoints.Count > 1)
+                                {
+                                    <span class="waypoint-end">🔴</span>
+                                }
+                                else
+                                {
+                                    <span class="waypoint-number">@(index + 1)</span>
+                                }
+                            </div>
+                            <div class="waypoint-details">
+                                <div class="waypoint-name">@waypoint.Name</div>
+                                <div class="waypoint-coords">@waypoint.Latitude.ToString("F4"), @waypoint.Longitude.ToString("F4")</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveWaypoint(index)">
+                            🗑️
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Route Information -->
+        @if (_currentRoute != null)
+        {
+            <div class="route-info mb-3">
+                <h4>📊 Route Information</h4>
+                <div class="route-stats">
+                    <div class="stat">
+                        <span class="stat-icon">📏</span>
+                        <span class="stat-value">@FormatDistance(_currentRoute.Distance)</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-icon">⏱️</span>
+                        <span class="stat-value">@FormatDuration(_currentRoute.Duration)</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-icon">⛰️</span>
+                        <span class="stat-value">@(_currentRoute.Elevation.ToString("F0")) m</span>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Directions -->
+        @if (_currentRoute?.Directions?.Any() == true)
+        {
+            <div class="directions">
+                <h4>🧭 Turn-by-Turn Directions</h4>
+                <div class="directions-list">
+                    @foreach (var (direction, index) in _currentRoute.Directions.Select((d, i) => (d, i)))
+                    {
+                        <div class="direction-item">
+                            <div class="direction-icon">@GetDirectionIcon(direction.Type)</div>
+                            <div class="direction-content">
+                                <div class="direction-instruction">@direction.Instruction</div>
+                                @if (direction.Distance > 0)
+                                {
+                                    <div class="direction-distance">@FormatDistance(direction.Distance)</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @_errorMessage
+                <button type="button" class="btn-close" @onclick="ClearError" aria-label="Close"></button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string MapElementId { get; set; } = "route-planner-map";
+    [Parameter] public double InitialLatitude { get; set; } = 51.505;
+    [Parameter] public double InitialLongitude { get; set; } = -0.09;
+    [Parameter] public EventCallback<Shared.Models.RouteData> OnRouteCalculated { get; set; }
+
+    private IJSObjectReference? _mapInstance;
+    private List<Waypoint> _waypoints = new();
+    private RouteProfile _selectedProfile = RouteProfile.Cycling;
+    private bool _avoidHighways = false;
+    private bool _avoidTolls = false;
+    private bool _avoidFerries = false;
+    private bool _routePlanningEnabled = false;
+    private bool _calculatingRoute = false;
+    private bool _gettingLocation = false;
+    private bool _showClustering = true;
+    private bool _showElevation = true;
+    private Shared.Models.RouteData? _currentRoute;
+    private string _errorMessage = string.Empty;
+    
+    private string _searchQuery = string.Empty;
+    private List<AddressResult> _searchResults = new();
+    private System.Threading.Timer? _searchTimer;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeMap();
+        }
+    }
+
+    private async Task InitializeMap()
+    {
+        try
+        {
+            var config = new MapConfiguration
+            {
+                DefaultTileLayer = "osm",
+                ShowMarkers = false,
+                EnableClustering = false,
+                ShowSpeedColors = false,
+                EnableRoutePlanning = true
+            };
+
+            _mapInstance = await MapService.InitializeMapAsync(MapElementId, InitialLatitude, InitialLongitude, config);
+            
+            if (_mapInstance != null)
+            {
+                await MapService.EnableRoutePlanningAsync(false); // Start disabled
+
+                // Register .NET callbacks directly via interop
+                var dotNetRef = DotNetObjectReference.Create(this);
+                await MapService.SetRoutePlanningCallbacksAsync(new { dotNetRef });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize route planner map");
+            _errorMessage = "Failed to initialize map";
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleRoutePlanning()
+    {
+        _routePlanningEnabled = !_routePlanningEnabled;
+
+        if (_mapInstance != null)
+        {
+            await MapService.EnableRoutePlanningAsync(_routePlanningEnabled);
+            if (!_routePlanningEnabled)
+            {
+                await MapService.ResetRoutePlanningAsync();
+                _waypoints.Clear();
+                _currentRoute = null;
+                _errorMessage = string.Empty;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task StartFromMyLocation()
+    {
+        try
+        {
+            _gettingLocation = true;
+            StateHasChanged();
+            
+            var locationResult = await GeolocationService.GetCurrentPositionAsync();
+            
+            if (locationResult.IsSuccess)
+            {
+                var waypoint = new Waypoint
+                {
+                    Latitude = locationResult.Latitude,
+                    Longitude = locationResult.Longitude,
+                    Name = "My Location"
+                };
+                
+                _waypoints.Clear();
+                _waypoints.Add(waypoint);
+                
+                if (_mapInstance != null)
+                {
+                    await MapService.ClearWaypointsAsync();
+                    await MapService.AddWaypointAsync(waypoint.Latitude, waypoint.Longitude, waypoint.Name);
+                    
+                    // Center map on user location
+                    await MapService.SetMapCenterAsync(waypoint.Latitude, waypoint.Longitude, 15);
+                }
+                
+                // Enable route planning after adding starting point
+                _routePlanningEnabled = true;
+                if (_mapInstance != null)
+                {
+                    await MapService.EnableRoutePlanningAsync(_routePlanningEnabled);
+                }
+            }
+            else
+            {
+                _errorMessage = locationResult.ErrorMessage ?? "Could not get your location. Please add waypoints manually.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error getting location: {ex.Message}";
+            Logger.LogError(ex, "Error getting user location for route planning");
+        }
+        finally
+        {
+            _gettingLocation = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearWaypoints()
+    {
+        _waypoints.Clear();
+        _currentRoute = null;
+
+        if (_mapInstance != null)
+        {
+            await MapService.ClearWaypointsAsync();
+            await MapService.ClearRouteAsync();
+            await MapService.ClearDirectionsAsync();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task RemoveWaypoint(int index)
+    {
+        if (index >= 0 && index < _waypoints.Count)
+        {
+            _waypoints.RemoveAt(index);
+            
+            // Update waypoint names
+            for (int i = 0; i < _waypoints.Count; i++)
+            {
+                if (_waypoints[i].Name?.StartsWith("Waypoint ") == true)
+                {
+                    _waypoints[i].Name = $"Waypoint {i + 1}";
+                }
+            }
+            
+            if (_mapInstance != null)
+            {
+                await MapService.ClearWaypointsAsync();
+                foreach (var waypoint in _waypoints)
+                {
+                    await MapService.AddWaypointAsync(waypoint.Latitude, waypoint.Longitude, waypoint.Name);
+                }
+            }
+            
+            // Recalculate route if we still have enough waypoints
+            if (_waypoints.Count >= 2 && _currentRoute != null)
+            {
+                await CalculateRoute();
+            }
+            else
+            {
+                _currentRoute = null;
+                if (_mapInstance != null)
+                {
+                    await MapService.ClearRouteAsync();
+                }
+            }
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleClustering()
+    {
+        _showClustering = !_showClustering;
+        
+        if (_mapInstance != null)
+        {
+            await MapService.ToggleClusteringAsync(_showClustering);
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task ToggleElevation()
+    {
+        _showElevation = !_showElevation;
+        
+        if (_mapInstance != null && _showElevation)
+        {
+            await MapService.ShowElevationProfileAsync();
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task SearchAddress()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            _searchResults.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var request = new AddressSearchRequest
+            {
+                Query = _searchQuery,
+                Limit = 5
+            };
+
+            var response = await RoutePlannerService.SearchAddressAsync(request);
+            
+            if (response.Success)
+            {
+                _searchResults = response.Results;
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Address search failed";
+                _searchResults.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching address");
+            _errorMessage = "Error searching address";
+            _searchResults.Clear();
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task OnSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAddress();
+        }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _searchQuery = e.Value?.ToString() ?? string.Empty;
+        
+        // Debounce search - wait 300ms after user stops typing
+        _searchTimer?.Dispose();
+        _searchTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!string.IsNullOrWhiteSpace(_searchQuery) && _searchQuery.Length >= 2)
+                {
+                    await SearchAddress();
+                }
+                else
+                {
+                    _searchResults.Clear();
+                    StateHasChanged();
+                }
+            });
+        }, null, 300, Timeout.Infinite);
+    }
+
+    private async Task AddWaypointFromSearch(AddressResult result)
+    {
+        var waypoint = new Waypoint
+        {
+            Latitude = result.Latitude,
+            Longitude = result.Longitude,
+            Name = result.DisplayName,
+            Address = result.Address
+        };
+
+        _waypoints.Add(waypoint);
+        _searchResults.Clear();
+        _searchQuery = string.Empty;
+
+        if (_mapInstance != null)
+        {
+            await MapService.AddWaypointAsync(waypoint.Latitude, waypoint.Longitude, waypoint.Name);
+        }
+
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnWaypointAdded(double latitude, double longitude, string? name = null)
+    {
+        try
+        {
+            var waypoint = new Waypoint
+            {
+                Latitude = latitude,
+                Longitude = longitude,
+                Name = name ?? $"Waypoint {_waypoints.Count + 1}"
+            };
+
+            _waypoints.Add(waypoint);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error adding waypoint from map click");
+        }
+    }
+
+    [JSInvokable]
+    public Task OnWaypointChanged(int index, double latitude, double longitude, string? name = null)
+    {
+        if (index >= 0 && index < _waypoints.Count)
+        {
+            _waypoints[index].Latitude = latitude;
+            _waypoints[index].Longitude = longitude;
+            if (!string.IsNullOrWhiteSpace(name)) _waypoints[index].Name = name;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnWaypointRemoved(int index)
+    {
+        if (index >= 0 && index < _waypoints.Count)
+        {
+            _waypoints.RemoveAt(index);
+            for (int i = 0; i < _waypoints.Count; i++)
+            {
+                if (_waypoints[i].Name?.StartsWith("Waypoint ") == true)
+                {
+                    _waypoints[i].Name = $"Waypoint {i + 1}";
+                }
+            }
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task CalculateRoute()
+    {
+        if (_waypoints.Count < 2)
+        {
+            _errorMessage = "At least 2 waypoints are required";
+            return;
+        }
+
+        _calculatingRoute = true;
+        _errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var request = new RouteRequest
+            {
+                Waypoints = _waypoints,
+                Profile = _selectedProfile,
+                AvoidHighways = _avoidHighways,
+                AvoidTolls = _avoidTolls,
+                AvoidFerries = _avoidFerries,
+                Language = "en"
+            };
+
+            var response = await RoutePlannerService.CalculateRouteAsync(request);
+
+            if (response.Success && response.Route != null)
+            {
+                _currentRoute = response.Route;
+                
+                if (_mapInstance != null)
+                {
+                    await MapService.ShowRouteAsync(_currentRoute);
+                    
+                    if (_currentRoute.Directions?.Any() == true)
+                    {
+                        await MapService.ShowDirectionsAsync(_currentRoute.Directions);
+                    }
+                    
+                    if (_currentRoute.Bounds != null)
+                    {
+                        await MapService.FitBoundsAsync(_currentRoute.Bounds);
+                    }
+                }
+
+                await OnRouteCalculated.InvokeAsync(_currentRoute);
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Route calculation failed";
+                _currentRoute = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error calculating route");
+            _errorMessage = "Error calculating route. Note: This demo requires a routing service API key to be configured.";
+            _currentRoute = null;
+        }
+        finally
+        {
+            _calculatingRoute = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ClearError()
+    {
+        _errorMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    private string FormatDuration(double seconds)
+    {
+        var time = TimeSpan.FromSeconds(seconds);
+        if (time.TotalHours >= 1)
+        {
+            return $"{(int)time.TotalHours}h {time.Minutes}m";
+        }
+        if (time.TotalMinutes >= 1)
+        {
+            return $"{time.Minutes}m {time.Seconds}s";
+        }
+        return $"{time.Seconds}s";
+    }
+
+    private string FormatDistance(double meters)
+    {
+        if (meters < 1)
+        {
+            return "0 m";
+        }
+        if (meters < 1000)
+        {
+            return $"{Math.Round(meters):0} m";
+        }
+        if (meters < 10000)
+        {
+            return $"{meters / 1000:0.0} km";
+        }
+        return $"{meters / 1000:0} km";
+    }
+
+    private string GetDirectionIcon(DirectionType type)
+    {
+        return type switch
+        {
+            DirectionType.Start => "🟢",
+            DirectionType.End => "🔴",
+            DirectionType.TurnLeft => "↰",
+            DirectionType.TurnRight => "↱",
+            DirectionType.TurnSlightLeft => "↖",
+            DirectionType.TurnSlightRight => "↗",
+            DirectionType.TurnSharpLeft => "↺",
+            DirectionType.TurnSharpRight => "↻",
+            DirectionType.UTurn => "🔄",
+            DirectionType.RoundaboutEnter => "🔄",
+            DirectionType.RoundaboutExit => "↗",
+            DirectionType.Continue => "↑",
+            DirectionType.Merge => "🔀",
+            DirectionType.ForkLeft => "↖",
+            DirectionType.ForkRight => "↗",
+            DirectionType.KeepLeft => "↖",
+            DirectionType.KeepRight => "↗",
+            _ => "→"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _searchTimer?.Dispose();
+        
+        if (_mapInstance != null)
+        {
+            await MapService.DisposeMapAsync();
+            _mapInstance = null;
+        }
+    }
+}
+
+<style>
+    .route-planner {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .route-planner-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .route-planner-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .route-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .map-controls {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .map-controls .btn {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+
+    .route-planner-content {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .address-search {
+        position: relative;
+    }
+
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .search-result-item {
+        width: 100%;
+        border: none;
+        background: none;
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .search-result-item:last-child {
+        border-bottom: none;
+    }
+
+    .search-result-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .search-result-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .search-result-name {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .search-result-address {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .waypoints-list h4 {
+        margin: 0 0 8px 0;
+        font-size: 1rem;
+        color: #333;
+    }
+
+    .waypoint-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
+
+    .waypoint-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .waypoint-icon {
+        min-width: 24px;
+        text-align: center;
+    }
+
+    .waypoint-start, .waypoint-end {
+        font-size: 16px;
+    }
+
+    .waypoint-number {
+        background: #4285F4;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .waypoint-details {
+        flex: 1;
+    }
+
+    .waypoint-name {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 2px;
+    }
+
+    .waypoint-coords {
+        font-size: 0.8rem;
+        color: #666;
+        font-family: monospace;
+    }
+
+    .route-info h4 {
+        margin: 0 0 8px 0;
+        font-size: 1rem;
+        color: #333;
+    }
+
+    .route-stats {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .stat {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #f0f2f5;
+        padding: 8px 12px;
+        border-radius: 6px;
+        min-width: 120px;
+    }
+
+    .stat-icon {
+        font-size: 16px;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .directions h4 {
+        margin: 0 0 8px 0;
+        font-size: 1rem;
+        color: #333;
+    }
+
+    .directions-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .direction-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .direction-item:last-child {
+        border-bottom: none;
+    }
+
+    .direction-icon {
+        min-width: 24px;
+        text-align: center;
+        font-size: 16px;
+        margin-top: 2px;
+    }
+
+    .direction-content {
+        flex: 1;
+    }
+
+    .direction-instruction {
+        margin-bottom: 2px;
+        color: #333;
+    }
+
+    .direction-distance {
+        font-size: 0.85rem;
+        color: #666;
+        font-weight: 500;
+    }
+
+    @@media (max-width: 768px) {
+        .route-planner-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .route-controls {
+            justify-content: center;
+        }
+
+        .route-stats {
+            flex-direction: column;
+        }
+
+        .stat {
+            min-width: auto;
+        }
+
+        .waypoint-item {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+    }
+</style>
+
+<script>
+    window.blazorGeolocation = {
+        getCurrentPosition: function () {
+            return new Promise((resolve, reject) => {
+                console.log('Geolocation request started...');
+
+                if (!navigator.geolocation) {
+                    console.error('Geolocation not supported');
+                    reject('Geolocation is not supported by this browser.');
+                    return;
+                }
+
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 60000 // 1 minute
+                };
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log('Position received:', position);
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const accuracy = position.coords.accuracy;
+
+                        console.log(`Coordinates: ${lat}, ${lng} (accuracy: ${accuracy}m)`);
+
+                        const result = {
+                            latitude: lat,
+                            longitude: lng,
+                            accuracy: accuracy
+                        };
+
+                        resolve(JSON.stringify(result));
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        let errorMessage = '';
+                        switch (error.code) {
+                            case 1: // PERMISSION_DENIED
+                                errorMessage = 'Location access denied by user. Please enable location permissions and try again.';
+                                break;
+                            case 2: // POSITION_UNAVAILABLE
+                                errorMessage = 'Location information is unavailable. Please check your internet connection.';
+                                break;
+                            case 3: // TIMEOUT
+                                errorMessage = 'Location request timed out. Please try again.';
+                                break;
+                            default:
+                                errorMessage = 'An unknown error occurred while getting location.';
+                                break;
+                        }
+                        reject(errorMessage);
+                    },
+                    options
+                );
+            });
+        }
+    };
+</script>
