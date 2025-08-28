@@ -1,27 +1,30 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject NavigationManager NavigationManager
 @rendermode InteractiveWebAssembly
 
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
 @using Frontend.Client.Components
+@using Frontend.Client.Services
 @inject NavigationManager Navigation
 @inject AuthService AuthService
+@inject ThemeService ThemeService
 
-<MudThemeProvider @ref="_mudThemeProvider" IsDarkMode="@_isDarkMode" />
+<MudThemeProvider @ref="_mudThemeProvider" IsDarkMode="@ThemeService.IsDarkMode"/>
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 
-@if (!Navigation.Uri.EndsWith("/login") || !Navigation.Uri.EndsWith("/register"))
+@if (!Navigation.Uri.EndsWith("/login") && !Navigation.Uri.EndsWith("/register"))
 {
   <!-- Background Grid SVG -->
   <div class="background-grid">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
       <defs>
         <pattern id="grid" width="5" height="10" patternUnits="userSpaceOnUse">
-          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.25"/>
+          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="var(--mud-palette-primary)" stroke-width="0.15"/>
         </pattern>
       </defs>
       <rect width="100" height="100" fill="url(#grid)"/>
@@ -39,11 +42,11 @@
         <MudText Typo="Typo.h6" Class="text-uppercase mb-0"
                  Style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); cursor:pointer;"
                  @onclick="GoHome">CYCLONE</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.DirectionsBike" 
+        <MudIconButton Icon="@(ThemeService.IsDarkMode ? Icons.Material.Filled.WbSunny : Icons.Material.Filled.Bedtime)" 
                        Color="Color.Inherit" 
                        OnClick="ToggleDarkMode"
                        Style="position:absolute; right:16px; top:50%; transform:translateY(-50%);" 
-                       AriaLabel="Toggle Dark Mode" />
+                       Title="@(ThemeService.IsDarkMode ? "Light Mode" : "Dark Mode")" />
       </MudContainer>
     </MudAppBar>
     
@@ -58,7 +61,10 @@
         
         </MudNavMenu> 
       </MudDrawer> 
-      <MudMainContent Class="app-main"> @Body </MudMainContent>
+      <MudMainContent Class="app-main"> <div style="--pane-color:@PaneColor;">
+          @Body
+        </div>
+      </MudMainContent>
     </MudDrawerContainer>
     
     <Footer/>
@@ -132,13 +138,26 @@
   protected override void OnInitialized()
   {
     Navigation.LocationChanged += (_, __) => { _drawerOpen = false; InvokeAsync(StateHasChanged); };
+    ThemeService.OnThemeChanged += OnThemeChanged;
+  }
+  
+  private void OnThemeChanged()
+  {
+    InvokeAsync(StateHasChanged);
+  }
+  
+  public void Dispose()
+  {
+    ThemeService.OnThemeChanged -= OnThemeChanged;
   }
   
   private MudThemeProvider _mudThemeProvider;
-  private bool _isDarkMode = false;
+
+  private string PaneColor => ThemeService.IsDarkMode ? "#40445c" : "#f0f4fc";
+  
 
   private void ToggleDarkMode()
   {
-    _isDarkMode = !_isDarkMode; 
+    ThemeService.ToggleDarkMode();
   }
 }

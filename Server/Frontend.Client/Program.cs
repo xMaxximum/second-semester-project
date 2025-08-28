@@ -57,6 +57,8 @@ namespace Frontend.Client
             // Add Route Planning Service
             builder.Services.AddScoped<IRoutePlannerService, RoutePlannerService>();
 
+            // Add Theme Service
+            builder.Services.AddSingleton<ThemeService>();
 
             var app = builder.Build();
 

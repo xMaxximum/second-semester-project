@@ -327,6 +327,7 @@ class CyclingMap {
       
       .map-control-btn { 
         background:#fff; 
+        color: black;
         border:2px solid rgba(0,0,0,.2); 
         border-radius:4px; 
         padding:8px 12px; 
