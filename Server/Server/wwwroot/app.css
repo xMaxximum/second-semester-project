@@ -140,13 +140,3 @@ html, body {
         }
     }
 }
-
-/* Default Light Theme */
-.mud-theme-default {
-    --pane-color: #f0f4fc;
-}
-
-/* Dark Mode */
-.mud-theme-dark {
-    --pane-color: #40445c;
-}
