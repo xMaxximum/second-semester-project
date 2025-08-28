@@ -122,7 +122,31 @@
                 Back
             </MudButton>
         </div>
-        <div class="d-none d-sm-block" style="width: 80px;"></div> <!-- Spacer for centering on desktop -->
+        
+        <div class="d-flex align-items-center gap-2">
+            @if (_navigation != null)
+            {
+                <MudButton Variant="Variant.Filled" 
+                           StartIcon="@Icons.Material.Filled.NavigateBefore" 
+                           Color="Color.Primary" 
+                           Size="Size.Small"
+                           Disabled="@(_navigation.PreviousActivityId == null)"
+                           OnClick="@(() => NavigateToActivity(_navigation.PreviousActivityId))"
+                           Title="@(_navigation.PreviousActivityName ?? "No previous activity")">
+                    Previous
+                </MudButton>
+                
+                <MudButton Variant="Variant.Filled" 
+                           EndIcon="@Icons.Material.Filled.NavigateNext" 
+                           Color="Color.Primary" 
+                           Size="Size.Small"
+                           Disabled="@(_navigation.NextActivityId == null)"
+                           OnClick="@(() => NavigateToActivity(_navigation.NextActivityId))"
+                           Title="@(_navigation.NextActivityName ?? "No next activity")">
+                    Next
+                </MudButton>
+            }
+        </div>
     </div>
 
     @if (_loading)
@@ -525,6 +549,7 @@
     private string? _error;
     private bool _editingTitle = false;
     private string _editedTitle = string.Empty;
+    private ActivityNavigationResponse? _navigation;
 
     // Map-related fields
     private IJSObjectReference? _mapInstance;
@@ -542,6 +567,16 @@
         _details = await ActivityService.GetActivityAsync(Id);
         if (_details is null || !_details.IsSuccess)
             _error = _details?.Message ?? "Failed to load";
+
+        // Load navigation data
+        if (_details?.IsSuccess == true)
+        {
+            var navigationResult = await ActivityService.GetActivityNavigationAsync(Id);
+            if (navigationResult?.IsSuccess == true)
+            {
+                _navigation = navigationResult.Data;
+            }
+        }
 
         _loading = false;
         StateHasChanged(); // triggers OnAfterRender again
@@ -633,6 +668,14 @@
     private void GoBack()
     {
         Navigation.NavigateTo("/");
+    }
+
+    private void NavigateToActivity(long? activityId)
+    {
+        if (activityId.HasValue)
+        {
+            Navigation.NavigateTo($"/activity/{activityId.Value}");
+        }
     }
 
     private string GetActivityIcon()
