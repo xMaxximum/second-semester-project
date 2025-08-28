@@ -100,6 +100,9 @@ namespace Server
 
             // Register WeatherService as singleton to keep cache alive
             builder.Services.AddSingleton<WeatherService>();
+            
+            // Register RouteService for route planning
+            builder.Services.AddScoped<IRouteService, RouteService>();
 
             // Add Authorization
             builder.Services.AddAuthorization();

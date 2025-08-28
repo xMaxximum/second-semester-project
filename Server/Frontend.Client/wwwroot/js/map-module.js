@@ -97,7 +97,6 @@ async function loadLeaflet() {
     }
 
     leafletLoaded = true;
-    console.log('✅ Leaflet + MarkerCluster + D3 + Elevation loaded');
   })();
 
   return leafletLoadPromise;
@@ -241,12 +240,20 @@ class CyclingMap {
         this.elementId = elementId;
         this.config = config ?? {};
         this.map = null;
-        this.layers = { route: null, markers: null, elevation: null };
+        this.layers = { route: null, markers: null, elevation: null, plannedRoute: null, waypoints: null };
         this.currentTileLayer = null;
         this.coordinates = [];
+        this.waypoints = [];
+        this.routePlanningEnabled = false;
+        this.routePlanningCallbacks = {};
 
         this.initializeMap(centerLat, centerLon);
         this.addCustomCSS();
+        
+        // Initialize route planning if enabled
+        if (this.config.enableRoutePlanning) {
+            this.enableRoutePlanning(true);
+        }
     }
 
     initializeMap(centerLat, centerLon) {
@@ -273,7 +280,7 @@ class CyclingMap {
 
         this.setTileLayer(this.config.defaultTileLayer || 'osm');
         this.addLayerControl();
-        this.addCustomControls();
+        this.addCustomControls(this.config);
 
         setTimeout(() => this.map && this.map.invalidateSize(), 0);
         window.addEventListener('resize', () => setTimeout(() => this.map && this.map.invalidateSize(), 100));
@@ -289,6 +296,24 @@ class CyclingMap {
       .cycling-cluster { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border:3px solid #fff; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px; box-shadow:0 2px 5px rgba(0,0,0,.3); }
       .cycling-marker { filter:drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
       .start-marker, .end-marker { font-size:16px; }
+      
+      /* Route planning waypoint markers */
+      .waypoint-marker { filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+      .start-waypoint { font-size: 18px; }
+      .end-waypoint { font-size: 18px; }
+      .intermediate-waypoint div {
+        box-shadow: 0 2px 6px rgba(0,0,0,.3);
+        transition: transform 0.2s ease;
+      }
+      .intermediate-waypoint div:hover {
+        transform: scale(1.1);
+      }
+      
+      /* Route line styling */
+      .planned-route {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
       
       /* Custom controls positioned at bottom-left */
       .leaflet-bottom .leaflet-left .map-controls { 
@@ -520,35 +545,44 @@ class CyclingMap {
         L.DomEvent.disableClickPropagation(controlDiv);
         L.DomEvent.disableScrollPropagation(controlDiv);
 
-        const clusterBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
-        clusterBtn.setAttribute('data-action', 'cluster');
-        clusterBtn.setAttribute('data-full-text-on', '📍 Clustering ON');
-        clusterBtn.setAttribute('data-full-text-off', '📍 Clustering OFF');
-        clusterBtn.setAttribute('data-compact-text', '📍');
-        clusterBtn.title = 'Toggle marker clustering';
-        
-        this.updateButtonText(clusterBtn, this.config.EnableClustering === true);
-        if (this.config.EnableClustering === true) {
-            clusterBtn.classList.add('active');
+        // Only add clustering button if enabled in config
+        if (this.config.showClusteringButton !== false) {
+            const clusterBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
+            clusterBtn.setAttribute('data-action', 'cluster');
+            clusterBtn.setAttribute('data-full-text-on', '📍 Clustering ON');
+            clusterBtn.setAttribute('data-full-text-off', '📍 Clustering OFF');
+            clusterBtn.setAttribute('data-compact-text', '📍');
+            clusterBtn.title = 'Toggle marker clustering';
+            
+            this.updateButtonText(clusterBtn, this.config.enableClustering === true);
+            if (this.config.enableClustering === true) {
+                clusterBtn.classList.add('active');
+            }
+            L.DomEvent.on(clusterBtn, 'click', () => {
+                this.toggleClustering();
+            });
         }
-        L.DomEvent.on(clusterBtn, 'click', () => {
-            this.toggleClustering();
-        });
 
-        const elevationBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
-        elevationBtn.setAttribute('data-action', 'elevation');
-        elevationBtn.setAttribute('data-full-text-show', '📊 Show Elevation');
-        elevationBtn.setAttribute('data-full-text-hide', '📊 Hide Elevation');
-        elevationBtn.setAttribute('data-compact-text', '📊');
-        elevationBtn.title = 'Show elevation profile';
-        
-        this.updateButtonText(elevationBtn, false);
-        L.DomEvent.on(elevationBtn, 'click', () => {
-            this.showElevationProfile();
-        });
+        // Only add elevation button if enabled in config
+        if (this.config.showElevationButton !== false) {
+            const elevationBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
+            elevationBtn.setAttribute('data-action', 'elevation');
+            elevationBtn.setAttribute('data-full-text-show', '📊 Show Elevation');
+            elevationBtn.setAttribute('data-full-text-hide', '📊 Hide Elevation');
+            elevationBtn.setAttribute('data-compact-text', '📊');
+            elevationBtn.title = 'Show elevation profile';
+            
+            this.updateButtonText(elevationBtn, false);
+            L.DomEvent.on(elevationBtn, 'click', () => {
+                this.showElevationProfile();
+            });
+        }
 
-        const Custom = L.Control.extend({ onAdd: () => controlDiv });
-        new Custom({ position: 'bottomleft' }).addTo(this.map);
+        // Only add the control if there are any buttons
+        if (controlDiv.children.length > 0) {
+            const Custom = L.Control.extend({ onAdd: () => controlDiv });
+            new Custom({ position: 'bottomleft' }).addTo(this.map);
+        }
         
         // Update button text on resize
         this.setupResponsiveButtonText();
@@ -617,26 +651,22 @@ class CyclingMap {
         
         // Debug elevation data
         const elevationValues = this.coordinates.map(c => c.elevation).filter(e => e !== 0);
-        console.log(`🏔️ Elevation data: ${elevationValues.length} non-zero values out of ${this.coordinates.length} total points`);
-        if (elevationValues.length > 0) {
-            console.log(`🏔️ Elevation range: ${Math.min(...elevationValues).toFixed(1)}m to ${Math.max(...elevationValues).toFixed(1)}m`);
-        }
         
         if (this.coordinates.length === 0) return;
 
         // Clear old layers
         this.clearLayers();
 
-        if (this.config.ShowSpeedColors !== false) {
+        if (this.config.showSpeedColors !== false) {
             this.layers.route = createSpeedRoute(this.coordinates);
             this.layers.route.addTo(this.map);
         }
 
-        if (this.config.ShowMarkers !== false) {
+        if (this.config.showMarkers !== false) {
             this.layers.markers = createCyclingMarkers(
                 this.coordinates,
-                this.config.EnableClustering === true,  // Changed: now defaults to false
-                this.config.ClusterDistance ?? 80
+                this.config.enableClustering === true,  // Changed: now defaults to false
+                this.config.clusterDistance ?? 80
             );
             this.layers.markers.addTo(this.map);
         }
@@ -664,30 +694,30 @@ class CyclingMap {
 
         if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [20, 20] });
 
-        if (this.config.ShowElevationProfile) this.ShowElevationProfile();
+        if (this.config.showElevationProfile) this.ShowElevationProfile();
     }
 
     toggleClustering() {
         if (!this.layers.markers || this.coordinates.length === 0) return;
         
         this.map.removeLayer(this.layers.markers);
-        this.config.EnableClustering = !this.config.EnableClustering;
+        this.config.enableClustering = !this.config.enableClustering;
         this.layers.markers = createCyclingMarkers(
             this.coordinates,
-            this.config.EnableClustering,
-            this.config.ClusterDistance ?? 80
+            this.config.enableClustering,
+            this.config.clusterDistance ?? 80
         );
         this.layers.markers.addTo(this.map);
         
         // Update button state to reflect CURRENT clustering state
         const clusterBtn = document.querySelector('[data-action="cluster"]');
         if (clusterBtn) {
-            if (this.config.EnableClustering) {
+            if (this.config.enableClustering) {
                 clusterBtn.classList.add('active');
             } else {
                 clusterBtn.classList.remove('active'); 
             }
-            this.updateButtonText(clusterBtn, this.config.EnableClustering);
+            this.updateButtonText(clusterBtn, this.config.enableClustering);
         }
     }
 
@@ -731,7 +761,7 @@ class CyclingMap {
 
     clearLayers() {
         for (const k of Object.keys(this.layers)) {
-            if (this.layers[k]) {
+            if (this.layers[k] && k !== 'plannedRoute' && k !== 'waypoints' && k !== 'directions') {
                 this.map.removeLayer(this.layers[k]);
                 this.layers[k] = null;
             }
@@ -740,9 +770,359 @@ class CyclingMap {
 
     dispose() {
         this.clearLayers();
+        this.routePlanningEnabled = false;
+        this.waypoints = [];
         if (this.map) { this.map.remove(); this.map = null; }
         const div = document.getElementById('elevation-profile');
         if (div) div.remove();
+    }
+
+    // Route planning functionality
+    enableRoutePlanning(enabled) {
+        this.routePlanningEnabled = enabled;
+        
+        if (enabled) {
+            this.map.getContainer().style.cursor = 'crosshair';
+            this.map.on('click', this.onMapClick, this);
+        } else {
+            this.map.getContainer().style.cursor = '';
+            this.map.off('click', this.onMapClick, this);
+        }
+    }
+
+    onMapClick(e) {
+        if (!this.routePlanningEnabled) return;
+        
+        const waypoint = {
+            latitude: e.latlng.lat,
+            longitude: e.latlng.lng,
+            name: `Waypoint ${this.waypoints.length + 1}`
+        };
+        
+        this.addWaypoint(waypoint.latitude, waypoint.longitude, waypoint.name);
+        
+        // Notify Blazor component about waypoint added
+        if (this.routePlanningCallbacks.onWaypointAdded) {
+            this.routePlanningCallbacks.onWaypointAdded(waypoint);
+        }
+    }
+
+    addWaypoint(latitude, longitude, name = null) {
+        const waypoint = {
+            latitude,
+            longitude,
+            name: name || `Waypoint ${this.waypoints.length + 1}`
+        };
+        
+        this.waypoints.push(waypoint);
+        this.updateWaypointMarkers();
+        
+        return waypoint;
+    }
+
+    clearWaypoints() {
+        this.waypoints = [];
+        this.updateWaypointMarkers();
+    this.clearRoute();
+    this.clearDirections();
+    }
+
+    getWaypoints() {
+        return [...this.waypoints];
+    }
+
+    updateWaypointMarkers() {
+        // Clear existing waypoint markers
+        if (this.layers.waypoints) {
+            this.map.removeLayer(this.layers.waypoints);
+        }
+
+        if (this.waypoints.length === 0) {
+            this.layers.waypoints = null;
+            return;
+        }
+
+        const markers = this.waypoints.map((waypoint, index) => {
+            const isStart = index === 0;
+            const isEnd = index === this.waypoints.length - 1 && this.waypoints.length > 1;
+            
+            let html, className;
+            if (isStart) {
+                html = '🟢';
+                className = 'waypoint-marker start-waypoint';
+            } else if (isEnd) {
+                html = '🔴';
+                className = 'waypoint-marker end-waypoint';
+            } else {
+                html = `<div style="background:#4285F4;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:2px solid white;font-size:12px;font-weight:bold;">${index + 1}</div>`;
+                className = 'waypoint-marker intermediate-waypoint';
+            }
+
+            const marker = L.marker([waypoint.latitude, waypoint.longitude], {
+                icon: L.divIcon({
+                    html,
+                    className,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                }),
+                draggable: true
+            });
+
+            marker.bindPopup(`
+                <div style="min-width:150px;">
+                    <strong>${waypoint.name}</strong><br>
+                    ${waypoint.latitude.toFixed(6)}, ${waypoint.longitude.toFixed(6)}<br>
+                    <button onclick="window.removeWaypoint?.(${index})" style="margin-top:5px;padding:2px 8px;background:#ff4444;color:white;border:none;border-radius:3px;cursor:pointer;">Remove</button>
+                </div>
+            `);
+
+            // Handle dragging
+            marker.on('dragend', (e) => {
+                const newPos = e.target.getLatLng();
+                this.waypoints[index].latitude = newPos.lat;
+                this.waypoints[index].longitude = newPos.lng;
+                
+                if (this.routePlanningCallbacks.onWaypointChanged) {
+                    this.routePlanningCallbacks.onWaypointChanged(index, this.waypoints[index]);
+                }
+            });
+
+            return marker;
+        });
+
+        this.layers.waypoints = L.layerGroup(markers);
+        this.layers.waypoints.addTo(this.map);
+
+        // Set global function for popup buttons
+        window.removeWaypoint = (index) => {
+            this.waypoints.splice(index, 1);
+            this.updateWaypointMarkers();
+            if (this.routePlanningCallbacks.onWaypointRemoved) {
+                this.routePlanningCallbacks.onWaypointRemoved(index);
+            }
+        };
+    }
+
+    showRoute(routeData) {
+        this.clearRoute();
+
+        if (!routeData || !routeData.geometry || routeData.geometry.length === 0) {
+            return;
+        }
+
+        // Convert route points to Leaflet format
+        const latLngs = routeData.geometry.map(point => [point.latitude, point.longitude]);
+
+        // Create main route line
+        const routeLine = L.polyline(latLngs, {
+            color: '#2196F3',
+            weight: 5,
+            opacity: 0.8,
+            smoothFactor: 1.0
+        });
+
+        this.layers.plannedRoute = routeLine;
+        this.layers.plannedRoute.addTo(this.map);
+
+        // Fit map to route bounds if specified
+        if (routeData.bounds) {
+            this.fitBounds(
+                routeData.bounds.minLatitude,
+                routeData.bounds.maxLatitude,
+                routeData.bounds.minLongitude,
+                routeData.bounds.maxLongitude
+            );
+        } else {
+            // Fallback: fit to route line bounds
+            this.map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+        }
+    }
+
+    clearRoute() {
+        if (this.layers.plannedRoute) {
+            this.map.removeLayer(this.layers.plannedRoute);
+            this.layers.plannedRoute = null;
+        }
+    }
+
+    clearDirections() {
+        if (this.layers.directions) {
+            this.map.removeLayer(this.layers.directions);
+            this.layers.directions = null;
+        }
+    }
+
+    showDirections(directions) {
+        // Store directions for focusing
+        this._currentDirections = directions;
+        
+        // Clear any previous direction markers before adding new ones
+        this.clearDirections();
+
+        // Add direction markers to the map
+        if (directions && directions.length > 0) {
+            const directionsGroup = L.layerGroup();
+            
+            directions.forEach((direction, index) => {
+                if (direction.location) {
+                    const marker = L.circleMarker([direction.location.latitude, direction.location.longitude], {
+                        radius: 4,
+                        color: '#FF9800',
+                        fillColor: '#FF9800',
+                        fillOpacity: 0.8,
+                        className: `direction-marker direction-${index}`
+                    });
+                    
+                    const dist = direction.distance < 1000
+                        ? `${Math.round(direction.distance)} m`
+                        : `${(direction.distance / 1000).toFixed(direction.distance < 10000 ? 1 : 0)} km`;
+
+                    marker.bindPopup(`
+                        <div style="min-width:200px;">
+                            <strong>Step ${index + 1}</strong><br>
+                            ${direction.instruction}<br>
+                            <small>${dist}</small>
+                        </div>
+                    `);
+                    
+                    directionsGroup.addLayer(marker);
+                }
+            });
+            
+            this.layers.directions = directionsGroup;
+            this.layers.directions.addTo(this.map);
+        }
+    }
+
+    highlightDirection(index) {
+        if (this.layers.directions) {
+            // Reset all markers
+            this.layers.directions.eachLayer(layer => {
+                if (layer.setStyle) {
+                    layer.setStyle({
+                        radius: 4,
+                        color: '#FF9800',
+                        fillColor: '#FF9800',
+                        fillOpacity: 0.8
+                    });
+                }
+            });
+            
+            // Highlight specific marker
+            const targetMarker = document.querySelector(`.direction-${index}`);
+            if (targetMarker) {
+                this.layers.directions.eachLayer((layer, idx) => {
+                    if (layer.options.className && layer.options.className.includes(`direction-${index}`)) {
+                        layer.setStyle({
+                            radius: 8,
+                            color: '#FF5722',
+                            fillColor: '#FF5722',
+                            fillOpacity: 1.0
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    clearDirectionHighlight() {
+        if (this.layers.directions) {
+            this.layers.directions.eachLayer(layer => {
+                if (layer.setStyle) {
+                    layer.setStyle({
+                        radius: 4,
+                        color: '#FF9800',
+                        fillColor: '#FF9800',
+                        fillOpacity: 0.8
+                    });
+                }
+            });
+        }
+    }
+
+    // Reset planning-related state for a fresh start
+    resetRoutePlanning() {
+        this.clearWaypoints();
+        this.clearRoute();
+        this.clearDirections();
+        // Keep callbacks registered; enable/disable handled separately
+    }
+
+    fitBounds(minLat, maxLat, minLng, maxLng) {
+        const bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+        this.map.fitBounds(bounds, { padding: [20, 20] });
+    }
+
+    setRoutePlanningCallbacks(callbacks) {
+        // Accept either plain JS function callbacks or a Blazor DotNetObjectReference
+        if (!callbacks) {
+            this.routePlanningCallbacks = {};
+            return;
+        }
+
+        if (callbacks.dotNetRef) {
+            const dot = callbacks.dotNetRef;
+            // Wrap into JS functions that proxy to .NET methods
+            this.routePlanningCallbacks = {
+                onWaypointAdded: (wp) => {
+                    try {
+                        return dot.invokeMethodAsync('OnWaypointAdded', wp.latitude, wp.longitude, wp.name);
+                    } catch (e) { /* no-op */ }
+                },
+                onWaypointChanged: (index, wp) => {
+                    try {
+                        return dot.invokeMethodAsync('OnWaypointChanged', index, wp.latitude, wp.longitude, wp.name);
+                    } catch (e) { /* optional */ }
+                },
+                onWaypointRemoved: (index) => {
+                    try {
+                        return dot.invokeMethodAsync('OnWaypointRemoved', index);
+                    } catch (e) { /* optional */ }
+                }
+            };
+        } else {
+            this.routePlanningCallbacks = callbacks || {};
+        }
+    }
+
+    setMapCenter(lat, lng, zoom = 13) {
+        this.map.setView([lat, lng], zoom);
+    }
+
+    focusOnWaypoint(index) {
+        if (index >= 0 && index < this.waypoints.length) {
+            const waypoint = this.waypoints[index];
+            this.map.setView([waypoint.latitude, waypoint.longitude], 16);
+            
+            // Optional: Show popup for the waypoint
+            if (this.layers.waypoints) {
+                this.layers.waypoints.eachLayer(layer => {
+                    if (layer.getLatLng && 
+                        Math.abs(layer.getLatLng().lat - waypoint.latitude) < 0.0001 && 
+                        Math.abs(layer.getLatLng().lng - waypoint.longitude) < 0.0001) {
+                        layer.openPopup();
+                    }
+                });
+            }
+        }
+    }
+
+    focusOnDirection(index) {
+        if (this.layers.directions && this._currentDirections && 
+            index >= 0 && index < this._currentDirections.length) {
+            const direction = this._currentDirections[index];
+            if (direction.location) {
+                this.map.setView([direction.location.latitude, direction.location.longitude], 17);
+                
+                // Highlight the direction marker
+                this.highlightDirection(index);
+                
+                // Clear highlight after 3 seconds
+                setTimeout(() => {
+                    this.clearDirectionHighlight();
+                }, 3000);
+            }
+        }
     }
 }
 
@@ -756,6 +1136,22 @@ function buildApi(cm, elementId) {
         setTileLayer: (layerType) => cm.setTileLayer(layerType),
         toggleClustering: () => cm.toggleClustering(),
         showElevationProfile: () => cm.showElevationProfile(),
+        enableRoutePlanning: (enabled) => cm.enableRoutePlanning(enabled),
+        addWaypoint: (lat, lng, name) => cm.addWaypoint(lat, lng, name),
+        clearWaypoints: () => cm.clearWaypoints(),
+        getWaypoints: () => cm.getWaypoints(),
+        showRoute: (routeData) => cm.showRoute(routeData),
+        clearRoute: () => cm.clearRoute(),
+        clearDirections: () => cm.clearDirections(),
+        resetRoutePlanning: () => cm.resetRoutePlanning(),
+        showDirections: (directions) => cm.showDirections(directions),
+        highlightDirection: (index) => cm.highlightDirection(index),
+        clearDirectionHighlight: () => cm.clearDirectionHighlight(),
+        focusOnWaypoint: (index) => cm.focusOnWaypoint(index),
+        focusOnDirection: (index) => cm.focusOnDirection(index),
+        fitBounds: (minLat, maxLat, minLng, maxLng) => cm.fitBounds(minLat, maxLat, minLng, maxLng),
+        setMapCenter: (lat, lng, zoom) => cm.setMapCenter(lat, lng, zoom),
+        setRoutePlanningCallbacks: (callbacks) => cm.setRoutePlanningCallbacks(callbacks),
         dispose: () => { cm.dispose(); instanceApis.delete(elementId); }
     };
 }
