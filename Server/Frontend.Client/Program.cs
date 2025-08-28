@@ -53,6 +53,9 @@ namespace Frontend.Client
             
             // Add Map Service
             builder.Services.AddScoped<MapService>();
+            
+            // Add Theme Service
+            builder.Services.AddSingleton<ThemeService>();
 
 
             var app = builder.Build();
