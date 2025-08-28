@@ -82,6 +82,18 @@ public class MapService : IAsyncDisposable
     public ValueTask ResetRoutePlanningAsync()
         => _map is null ? ValueTask.CompletedTask : _map.InvokeVoidAsync("resetRoutePlanning");
 
+    public ValueTask HighlightDirectionAsync(int index)
+        => _map is null ? ValueTask.CompletedTask : _map.InvokeVoidAsync("highlightDirection", index);
+
+    public ValueTask ClearDirectionHighlightAsync()
+        => _map is null ? ValueTask.CompletedTask : _map.InvokeVoidAsync("clearDirectionHighlight");
+
+    public ValueTask FocusOnWaypointAsync(int index)
+        => _map is null ? ValueTask.CompletedTask : _map.InvokeVoidAsync("focusOnWaypoint", index);
+
+    public ValueTask FocusOnDirectionAsync(int index)
+        => _map is null ? ValueTask.CompletedTask : _map.InvokeVoidAsync("focusOnDirection", index);
+
     public async ValueTask DisposeMapAsync()
     {
         if (_map is not null)
@@ -110,4 +122,6 @@ public class MapConfiguration
     public bool ShowSpeedColors { get; set; } = true;
     public bool ShowTemperatureMarkers { get; set; } = true;
     public bool EnableRoutePlanning { get; set; } = false;
+    public bool ShowClusteringButton { get; set; } = true;
+    public bool ShowElevationButton { get; set; } = true;
 }

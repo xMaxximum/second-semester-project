@@ -246,7 +246,9 @@
                 ShowMarkers = false,
                 EnableClustering = false,
                 ShowSpeedColors = false,
-                EnableRoutePlanning = true
+                EnableRoutePlanning = true,
+                ShowClusteringButton = false,
+                ShowElevationButton = false
             };
 
             _mapInstance = await MapService.InitializeMapAsync(MapElementId, InitialLatitude, InitialLongitude, config);
@@ -623,7 +625,6 @@
     }
 
     .route-planner-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         padding: 16px;
         display: flex;

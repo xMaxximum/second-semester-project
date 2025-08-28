@@ -97,7 +97,6 @@ async function loadLeaflet() {
     }
 
     leafletLoaded = true;
-    console.log('✅ Leaflet + MarkerCluster + D3 + Elevation loaded');
   })();
 
   return leafletLoadPromise;
@@ -252,7 +251,7 @@ class CyclingMap {
         this.addCustomCSS();
         
         // Initialize route planning if enabled
-        if (this.config.EnableRoutePlanning) {
+        if (this.config.enableRoutePlanning) {
             this.enableRoutePlanning(true);
         }
     }
@@ -281,7 +280,7 @@ class CyclingMap {
 
         this.setTileLayer(this.config.defaultTileLayer || 'osm');
         this.addLayerControl();
-        this.addCustomControls();
+        this.addCustomControls(this.config);
 
         setTimeout(() => this.map && this.map.invalidateSize(), 0);
         window.addEventListener('resize', () => setTimeout(() => this.map && this.map.invalidateSize(), 100));
@@ -545,35 +544,44 @@ class CyclingMap {
         L.DomEvent.disableClickPropagation(controlDiv);
         L.DomEvent.disableScrollPropagation(controlDiv);
 
-        const clusterBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
-        clusterBtn.setAttribute('data-action', 'cluster');
-        clusterBtn.setAttribute('data-full-text-on', '📍 Clustering ON');
-        clusterBtn.setAttribute('data-full-text-off', '📍 Clustering OFF');
-        clusterBtn.setAttribute('data-compact-text', '📍');
-        clusterBtn.title = 'Toggle marker clustering';
-        
-        this.updateButtonText(clusterBtn, this.config.EnableClustering === true);
-        if (this.config.EnableClustering === true) {
-            clusterBtn.classList.add('active');
+        // Only add clustering button if enabled in config
+        if (this.config.showClusteringButton !== false) {
+            const clusterBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
+            clusterBtn.setAttribute('data-action', 'cluster');
+            clusterBtn.setAttribute('data-full-text-on', '📍 Clustering ON');
+            clusterBtn.setAttribute('data-full-text-off', '📍 Clustering OFF');
+            clusterBtn.setAttribute('data-compact-text', '📍');
+            clusterBtn.title = 'Toggle marker clustering';
+            
+            this.updateButtonText(clusterBtn, this.config.enableClustering === true);
+            if (this.config.enableClustering === true) {
+                clusterBtn.classList.add('active');
+            }
+            L.DomEvent.on(clusterBtn, 'click', () => {
+                this.toggleClustering();
+            });
         }
-        L.DomEvent.on(clusterBtn, 'click', () => {
-            this.toggleClustering();
-        });
 
-        const elevationBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
-        elevationBtn.setAttribute('data-action', 'elevation');
-        elevationBtn.setAttribute('data-full-text-show', '📊 Show Elevation');
-        elevationBtn.setAttribute('data-full-text-hide', '📊 Hide Elevation');
-        elevationBtn.setAttribute('data-compact-text', '📊');
-        elevationBtn.title = 'Show elevation profile';
-        
-        this.updateButtonText(elevationBtn, false);
-        L.DomEvent.on(elevationBtn, 'click', () => {
-            this.showElevationProfile();
-        });
+        // Only add elevation button if enabled in config
+        if (this.config.showElevationButton !== false) {
+            const elevationBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
+            elevationBtn.setAttribute('data-action', 'elevation');
+            elevationBtn.setAttribute('data-full-text-show', '📊 Show Elevation');
+            elevationBtn.setAttribute('data-full-text-hide', '📊 Hide Elevation');
+            elevationBtn.setAttribute('data-compact-text', '📊');
+            elevationBtn.title = 'Show elevation profile';
+            
+            this.updateButtonText(elevationBtn, false);
+            L.DomEvent.on(elevationBtn, 'click', () => {
+                this.showElevationProfile();
+            });
+        }
 
-        const Custom = L.Control.extend({ onAdd: () => controlDiv });
-        new Custom({ position: 'bottomleft' }).addTo(this.map);
+        // Only add the control if there are any buttons
+        if (controlDiv.children.length > 0) {
+            const Custom = L.Control.extend({ onAdd: () => controlDiv });
+            new Custom({ position: 'bottomleft' }).addTo(this.map);
+        }
         
         // Update button text on resize
         this.setupResponsiveButtonText();
@@ -642,26 +650,22 @@ class CyclingMap {
         
         // Debug elevation data
         const elevationValues = this.coordinates.map(c => c.elevation).filter(e => e !== 0);
-        console.log(`🏔️ Elevation data: ${elevationValues.length} non-zero values out of ${this.coordinates.length} total points`);
-        if (elevationValues.length > 0) {
-            console.log(`🏔️ Elevation range: ${Math.min(...elevationValues).toFixed(1)}m to ${Math.max(...elevationValues).toFixed(1)}m`);
-        }
         
         if (this.coordinates.length === 0) return;
 
         // Clear old layers
         this.clearLayers();
 
-        if (this.config.ShowSpeedColors !== false) {
+        if (this.config.showSpeedColors !== false) {
             this.layers.route = createSpeedRoute(this.coordinates);
             this.layers.route.addTo(this.map);
         }
 
-        if (this.config.ShowMarkers !== false) {
+        if (this.config.showMarkers !== false) {
             this.layers.markers = createCyclingMarkers(
                 this.coordinates,
-                this.config.EnableClustering === true,  // Changed: now defaults to false
-                this.config.ClusterDistance ?? 80
+                this.config.enableClustering === true,  // Changed: now defaults to false
+                this.config.clusterDistance ?? 80
             );
             this.layers.markers.addTo(this.map);
         }
@@ -689,30 +693,30 @@ class CyclingMap {
 
         if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [20, 20] });
 
-        if (this.config.ShowElevationProfile) this.ShowElevationProfile();
+        if (this.config.showElevationProfile) this.ShowElevationProfile();
     }
 
     toggleClustering() {
         if (!this.layers.markers || this.coordinates.length === 0) return;
         
         this.map.removeLayer(this.layers.markers);
-        this.config.EnableClustering = !this.config.EnableClustering;
+        this.config.enableClustering = !this.config.enableClustering;
         this.layers.markers = createCyclingMarkers(
             this.coordinates,
-            this.config.EnableClustering,
-            this.config.ClusterDistance ?? 80
+            this.config.enableClustering,
+            this.config.clusterDistance ?? 80
         );
         this.layers.markers.addTo(this.map);
         
         // Update button state to reflect CURRENT clustering state
         const clusterBtn = document.querySelector('[data-action="cluster"]');
         if (clusterBtn) {
-            if (this.config.EnableClustering) {
+            if (this.config.enableClustering) {
                 clusterBtn.classList.add('active');
             } else {
                 clusterBtn.classList.remove('active'); 
             }
-            this.updateButtonText(clusterBtn, this.config.EnableClustering);
+            this.updateButtonText(clusterBtn, this.config.enableClustering);
         }
     }
 
@@ -948,22 +952,24 @@ class CyclingMap {
     }
 
     showDirections(directions) {
-        // For now, we'll just log the directions
-        // In a full implementation, you might show turn-by-turn markers
-        console.log('Directions:', directions);
-
+        // Store directions for focusing
+        this._currentDirections = directions;
+        
         // Clear any previous direction markers before adding new ones
         this.clearDirections();
 
         // Add direction markers to the map
         if (directions && directions.length > 0) {
+            const directionsGroup = L.layerGroup();
+            
             directions.forEach((direction, index) => {
                 if (direction.location) {
                     const marker = L.circleMarker([direction.location.latitude, direction.location.longitude], {
                         radius: 4,
                         color: '#FF9800',
                         fillColor: '#FF9800',
-                        fillOpacity: 0.8
+                        fillOpacity: 0.8,
+                        className: `direction-marker direction-${index}`
                     });
                     
                     const dist = direction.distance < 1000
@@ -978,15 +984,59 @@ class CyclingMap {
                         </div>
                     `);
                     
-                    if (!this.layers.directions) {
-                        this.layers.directions = L.layerGroup();
-                        this.layers.directions.addTo(this.map);
-                    }
-                    
-                    this.layers.directions.addLayer(marker);
+                    directionsGroup.addLayer(marker);
                 }
             });
+            
+            this.layers.directions = directionsGroup;
+            this.layers.directions.addTo(this.map);
+        }
     }
+
+    highlightDirection(index) {
+        if (this.layers.directions) {
+            // Reset all markers
+            this.layers.directions.eachLayer(layer => {
+                if (layer.setStyle) {
+                    layer.setStyle({
+                        radius: 4,
+                        color: '#FF9800',
+                        fillColor: '#FF9800',
+                        fillOpacity: 0.8
+                    });
+                }
+            });
+            
+            // Highlight specific marker
+            const targetMarker = document.querySelector(`.direction-${index}`);
+            if (targetMarker) {
+                this.layers.directions.eachLayer((layer, idx) => {
+                    if (layer.options.className && layer.options.className.includes(`direction-${index}`)) {
+                        layer.setStyle({
+                            radius: 8,
+                            color: '#FF5722',
+                            fillColor: '#FF5722',
+                            fillOpacity: 1.0
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    clearDirectionHighlight() {
+        if (this.layers.directions) {
+            this.layers.directions.eachLayer(layer => {
+                if (layer.setStyle) {
+                    layer.setStyle({
+                        radius: 4,
+                        color: '#FF9800',
+                        fillColor: '#FF9800',
+                        fillOpacity: 0.8
+                    });
+                }
+            });
+        }
     }
 
     // Reset planning-related state for a fresh start
@@ -1037,6 +1087,42 @@ class CyclingMap {
     setMapCenter(lat, lng, zoom = 13) {
         this.map.setView([lat, lng], zoom);
     }
+
+    focusOnWaypoint(index) {
+        if (index >= 0 && index < this.waypoints.length) {
+            const waypoint = this.waypoints[index];
+            this.map.setView([waypoint.latitude, waypoint.longitude], 16);
+            
+            // Optional: Show popup for the waypoint
+            if (this.layers.waypoints) {
+                this.layers.waypoints.eachLayer(layer => {
+                    if (layer.getLatLng && 
+                        Math.abs(layer.getLatLng().lat - waypoint.latitude) < 0.0001 && 
+                        Math.abs(layer.getLatLng().lng - waypoint.longitude) < 0.0001) {
+                        layer.openPopup();
+                    }
+                });
+            }
+        }
+    }
+
+    focusOnDirection(index) {
+        if (this.layers.directions && this._currentDirections && 
+            index >= 0 && index < this._currentDirections.length) {
+            const direction = this._currentDirections[index];
+            if (direction.location) {
+                this.map.setView([direction.location.latitude, direction.location.longitude], 17);
+                
+                // Highlight the direction marker
+                this.highlightDirection(index);
+                
+                // Clear highlight after 3 seconds
+                setTimeout(() => {
+                    this.clearDirectionHighlight();
+                }, 3000);
+            }
+        }
+    }
 }
 
 // Build API exposed to .NET
@@ -1055,9 +1141,13 @@ function buildApi(cm, elementId) {
         getWaypoints: () => cm.getWaypoints(),
         showRoute: (routeData) => cm.showRoute(routeData),
         clearRoute: () => cm.clearRoute(),
-    clearDirections: () => cm.clearDirections(),
-    resetRoutePlanning: () => cm.resetRoutePlanning(),
+        clearDirections: () => cm.clearDirections(),
+        resetRoutePlanning: () => cm.resetRoutePlanning(),
         showDirections: (directions) => cm.showDirections(directions),
+        highlightDirection: (index) => cm.highlightDirection(index),
+        clearDirectionHighlight: () => cm.clearDirectionHighlight(),
+        focusOnWaypoint: (index) => cm.focusOnWaypoint(index),
+        focusOnDirection: (index) => cm.focusOnDirection(index),
         fitBounds: (minLat, maxLat, minLng, maxLng) => cm.fitBounds(minLat, maxLat, minLng, maxLng),
         setMapCenter: (lat, lng, zoom) => cm.setMapCenter(lat, lng, zoom),
         setRoutePlanningCallbacks: (callbacks) => cm.setRoutePlanningCallbacks(callbacks),
