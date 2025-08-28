@@ -212,7 +212,8 @@ function createElevationProfile(map, coordinates) {
     reverseCoords: false,               // we're passing [lon,lat,ele]
     preferCanvas: true,
     summary: 'inline',
-    autofitBounds: false                // we fit bounds ourselves
+    autofitBounds: false,               // we fit bounds ourselves
+    legend: false                       // disable legend
   }).addTo(map);
 
   // Build a proper GeoJSON "Feature" with 3D coordinates
@@ -337,7 +338,7 @@ class CyclingMap {
       }
       
       
-      /* Mobile responsive styles */
+      /* Tablet styles */
       @media (max-width:768px) { 
         .cycling-popup { min-width:150px; max-width:250px; }
         .cycling-popup div { font-size:12px; }
@@ -352,19 +353,29 @@ class CyclingMap {
         }
         
         .map-control-btn { 
-          padding: 8px 12px; 
+          padding: 10px 14px; 
           font-size: 12px; 
-          min-width: 120px;
+          min-width: 110px;
           flex: 1;
-          max-width: 200px;
+          max-width: 180px;
           text-align: center;
           touch-action: manipulation;
           -webkit-tap-highlight-color: transparent;
+          transition: all 0.15s ease;
+        }
+        
+        .map-control-btn:hover {
+          transform: translateY(-1px);
         }
         
         .map-control-btn:active {
-          transform: translateY(0px);
+          transform: scale(0.96);
           background: #e0e0e0;
+          transition: all 0.1s ease;
+        }
+        
+        .map-control-btn.active:active {
+          background: #5a6fd8;
         }
         
         #elevation-profile { 
@@ -376,7 +387,8 @@ class CyclingMap {
         }
       }
       
-      @media (max-width:480px) { 
+      /* Mobile styles - show compact buttons */
+      @media (max-width:600px) { 
         .cycling-popup { min-width:120px; max-width:200px; }
         .cycling-popup div { font-size:11px; }
         
@@ -384,30 +396,42 @@ class CyclingMap {
           margin-bottom: 8px; 
           margin-left: 8px; 
           gap: 6px; 
-          flex-direction: column;
-          align-items: stretch;
-          width: calc(100vw - 16px);
-          max-width: 300px;
+          flex-direction: row;
+          align-items: center;
+          max-width: calc(100vw - 16px);
         }
         
         .map-control-btn { 
-          padding: 10px 12px; 
-          font-size: 13px; 
-          min-width: auto;
-          width: 100%;
+          padding: 12px; 
+          font-size: 18px; 
+          min-width: 48px;
+          width: 48px;
+          height: 48px;
           flex: none;
-          border-radius: 6px;
-          min-height: 44px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
           touch-action: manipulation;
           -webkit-tap-highlight-color: transparent;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+          overflow: hidden;
+        }
+        
+        .map-control-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,.3);
         }
         
         .map-control-btn:active {
-          transform: scale(0.98);
+          transform: scale(0.92);
           background: #e0e0e0;
+          transition: all 0.1s ease;
+        }
+        
+        .map-control-btn.active:active {
+          background: #5a6fd8;
         }
         
         .start-marker, .end-marker { font-size:14px; }
@@ -419,22 +443,26 @@ class CyclingMap {
         }
       }
       
-      /* Extra small screens */
-      @media (max-width:360px) {
+      /* Extra small screens - even more compact */
+      @media (max-width:400px) {
         .leaflet-bottom .leaflet-left .map-controls {
-          margin-left: 5px;
-          margin-bottom: 5px;
-          width: calc(100vw - 10px);
+          margin-left: 6px;
+          margin-bottom: 6px;
+          gap: 4px;
+          max-width: calc(100vw - 12px);
         }
         
         .map-control-btn {
-          font-size: 12px;
-          padding: 8px 10px;
-          min-height: 40px;
+          font-size: 16px;
+          padding: 10px;
+          min-width: 44px;
+          width: 44px;
+          height: 44px;
+          border-radius: 6px;
         }
         
         #elevation-profile {
-          margin-top: 5px;
+          margin-top: 6px;
           max-height: 30vh;
         }
       }
@@ -492,9 +520,13 @@ class CyclingMap {
         L.DomEvent.disableScrollPropagation(controlDiv);
 
         const clusterBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
-
-        clusterBtn.innerHTML = this.config.EnableClustering === true ? '📍 Clustering ON' : '📍 Clustering OFF';
+        clusterBtn.setAttribute('data-action', 'cluster');
+        clusterBtn.setAttribute('data-full-text-on', '📍 Clustering ON');
+        clusterBtn.setAttribute('data-full-text-off', '📍 Clustering OFF');
+        clusterBtn.setAttribute('data-compact-text', '📍');
         clusterBtn.title = 'Toggle marker clustering';
+        
+        this.updateButtonText(clusterBtn, this.config.EnableClustering === true);
         if (this.config.EnableClustering === true) {
             clusterBtn.classList.add('active');
         }
@@ -503,14 +535,65 @@ class CyclingMap {
         });
 
         const elevationBtn = L.DomUtil.create('button', 'map-control-btn', controlDiv);
-        elevationBtn.innerHTML = '📊 Show Elevation';
+        elevationBtn.setAttribute('data-action', 'elevation');
+        elevationBtn.setAttribute('data-full-text-show', '📊 Show Elevation');
+        elevationBtn.setAttribute('data-full-text-hide', '📊 Hide Elevation');
+        elevationBtn.setAttribute('data-compact-text', '📊');
         elevationBtn.title = 'Show elevation profile';
+        
+        this.updateButtonText(elevationBtn, false);
         L.DomEvent.on(elevationBtn, 'click', () => {
             this.showElevationProfile();
         });
 
         const Custom = L.Control.extend({ onAdd: () => controlDiv });
         new Custom({ position: 'bottomleft' }).addTo(this.map);
+        
+        // Update button text on resize
+        this.setupResponsiveButtonText();
+    }
+
+    setupResponsiveButtonText() {
+        const updateAllButtons = () => {
+            const clusterBtn = document.querySelector('[data-action="cluster"]');
+            const elevationBtn = document.querySelector('[data-action="elevation"]');
+            
+            if (clusterBtn) {
+                this.updateButtonText(clusterBtn, clusterBtn.classList.contains('active'));
+            }
+            if (elevationBtn) {
+                this.updateButtonText(elevationBtn, elevationBtn.classList.contains('active'));
+            }
+        };
+
+        // Update on resize with debouncing
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(updateAllButtons, 100);
+        });
+        
+        // Initial update
+        setTimeout(updateAllButtons, 0);
+    }
+
+    updateButtonText(button, isActive) {
+        const isMobile = window.innerWidth <= 600;
+        
+        if (isMobile) {
+            button.innerHTML = button.getAttribute('data-compact-text');
+        } else {
+            const action = button.getAttribute('data-action');
+            if (action === 'cluster') {
+                button.innerHTML = isActive ? 
+                    button.getAttribute('data-full-text-on') : 
+                    button.getAttribute('data-full-text-off');
+            } else if (action === 'elevation') {
+                button.innerHTML = isActive ? 
+                    button.getAttribute('data-full-text-hide') : 
+                    button.getAttribute('data-full-text-show');
+            }
+        }
     }
 
     addRouteData(coordinates) {
@@ -596,15 +679,14 @@ class CyclingMap {
         this.layers.markers.addTo(this.map);
         
         // Update button state to reflect CURRENT clustering state
-        const clusterBtn = document.querySelector('.map-control-btn[title="Toggle marker clustering"]');
+        const clusterBtn = document.querySelector('[data-action="cluster"]');
         if (clusterBtn) {
             if (this.config.EnableClustering) {
                 clusterBtn.classList.add('active');
-                clusterBtn.innerHTML = '📍 Clustering ON';
             } else {
                 clusterBtn.classList.remove('active'); 
-                clusterBtn.innerHTML = '📍 Clustering OFF';
             }
+            this.updateButtonText(clusterBtn, this.config.EnableClustering);
         }
     }
 
@@ -634,15 +716,15 @@ class CyclingMap {
         div.style.display = isCurrentlyVisible ? 'none' : 'block';
         
         // Update button state to reflect CURRENT state (not inverted)
-        const elevationBtn = document.querySelector('.map-control-btn[title="Show elevation profile"]');
+        const elevationBtn = document.querySelector('[data-action="elevation"]');
         if (elevationBtn) {
-            if (div.style.display === 'block') {
+            const isActive = div.style.display === 'block';
+            if (isActive) {
                 elevationBtn.classList.add('active');
-                elevationBtn.innerHTML = '📊 Hide Elevation';
             } else {
                 elevationBtn.classList.remove('active');
-                elevationBtn.innerHTML = '📊 Show Elevation';
             }
+            this.updateButtonText(elevationBtn, isActive);
         }
     }
 
