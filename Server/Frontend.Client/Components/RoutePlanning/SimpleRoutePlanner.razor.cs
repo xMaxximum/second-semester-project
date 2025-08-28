@@ -500,24 +500,24 @@ public partial class SimpleRoutePlanner : IAsyncDisposable
     {
         return type switch
         {
-            DirectionType.Start => "🟢",
-            DirectionType.End => "🔴",
-            DirectionType.TurnLeft => "↰",
-            DirectionType.TurnRight => "↱",
-            DirectionType.TurnSlightLeft => "↖",
-            DirectionType.TurnSlightRight => "↗",
-            DirectionType.TurnSharpLeft => "↺",
-            DirectionType.TurnSharpRight => "↻",
-            DirectionType.UTurn => "🔄",
-            DirectionType.RoundaboutEnter => "🔄",
-            DirectionType.RoundaboutExit => "↗",
-            DirectionType.Continue => "↑",
-            DirectionType.Merge => "🔀",
-            DirectionType.ForkLeft => "↖",
-            DirectionType.ForkRight => "↗",
-            DirectionType.KeepLeft => "↖",
-            DirectionType.KeepRight => "↗",
-            _ => "→"
+            DirectionType.Start => Icons.Material.Filled.PlayArrow,
+            DirectionType.End => Icons.Material.Filled.Stop,
+            DirectionType.TurnLeft => Icons.Material.Filled.TurnLeft,
+            DirectionType.TurnRight => Icons.Material.Filled.TurnRight,
+            DirectionType.TurnSlightLeft => Icons.Material.Filled.TurnSlightLeft,
+            DirectionType.TurnSlightRight => Icons.Material.Filled.TurnSlightRight,
+            DirectionType.TurnSharpLeft => Icons.Material.Filled.TurnSharpLeft,
+            DirectionType.TurnSharpRight => Icons.Material.Filled.TurnSharpRight,
+            DirectionType.UTurn => Icons.Material.Filled.UTurnLeft,
+            DirectionType.RoundaboutEnter => Icons.Material.Filled.Autorenew,
+            DirectionType.RoundaboutExit => Icons.Material.Filled.ExitToApp,
+            DirectionType.Continue => Icons.Material.Filled.ArrowUpward,
+            DirectionType.Merge => Icons.Material.Filled.MergeType,
+            DirectionType.ForkLeft => Icons.Material.Filled.CallSplit,
+            DirectionType.ForkRight => Icons.Material.Filled.CallSplit,
+            DirectionType.KeepLeft => Icons.Material.Filled.TurnSlightLeft,
+            DirectionType.KeepRight => Icons.Material.Filled.TurnSlightRight,
+            _ => Icons.Material.Filled.ArrowForward
         };
     }
 

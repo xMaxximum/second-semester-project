@@ -1,25 +1,42 @@
 @page "/route-planner"
 @using Shared.Models
 
-<div class="route-planner-page">
-    <div class="page-header">
-        <h2>🗺️ Route Planner</h2>
-        <p>Plan your cycling or walking routes with turn-by-turn directions</p>
-    </div>
-
-    <div class="route-planner-layout">
-        <div class="route-planner-sidebar">
-            <SimpleRoutePlanner MapElementId="route-planner-map" 
-                         InitialLatitude="51.505" 
-                         InitialLongitude="-0.09"
-                         OnRouteCalculated="HandleRouteCalculated" />
-        </div>
-        
-        <div class="route-planner-map-container">
-            <div id="route-planner-map" style="width: 100%; height: 100%; min-height: 500px;"></div>
-        </div>
-    </div>
-</div>
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-16 mb-16">
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudStack Spacing="3">
+            <!-- Page Header -->
+            <MudText Typo="Typo.h4" Color="Color.Primary" Class="icon-header">
+                <img src="/route.svg" alt="Route Icon" style="width: 24px; height: 24px; filter: brightness(0) saturate(100%) invert(33%) sepia(54%) saturate(3034%) hue-rotate(239deg) brightness(91%) contrast(89%); margin-right: 8px;" />
+                Route Planner
+            </MudText>
+            <MudText Typo="Typo.body1" Style="color: var(--mud-palette-text-primary)">
+                Plan your cycling or walking routes with turn-by-turn directions
+            </MudText>
+            
+            <MudDivider />
+            
+            <!-- Main Content Grid -->
+            <MudGrid Spacing="3" Class="route-planner-grid">
+                <!-- Route Planning Controls -->
+                <MudItem xs="12" lg="4">
+                    <MudPaper Class="pa-4" Elevation="3" Style="height: fit-content;">
+                        <SimpleRoutePlanner MapElementId="route-planner-map" 
+                                     InitialLatitude="51.505" 
+                                     InitialLongitude="-0.09"
+                                     OnRouteCalculated="HandleRouteCalculated" />
+                    </MudPaper>
+                </MudItem>
+                
+                <!-- Map Container -->
+                <MudItem xs="12" lg="8">
+                    <MudPaper Elevation="3" Style="height: 600px; border-radius: 8px; overflow: hidden;">
+                        <div id="route-planner-map" style="width: 100%; height: 100%;"></div>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
 
 @code {
     private void HandleRouteCalculated(Shared.Models.RouteData route)
@@ -30,83 +47,23 @@
 }
 
 <style>
-    .route-planner-page {
-        padding: 20px;
-        height: calc(100vh - 120px);
+    .route-planner-grid {
+        min-height: 600px;
+    }
+    
+    .icon-header {
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        font-weight: 600;
     }
-
-    .page-header {
-        margin-bottom: 20px;
-    }
-
-    .page-header h2 {
-        margin: 0;
-        color: #333;
-        font-size: 1.8rem;
-    }
-
-    .page-header p {
-        margin: 5px 0 0 0;
-        color: #666;
-        font-size: 1rem;
-    }
-
-    .route-planner-layout {
-        display: grid;
-        grid-template-columns: 400px 1fr;
-        gap: 20px;
-        height: 100%;
-        min-height: 0;
-    }
-
-    .route-planner-sidebar {
-        overflow-y: auto;
-        max-height: 100%;
-    }
-
-    .route-planner-map-container {
-        background: #f0f0f0;
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-    }
-
-    @@media (max-width: 1200px) {
-        .route-planner-layout {
-            grid-template-columns: 350px 1fr;
-        }
-    }
-
-    @@media (max-width: 900px) {
-        .route-planner-layout {
-            grid-template-columns: 1fr;
-            grid-template-rows: auto 1fr;
-            gap: 15px;
+    
+    @@media (max-width: 1280px) {
+        .route-planner-grid .mud-item:first-child {
+            order: 2;
         }
         
-        .route-planner-sidebar {
-            max-height: 300px;
-        }
-        
-        .route-planner-map-container {
-            min-height: 400px;
-        }
-    }
-
-    @@media (max-width: 600px) {
-        .route-planner-page {
-            padding: 10px;
-            height: calc(100vh - 80px);
-        }
-        
-        .route-planner-layout {
-            gap: 10px;
-        }
-        
-        .page-header h2 {
-            font-size: 1.5rem;
+        .route-planner-grid .mud-item:last-child {
+            order: 1;
         }
     }
 </style>
