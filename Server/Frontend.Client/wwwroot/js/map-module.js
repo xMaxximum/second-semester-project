@@ -328,45 +328,14 @@ class CyclingMap {
       }
       
       #elevation-profile { 
-        position:absolute; 
-        bottom:80px; 
-        right:20px; 
+        position:relative; 
         background:#fff; 
-        border-radius:5px; 
-        box-shadow:0 2px 10px rgba(0,0,0,.3); 
-        padding:10px; 
-        z-index:1000; 
-        max-width:90vw; 
-        cursor: move;
-        user-select: none;
+        border-radius:0; 
+        margin-top:10px;
+        width:100%;
+        box-sizing:border-box;
       }
       
-      #elevation-profile .elevation-drag-handle {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 25px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 5px 5px 0 0;
-        cursor: move;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 12px;
-        font-weight: bold;
-        margin: -10px -10px 10px -10px;
-      }
-      
-      #elevation-profile .elevation-drag-handle:hover {
-        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-      }
-      
-      #elevation-profile.dragging {
-        opacity: 0.8;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-      }
       
       /* Mobile responsive styles */
       @media (max-width:768px) { 
@@ -399,10 +368,8 @@ class CyclingMap {
         }
         
         #elevation-profile { 
-          bottom: 80px; 
-          right: 10px; 
-          left: 10px; 
-          width: auto; 
+          margin-top: 10px; 
+          width: 100%; 
           max-width: none; 
           max-height: 40vh;
           overflow: auto;
@@ -446,18 +413,9 @@ class CyclingMap {
         .start-marker, .end-marker { font-size:14px; }
         
         #elevation-profile { 
-          bottom: 70px; 
-          right: 5px; 
-          left: 5px; 
+          margin-top: 8px; 
           max-height: 35vh;
           overflow: auto;
-        }
-        
-        #elevation-profile .elevation-drag-handle {
-          height: 30px;
-          font-size: 13px;
-          touch-action: manipulation;
-          -webkit-tap-highlight-color: transparent;
         }
       }
       
@@ -476,9 +434,7 @@ class CyclingMap {
         }
         
         #elevation-profile {
-          bottom: 60px;
-          right: 2px;
-          left: 2px;
+          margin-top: 5px;
           max-height: 30vh;
         }
       }
@@ -655,21 +611,17 @@ class CyclingMap {
     showElevationProfile() {
         if (this.coordinates.length === 0) return;
 
+        const mapContainer = document.getElementById(this.elementId);
+        if (!mapContainer) return;
+
         let div = document.getElementById('elevation-profile');
         if (!div) {
             div = document.createElement('div');
             div.id = 'elevation-profile';
             div.style.display = 'none';
-            document.body.appendChild(div);
             
-            // Add drag handle
-            const dragHandle = document.createElement('div');
-            dragHandle.className = 'elevation-drag-handle';
-            dragHandle.innerHTML = '📊 Elevation Profile - Drag to Move';
-            div.appendChild(dragHandle);
-            
-            // Make the elevation profile draggable
-            this.makeDraggable(div, dragHandle);
+            // Append to the map container's parent to sit below the map
+            mapContainer.parentElement.appendChild(div);
         }
 
         const isCurrentlyVisible = div.style.display !== 'none';
@@ -691,74 +643,6 @@ class CyclingMap {
                 elevationBtn.classList.remove('active');
                 elevationBtn.innerHTML = '📊 Show Elevation';
             }
-        }
-    }
-
-    // Make an element draggable
-    makeDraggable(element, handle) {
-        let isDragging = false;
-        let currentX = 0;
-        let currentY = 0;
-        let initialX = 0;
-        let initialY = 0;
-        let xOffset = 0;
-        let yOffset = 0;
-
-        // Mouse events for desktop
-        handle.addEventListener('mousedown', dragStart);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', dragEnd);
-
-        // Touch events for mobile - explicitly non-passive to allow preventDefault
-        handle.addEventListener('touchstart', dragStart, { passive: false });
-        document.addEventListener('touchmove', drag, { passive: false });
-        document.addEventListener('touchend', dragEnd, { passive: false });
-
-        function dragStart(e) {
-            if (e.type === 'touchstart') {
-                initialX = e.touches[0].clientX - xOffset;
-                initialY = e.touches[0].clientY - yOffset;
-            } else {
-                initialX = e.clientX - xOffset;
-                initialY = e.clientY - yOffset;
-            }
-
-            if (e.target === handle) {
-                isDragging = true;
-                element.classList.add('dragging');
-            }
-        }
-
-        function drag(e) {
-            if (isDragging) {
-                e.preventDefault();
-                
-                if (e.type === 'touchmove') {
-                    currentX = e.touches[0].clientX - initialX;
-                    currentY = e.touches[0].clientY - initialY;
-                } else {
-                    currentX = e.clientX - initialX;
-                    currentY = e.clientY - initialY;
-                }
-
-                xOffset = currentX;
-                yOffset = currentY;
-
-                // Constrain to viewport bounds
-                const rect = element.getBoundingClientRect();
-                const maxX = window.innerWidth - rect.width;
-                const maxY = window.innerHeight - rect.height;
-                
-                xOffset = Math.max(0, Math.min(xOffset, maxX));
-                yOffset = Math.max(0, Math.min(yOffset, maxY));
-
-                element.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
-            }
-        }
-
-        function dragEnd(e) {
-            isDragging = false;
-            element.classList.remove('dragging');
         }
     }
 
