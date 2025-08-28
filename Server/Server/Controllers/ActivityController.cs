@@ -331,16 +331,24 @@ namespace Server.Controllers
                     return NotFound(ApiResponse<ActivityNavigationResponse>.Failure("Activity not found"));
 
                 // Get previous activity (latest activity with StartTime < current activity's StartTime)
+                // For activities with the same StartTime, use ID as secondary sort (descending for previous)
                 var previousActivity = await _context.Activities
-                    .Where(a => a.UserId == userId.Value && a.StartTime < currentActivity.StartTime)
+                    .Where(a => a.UserId == userId.Value && 
+                               (a.StartTime < currentActivity.StartTime || 
+                                (a.StartTime == currentActivity.StartTime && a.Id < currentActivity.Id)))
                     .OrderByDescending(a => a.StartTime)
+                    .ThenByDescending(a => a.Id)
                     .Select(a => new { a.Id, a.Name })
                     .FirstOrDefaultAsync();
 
                 // Get next activity (earliest activity with StartTime > current activity's StartTime)
+                // For activities with the same StartTime, use ID as secondary sort (ascending for next)
                 var nextActivity = await _context.Activities
-                    .Where(a => a.UserId == userId.Value && a.StartTime > currentActivity.StartTime)
+                    .Where(a => a.UserId == userId.Value && 
+                               (a.StartTime > currentActivity.StartTime || 
+                                (a.StartTime == currentActivity.StartTime && a.Id > currentActivity.Id)))
                     .OrderBy(a => a.StartTime)
+                    .ThenBy(a => a.Id)
                     .Select(a => new { a.Id, a.Name })
                     .FirstOrDefaultAsync();
 
