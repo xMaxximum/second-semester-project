@@ -64,7 +64,7 @@ h1:focus {
     position: fixed;
     inset: 0;
     z-index: -1;
-    opacity: 0.05;
+    opacity: 0.2;
 }
 
 .table-header {
@@ -139,4 +139,14 @@ html, body {
             padding-top: 56px;
         }
     }
+}
+
+/* Default Light Theme */
+.mud-theme-default {
+    --pane-color: #f0f4fc;
+}
+
+/* Dark Mode */
+.mud-theme-dark {
+    --pane-color: #40445c;
 }
