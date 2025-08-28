@@ -111,7 +111,7 @@
         
         @if (_searchResults.Any())
         {
-            <MudPaper Elevation="2" Class="pa-2">
+            <MudPaper Elevation="3" Class="pa-2">
                 <MudStack Spacing="1">
                     @foreach (var result in _searchResults)
                     {
@@ -210,7 +210,7 @@
                     var index = i; // Capture for closure
                     var waypoint = _waypoints[i];
                     
-                    <MudPaper Class="pa-3" Elevation="1" Style="cursor: pointer;" @onclick="() => FocusOnWaypoint(index)">
+                    <MudPaper Class="pa-3" Elevation="3" Style="cursor: pointer;" @onclick="() => FocusOnWaypoint(index)">
                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                             <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="flex-grow-1">
                                 <div>
@@ -258,7 +258,7 @@
             
             <MudGrid Spacing="2">
                 <MudItem xs="4">
-                    <MudPaper Class="pa-3 text-center" Elevation="1">
+                    <MudPaper Class="pa-3 text-center" Elevation="3">
                         <MudStack Spacing="1" AlignItems="AlignItems.Center">
                             <MudIcon Icon="@Icons.Material.Filled.Straighten" Color="Color.Primary" />
                             <MudText Typo="Typo.body2" Color="Color.Primary">Distance</MudText>
@@ -267,7 +267,7 @@
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudPaper Class="pa-3 text-center" Elevation="1">
+                    <MudPaper Class="pa-3 text-center" Elevation="3">
                         <MudStack Spacing="1" AlignItems="AlignItems.Center">
                             <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Secondary" />
                             <MudText Typo="Typo.body2" Color="Color.Secondary">Duration</MudText>
@@ -276,7 +276,7 @@
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudPaper Class="pa-3 text-center" Elevation="1">
+                    <MudPaper Class="pa-3 text-center" Elevation="3">
                         <MudStack Spacing="1" AlignItems="AlignItems.Center">
                             <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" />
                             <MudText Typo="Typo.body2" Color="Color.Success">Elevation</MudText>
@@ -299,7 +299,7 @@
                 Turn-by-Turn Directions
             </MudText>
             
-            <MudPaper Class="pa-2" Elevation="1" Style="max-height: 300px; overflow-y: auto;">
+            <MudPaper Class="pa-2" Elevation="3" Style="max-height: 300px; overflow-y: auto;">
                 <MudStack Spacing="1">
                     @foreach (var (direction, index) in _currentRoute.Directions.Select((d, i) => (d, i)))
                     {

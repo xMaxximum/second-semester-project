@@ -66,7 +66,11 @@ public class RouteService : IRouteService
                 ["coordinates"] = coordinates,
                 ["instructions"] = true,
                 ["elevation"] = true,
-                ["extra_info"] = new[] { "surface", "steepness" }
+                ["extra_info"] = new[] { "surface", "steepness" },
+                ["options"] = new Dictionary<string, object?>
+                {
+                    ["avoid_features"] = GetAvoidFeatures(request)
+                }
             };
 
             var json = JsonSerializer.Serialize(payload);
@@ -242,7 +246,7 @@ public class RouteService : IRouteService
         {
             Distance = summary.GetProperty("distance").GetDouble(),
             Duration = summary.GetProperty("duration").GetDouble(),
-            Elevation = summary.TryGetProperty("ascent", out var ascent) ? ascent.GetDouble() : 0
+            Elevation = CalculateElevationGain(segments, summary)
         };
 
         // Direct coordinates array from GeoJSON
@@ -289,6 +293,15 @@ public class RouteService : IRouteService
         
         routeData.Directions = directions;
 
+        // If elevation was not calculated from segments/summary, try to calculate from geometry
+        if (routeData.Elevation == 0 && routeData.Geometry.Any(p => p.Elevation.HasValue))
+        {
+            _logger.LogInformation("Primary elevation calculation returned 0, trying geometry-based calculation...");
+            routeData.Elevation = CalculateElevationGainFromGeometry(routeData.Geometry);
+        }
+        
+        _logger.LogInformation("Final elevation result: {Elevation}m", routeData.Elevation);
+
         // Calculate bounds
         if (routeData.Geometry.Any())
         {
@@ -334,6 +347,102 @@ public class RouteService : IRouteService
         }
 
         return results;
+    }
+
+    private double CalculateElevationGainFromGeometry(List<Shared.Models.RoutePoint> geometry)
+    {
+        _logger.LogInformation("Calculating elevation from geometry with {Count} points", geometry.Count);
+        
+        double totalGain = 0;
+        int pointsWithElevation = 0;
+        
+        for (int i = 1; i < geometry.Count; i++)
+        {
+            var prev = geometry[i - 1];
+            var current = geometry[i];
+            
+            if (prev.Elevation.HasValue && current.Elevation.HasValue)
+            {
+                pointsWithElevation++;
+                var elevationDiff = current.Elevation.Value - prev.Elevation.Value;
+                
+                if (i <= 5) // Log first few points for debugging
+                {
+                    _logger.LogInformation("Point {Index}: prev={PrevElevation}m, current={CurrentElevation}m, diff={Diff}m", 
+                        i, prev.Elevation.Value, current.Elevation.Value, elevationDiff);
+                }
+                
+                if (elevationDiff > 0) // Only count uphill as elevation gain
+                {
+                    totalGain += elevationDiff;
+                }
+            }
+        }
+        
+        _logger.LogInformation("Geometry calculation: {PointsWithElevation}/{TotalPoints} points had elevation data, total gain: {TotalGain}m", 
+            pointsWithElevation, geometry.Count, totalGain);
+            
+        return totalGain;
+    }
+
+    private double CalculateElevationGain(JsonElement segments, JsonElement summary)
+    {
+        // Log the raw summary data for debugging
+        _logger.LogInformation("Raw summary data: {Summary}", summary.GetRawText());
+        
+        // First try to get elevation from summary (ascent property)
+        if (summary.TryGetProperty("ascent", out var ascent))
+        {
+            var elevation = ascent.GetDouble();
+            _logger.LogInformation("Found elevation from summary.ascent: {Elevation}m", elevation);
+            return elevation;
+        }
+
+        // Check for other possible elevation properties in summary
+        foreach (var property in summary.EnumerateObject())
+        {
+            _logger.LogInformation("Summary property: {Name} = {Value}", property.Name, property.Value.GetRawText());
+        }
+
+        // If not available in summary, try to calculate from segments
+        double totalElevationGain = 0;
+        _logger.LogInformation("Segments count: {Count}", segments.GetArrayLength());
+        
+        foreach (var segment in segments.EnumerateArray())
+        {
+            // Log segment properties for debugging
+            _logger.LogInformation("Segment data: {Segment}", segment.GetRawText());
+            
+            if (segment.TryGetProperty("ascent", out var segmentAscent))
+            {
+                var segmentElevation = segmentAscent.GetDouble();
+                totalElevationGain += segmentElevation;
+                _logger.LogInformation("Found segment ascent: {Elevation}m, total so far: {Total}m", segmentElevation, totalElevationGain);
+            }
+            
+            // Check for other elevation-related properties
+            foreach (var property in segment.EnumerateObject())
+            {
+                if (property.Name.Contains("elevation") || property.Name.Contains("ascent") || property.Name.Contains("descent"))
+                {
+                    _logger.LogInformation("Segment elevation property: {Name} = {Value}", property.Name, property.Value.GetRawText());
+                }
+            }
+        }
+
+        if (totalElevationGain > 0)
+        {
+            _logger.LogInformation("Calculated elevation from segments: {Elevation}m", totalElevationGain);
+        }
+        else
+        {
+            _logger.LogWarning("No elevation data found in OpenRouteService response");
+        }
+
+        // If still no elevation data found, return 0
+        // Note: Elevation calculation from geometry coordinates would require 
+        // the elevation data to be included in the coordinates array (3D coordinates)
+        return totalElevationGain;
     }
 
     private DirectionType ParseDirectionType(JsonElement step)
