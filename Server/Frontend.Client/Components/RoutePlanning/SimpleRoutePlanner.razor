@@ -1,0 +1,239 @@
+@using Shared.Models
+@using MudBlazor
+
+<div class="route-planner">
+    <div class="route-planner-header">
+        <h3>🗺️ Route Planner</h3>
+        <div class="route-controls">
+            <MudButton Variant="@(_routePlanningEnabled ? Variant.Filled : Variant.Outlined)" 
+                      Color="@(_routePlanningEnabled ? Color.Error : Color.Primary)"
+                      StartIcon="@(_routePlanningEnabled ? Icons.Material.Filled.Stop : Icons.Material.Filled.Place)"
+                      OnClick="ToggleRoutePlanning"
+                      Class="route-control-btn">
+                @(_routePlanningEnabled ? "Stop Planning" : "Start Planning")
+            </MudButton>
+            
+            @if (!_routePlanningEnabled && _waypoints.Count == 0)
+            {
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary"
+                          StartIcon="Icons.Material.Filled.MyLocation"
+                          OnClick="StartFromMyLocation" 
+                          Disabled="@_gettingLocation"
+                          Class="route-control-btn">
+                    @if (_gettingLocation)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <span class="ml-2">Getting Location...</span>
+                    }
+                    else
+                    {
+                        <span>Start from My Location</span>
+                    }
+                </MudButton>
+            }
+            
+            @if (_waypoints.Count > 0)
+            {
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Secondary"
+                          StartIcon="Icons.Material.Filled.Clear"
+                          OnClick="ClearWaypoints"
+                          Class="route-control-btn">
+                    Clear
+                </MudButton>
+            }
+            
+            @if (_waypoints.Count >= 2)
+            {
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Success"
+                          StartIcon="@(_calculatingRoute ? Icons.Material.Filled.Refresh : Icons.Material.Filled.Route)"
+                          OnClick="CalculateRoute" 
+                          Disabled="@_calculatingRoute"
+                          Class="route-control-btn">
+                    @if (_calculatingRoute)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <span class="ml-2">Calculating...</span>
+                    }
+                    else
+                    {
+                        <span>Calculate Route</span>
+                    }
+                </MudButton>
+            }
+        </div>
+        
+    </div>
+
+    <div class="route-planner-content">
+        @if (_routePlanningEnabled)
+        {
+            <MudAlert Severity="Severity.Info" Icon="Icons.Material.Filled.TouchApp" Class="mb-3">
+                Click on the map to add waypoints
+            </MudAlert>
+        }
+
+        <!-- Address Search -->
+        <div class="address-search mb-3">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Search Address" 
+                       @bind="_searchQuery" 
+                       @onkeypress="OnSearchKeyPress" 
+                       @oninput="OnSearchInput" />
+                <button class="btn btn-outline-primary" type="button" @onclick="SearchAddress">
+                    🔍 Search
+                </button>
+            </div>
+            
+            @if (_searchResults.Any())
+            {
+                <div class="search-results">
+                    @foreach (var result in _searchResults)
+                    {
+                        <button type="button" class="search-result-item" @onclick="() => AddWaypointFromSearch(result)">
+                            <div class="search-result-content">
+                                <div class="search-result-name">📍 @result.DisplayName</div>
+                                @if (!string.IsNullOrEmpty(result.Address))
+                                {
+                                    <div class="search-result-address">@result.Address</div>
+                                }
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Route Profile Selection -->
+        <div class="route-profile mb-3">
+            <label class="form-label">Route Profile:</label>
+            <select class="form-select" @bind="_selectedProfile">
+                <option value="@RouteProfile.Cycling">🚴 Cycling</option>
+                <option value="@RouteProfile.CyclingMountain">🚵 Mountain Bike</option>
+                <option value="@RouteProfile.CyclingRoad">🚴‍♀️ Road Bike</option>
+                <option value="@RouteProfile.Walking">🚶 Walking</option>
+                <option value="@RouteProfile.Driving">🚗 Driving</option>
+            </select>
+        </div>
+
+        <!-- Route Options -->
+        <div class="route-options mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" @bind="_avoidHighways" id="avoidHighways">
+                <label class="form-check-label" for="avoidHighways">
+                    Avoid Highways
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" @bind="_avoidTolls" id="avoidTolls">
+                <label class="form-check-label" for="avoidTolls">
+                    Avoid Tolls
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" @bind="_avoidFerries" id="avoidFerries">
+                <label class="form-check-label" for="avoidFerries">
+                    Avoid Ferries
+                </label>
+            </div>
+        </div>
+
+        <!-- Waypoints List -->
+        @if (_waypoints.Any())
+        {
+            <div class="waypoints-list mb-3">
+                <h4>📍 Waypoints (@_waypoints.Count)</h4>
+                @for (int i = 0; i < _waypoints.Count; i++)
+                {
+                    var index = i; // Capture for closure
+                    var waypoint = _waypoints[i];
+                    
+                    <div class="waypoint-item" @onclick="() => FocusOnWaypoint(index)" style="cursor: pointer;">
+                        <div class="waypoint-info">
+                            <div class="waypoint-icon">
+                                @if (index == 0)
+                                {
+                                    <span class="waypoint-start">🟢</span>
+                                }
+                                else if (index == _waypoints.Count - 1 && _waypoints.Count > 1)
+                                {
+                                    <span class="waypoint-end">🔴</span>
+                                }
+                                else
+                                {
+                                    <span class="waypoint-number">@(index + 1)</span>
+                                }
+                            </div>
+                            <div class="waypoint-details">
+                                <div class="waypoint-name">@waypoint.Name</div>
+                                <div class="waypoint-coords">@waypoint.Latitude.ToString("F4"), @waypoint.Longitude.ToString("F4")</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveWaypoint(index)">
+                            🗑️
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Route Information -->
+        @if (_currentRoute != null)
+        {
+            <div class="route-info mb-3">
+                <h4>📊 Route Information</h4>
+                <div class="route-stats">
+                    <div class="stat">
+                        <span class="stat-icon">📏</span>
+                        <span class="stat-value">@FormatDistance(_currentRoute.Distance)</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-icon">⏱️</span>
+                        <span class="stat-value">@FormatDuration(_currentRoute.Duration)</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-icon">⛰️</span>
+                        <span class="stat-value">@(_currentRoute.Elevation.ToString("F0")) m</span>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Directions -->
+        @if (_currentRoute?.Directions?.Any() == true)
+        {
+            <div class="directions">
+                <h4>🧭 Turn-by-Turn Directions</h4>
+                <div class="directions-list">
+                    @foreach (var (direction, index) in _currentRoute.Directions.Select((d, i) => (d, i)))
+                    {
+                        <div class="direction-item" 
+                             @onmouseenter="() => HighlightDirection(index)"
+                             @onmouseleave="ClearDirectionHighlight"
+                             @onclick="() => FocusOnDirection(index)"
+                             style="cursor: pointer;">
+                            <div class="direction-icon">@GetDirectionIcon(direction.Type)</div>
+                            <div class="direction-content">
+                                <div class="direction-instruction">@direction.Instruction</div>
+                                @if (direction.Distance > 0)
+                                {
+                                    <div class="direction-distance">@FormatDistance(direction.Distance)</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @_errorMessage
+                <button type="button" class="btn-close" @onclick="ClearError" aria-label="Close"></button>
+            </div>
+        }
+    </div>
+</div>
