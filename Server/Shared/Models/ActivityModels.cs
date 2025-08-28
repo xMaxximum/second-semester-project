@@ -218,6 +218,15 @@ namespace Shared.Models
             => new(false, message) { Errors = errors ?? new List<string>() };
     }
 
+    public class ActivityNavigationResponse
+    {
+        public long CurrentActivityId { get; set; }
+        public long? PreviousActivityId { get; set; }
+        public string? PreviousActivityName { get; set; }
+        public long? NextActivityId { get; set; }
+        public string? NextActivityName { get; set; }
+    }
+
     public enum ActivityStatus
     {
         InProgress = 0,

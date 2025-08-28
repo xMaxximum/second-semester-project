@@ -313,6 +313,55 @@ namespace Server.Controllers
             }
         }
 
+        // GET: api/activities/{id}/navigation
+        [HttpGet("{id}/navigation")]
+        public async Task<ActionResult<ApiResponse<ActivityNavigationResponse>>> GetActivityNavigation(long id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized(ApiResponse<ActivityNavigationResponse>.Failure("User not found"));
+
+                // Check if current activity exists and belongs to user
+                var currentActivity = await _context.Activities
+                    .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId.Value);
+
+                if (currentActivity == null)
+                    return NotFound(ApiResponse<ActivityNavigationResponse>.Failure("Activity not found"));
+
+                // Get previous activity (latest activity with StartTime < current activity's StartTime)
+                var previousActivity = await _context.Activities
+                    .Where(a => a.UserId == userId.Value && a.StartTime < currentActivity.StartTime)
+                    .OrderByDescending(a => a.StartTime)
+                    .Select(a => new { a.Id, a.Name })
+                    .FirstOrDefaultAsync();
+
+                // Get next activity (earliest activity with StartTime > current activity's StartTime)
+                var nextActivity = await _context.Activities
+                    .Where(a => a.UserId == userId.Value && a.StartTime > currentActivity.StartTime)
+                    .OrderBy(a => a.StartTime)
+                    .Select(a => new { a.Id, a.Name })
+                    .FirstOrDefaultAsync();
+
+                var response = new ActivityNavigationResponse
+                {
+                    CurrentActivityId = id,
+                    PreviousActivityId = previousActivity?.Id,
+                    PreviousActivityName = previousActivity?.Name,
+                    NextActivityId = nextActivity?.Id,
+                    NextActivityName = nextActivity?.Name
+                };
+
+                return Ok(ApiResponse<ActivityNavigationResponse>.Success(response, "Navigation data retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving activity navigation for {ActivityId}", id);
+                return StatusCode(500, ApiResponse<ActivityNavigationResponse>.Failure("Internal server error"));
+            }
+        }
+
         // POST: api/activities/seed
         [HttpPost("seed")]
         public async Task<ActionResult<ApiResponse<ActivityResponse>>> SeedActivity([FromBody] SeedActivityRequest request)
