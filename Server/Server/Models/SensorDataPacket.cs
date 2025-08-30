@@ -42,7 +42,7 @@ namespace Server.Models
         public double Longitude { get; set; }
         
         [Required]
-        public double ElevationGain { get; set; }
+        public double CurrentElevation { get; set; }
 
         // Acceleration data
         [Required]
@@ -94,7 +94,7 @@ namespace Server.Models
         // Method to validate checksum
         public bool ValidateChecksum()
         {
-            var calculatedChecksum = CurrentTemperature + CurrentSpeed + Latitude + Longitude + ElevationGain +
+            var calculatedChecksum = CurrentTemperature + CurrentSpeed + Latitude + Longitude + CurrentElevation +
                                    AccelerationX + AccelerationY + AccelerationZ;
             
             return Math.Abs(calculatedChecksum - Checksum) < 0.001; // Allow for small floating point differences

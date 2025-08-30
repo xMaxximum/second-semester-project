@@ -134,7 +134,7 @@ namespace Server.Controllers
                     CurrentSpeed = s.CurrentSpeed,
                     Latitude = s.Latitude,
                     Longitude = s.Longitude,
-                    ElevationGain = s.ElevationGain,
+                    ElevationGain = s.CurrentElevation,
                     AccelerationX = s.AccelerationX,
                     AccelerationY = s.AccelerationY,
                     AccelerationZ = s.AccelerationZ,
@@ -419,7 +419,7 @@ namespace Server.Controllers
                         CurrentSpeed = p.CurrentSpeed,
                         Latitude = p.Latitude,
                         Longitude = p.Longitude,
-                        ElevationGain = p.ElevationGain,
+                        CurrentElevation = p.ElevationGain,
                         AccelerationX = p.AccelerationX,
                         AccelerationY = p.AccelerationY,
                         AccelerationZ = p.AccelerationZ,
@@ -756,10 +756,7 @@ namespace Server.Controllers
             analytics.CaloriesBurned = analytics.AverageSpeed * durationHours * 50; // Rough estimation
 
             // Calculate elevation gain (would need altitude data from GPS or barometric sensor)
-            // TODO check for validity of this method
-            //analytics.ElevationGain = sensorData.Sum(s => s.ElevationGain);
-            
-            analytics.ElevationGain = sensorData.Max(s => s.ElevationGain) -  sensorData.Min(s => s.ElevationGain);
+            analytics.ElevationGain = sensorData.Max(s => s.CurrentElevation) -  sensorData.Min(s => s.CurrentElevation);
 
             return analytics;
         }
