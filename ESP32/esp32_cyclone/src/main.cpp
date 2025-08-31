@@ -31,6 +31,12 @@ bool recordOrUpload = false; // upload from the start (for testing), has to be s
 // only get data every 200ms
 unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dtTo1000ms = 0, dtTo200ms = 0;
 
+// gps related
+gpsData gpsdata;
+// GPS Serial
+TinyGPSPlus gps;
+
+
 void setup()
 {
   Serial.begin(115200);
@@ -55,7 +61,7 @@ void loop()
   if (recordOrUpload)
   {
     getSpeed();
-    readGPSData();
+    readGPSData(gps, gpsdata);
 
     currentTime = millis();
     dtTo200ms = currentTime - lastReadTime200ms;
@@ -171,56 +177,3 @@ void setupWlan()
 
 
 
-void setupGPS()
-{
-  Serial2.begin(9600);
-  Serial.println("GPS Serial started");
-}
-
-void readGPSData()
-{
-  while (Serial2.available() > 0)
-  {
-    if (gps.encode(Serial2.read()))
-    {
-      displayInfo();
-      Serial2.flush(); // clear the serial buffer after reading GPS data
-    }
-  }
-}
-
-void displayInfo()
-{
-  // Displaying Google Maps link with latitude and longitude information if GPS location is valid
-  if (gps.location.isValid() && gps.time.isValid())
-  {
-    updateAllData();
-  }
-}
-
-void updateAllData()
-{
-  gpsdata.latitude = gps.location.lat();
-  gpsdata.longitude = gps.location.lng();
-  gpsdata.height = trunc(gps.altitude.meters());
-
-  int year = gps.date.year();
-  int month = gps.date.month();
-  int day = gps.date.day();
-  int hour = gps.time.hour();
-  int minute = gps.time.minute();
-  int second = gps.time.second();
-
-  struct tm timeinfo;
-  timeinfo.tm_year = year - 1900; // Year since 1900
-  timeinfo.tm_mon = month - 1;    // Month from 0 to 11
-  timeinfo.tm_mday = day;
-  timeinfo.tm_hour = hour;
-  timeinfo.tm_min = minute;
-  timeinfo.tm_sec = second;
-  timeinfo.tm_isdst = 0; // No daylight saving time
-
-  // Convert to epoch time
-  time_t epochTime = mktime(&timeinfo);
-  gpsdata.time = epochTime;
-}
