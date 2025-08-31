@@ -7,8 +7,8 @@
 #include <data.h>
 #include <network.h>
 // sensors
-#include <./sensors/rpm.h>
-#include <./sensors/gps.h>
+#include <sensors/rpm.h>
+#include <sensors/gps.h>
 
 // data specific
 // this is the address to where the sensor data is stored in the heap (96kB of RAM)
