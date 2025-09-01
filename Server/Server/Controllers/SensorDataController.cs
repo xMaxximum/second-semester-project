@@ -152,7 +152,7 @@ namespace Server.Controllers
                         CurrentSpeed       = floatValues[i + 1],
                         Latitude           = floatValues[i + 2],
                         Longitude          = floatValues[i + 3],
-                        ElevationGain      = floatValues[i + 4],
+                        CurrentElevation      = floatValues[i + 4],
                         AccelerationX      = floatValues[i + 5],
                         AccelerationY      = floatValues[i + 6],
                         AccelerationZ      = floatValues[i + 7],
