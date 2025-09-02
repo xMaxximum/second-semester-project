@@ -26,6 +26,8 @@
     overflow: hidden;
     box-shadow: var(--mud-elevation-6);
     background: var(--mud-palette-surface);
+    display: flex;
+    flex-direction: column;
   }
 
 
@@ -59,10 +61,19 @@
     background: var(--mud-palette-grey-lighten-5);
     border-top: 1px solid var(--mud-palette-divider);
     display: flex;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
     justify-content: space-between;
     align-items: center;
   }
-
+  
+  .cal-fill {
+    height:100%;
+  }
+  
+  .cal-fill .mud-calendar {
+    height: 100%;
+  }
   @@media (max-width: 600px) {
     .mud-popover {
       position: fixed !important;
@@ -76,8 +87,12 @@
     }
   }
 
-  .calendar-body { position: relative; }
-
+  .calendar-body { 
+    position: relative; 
+    flex: 1;
+    min-height: 420px;
+  }
+  
   .week-streak-overlay{
     position: absolute;
     top: var(--calTop,76px);
@@ -134,7 +149,7 @@
 <div class="pa-0 calendar-body">
   <MudCalendar T="CalendarItem"
                Elevation="0"
-               Class="pa-0"
+               Class="pa-0 cal-fill"
                ShowDropdownViewSelector="true"
                ShowDatePicker="true"
                Items="calendarItems"
@@ -177,23 +192,22 @@
     </div>
   }
   </div>
-</div>
 
   <div class="calendar-stats">
     <div class="d-flex align-items-center gap-2">
       <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" />
       <MudText Typo="Typo.caption" Style="font-weight: 500;">
         @{
-        var now = DateTime.Now;
-        var thisMonthCount = calendarItems.Count(item =>
-        item.Start.Month == now.Month && item.Start.Year == now.Year
-        || (item.End?.Month == now.Month && item.End?.Year == now.Year)
-        );
+          var now = DateTime.Now;
+          var thisMonthCount = calendarItems.Count(item =>
+            item.Start.Month == now.Month && item.Start.Year == now.Year
+            || (item.End?.Month == now.Month && item.End?.Year == now.Year)
+          );
         }
         @thisMonthCount activities this month
       </MudText>
     </div>
-
+  </div>
     <div class="d-flex align-items-center gap-1">
       @if (_loading)
       {
