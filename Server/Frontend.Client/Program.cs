@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Http;
 using MudBlazor.Services;
+using Frontend.Client.Services;
 
 namespace Frontend.Client
 {
@@ -53,8 +54,12 @@ namespace Frontend.Client
             
             // Add Map Service
             builder.Services.AddScoped<MapService>();
+            
+            //Add WeeklyGoalStorageService (Frontend only!)
+            builder.Services.AddMudServices();
+            builder.Services.AddScoped<WeeklyGoalStorageService>();
 
-
+            
             var app = builder.Build();
 
             // Try to refresh token on startup

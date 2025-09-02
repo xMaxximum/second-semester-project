@@ -1,0 +1,266 @@
+﻿@using MudBlazor
+@using Shared.Models
+@using Frontend.Client.Services
+
+@inject ActivityService ActivityService
+@inject WeeklyGoalStorageService WeeklyGoalStorageService
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+
+    @if (_loading)
+    {
+        <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="2">
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.body2">Loading weekly goal…</MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">Weekly Goal</MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@ToggleEdit">
+                @(_hasGoal ? (_editing ? "Close Editor" : "Edit Goal") : (_editing ? "Close Editor" : "Create Goal"))
+            </MudButton>
+        </MudStack>
+        
+        @if (_editing)
+        {
+            <MudPaper Elevation="0" Class="pa-3 mt-3">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@(_hasGoal ? "Edit Weekly Goal" : "Create Weekly Goal")</MudText>
+
+                <MudStack Spacing="2">
+                    <MudTextField @bind-Value="_goal.Name" Label="Name" Immediate="true" />
+
+                    <MudNumericField T="double" @bind-Value="_goal.DistanceKm"
+                                     Label="Distance (km)" Min="0"
+                                     Adornment="Adornment.End" AdornmentText="km" Immediate="true" />
+
+                    <MudNumericField T="double" @bind-Value="_goal.TimeHours"
+                                     Label="Time (h)" Min="0"
+                                     Adornment="Adornment.End" AdornmentText="h" Immediate="true" />
+
+                    <MudNumericField T="double" @bind-Value="_goal.ElevationM"
+                                     Label="Elevation (m)" Min="0"
+                                     Adornment="Adornment.End" AdornmentText="m" Immediate="true" />
+
+                    <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        @if (_hasGoal)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteGoal">
+                                Delete Goal
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <span></span>
+                        }
+
+                        <MudStack Direction="Row" Justify="Justify.FlexEnd" Spacing="2">
+                            <MudButton Variant="Variant.Text" OnClick="CancelEdit">Cancel</MudButton>
+                            <MudButton Color="Color.Primary" OnClick="SaveGoal">Save</MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+
+        <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">
+            @(_hasGoal ? _goalTitle : "No weekly goal yet — create one!")
+        </MudText>
+
+        @if (_hasGoal)
+        {
+            <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="2">
+                <MudProgressLinear Value="@_progressPct" Color="Color.Primary" Class="flex-grow-1" />
+                <MudText Typo="Typo.subtitle2">@string.Format("{0:0}%", _progressPct)</MudText>
+            </MudStack>
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3 font-weight-bold">@_message</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Class="mt-2">Set a goal to start tracking your weekly progress.</MudText>
+        }
+    }
+</MudPaper>
+
+@code {
+    private bool _loading = true;
+    private bool _editing = false;
+    private bool _hasGoal = false;
+
+    private sealed class WeeklyGoal
+    {
+        public string Name { get; set; } = "Weekly Goal";
+        public double DistanceKm { get; set; } = 0;
+        public double TimeHours  { get; set; } = 0;
+        public double ElevationM { get; set; } = 0;
+    }
+
+    private WeeklyGoal _goal = new();
+    private WeeklyGoal _snapshot = new();
+
+    private double _progressPct = 0.0;
+    private string _goalTitle = "No weekly goal set";
+    private string _message = "Set a goal and get started!";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+
+        try
+        {
+            // Load goal (localStorage)
+            var stored = await WeeklyGoalStorageService.GetAsync<WeeklyGoal>("weekly-goal");
+            _hasGoal = stored is not null && (stored.DistanceKm > 0 || stored.TimeHours > 0 || stored.ElevationM > 0);
+            if (stored is not null) _goal = stored;
+
+            // Load KPI data
+            var resp = await ActivityService.GetKpiDataAsync();
+            if (resp?.IsSuccess == true && resp.Data is not null)
+            {
+                MapToView(resp.Data);
+            }
+            else
+            {
+                Snackbar.Add(resp?.Message ?? "Could not load KPI data.", Severity.Error);
+                BuildFallback();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Weekly Goal: {ex.Message}", Severity.Error);
+            BuildFallback();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void BuildFallback()
+    {
+        _progressPct = 0;
+        if (_hasGoal)
+        {
+            _goalTitle = $"{_goal.Name}: {_goal.DistanceKm:0.#} km • {_goal.TimeHours:0.#} h • {_goal.ElevationM:0} m";
+            _message = $"{_goal.Name}: Failed to load KPI data.";
+        }
+        else
+        {
+            _goalTitle = "No weekly goal yet — create one!";
+            _message = "Set a goal to start tracking your weekly progress.";
+        }
+    }
+
+    private static double ParseNumber(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return 0;
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var ch in s)
+            if ((ch >= '0' && ch <= '9') || ch == '.' || ch == ',') sb.Append(ch);
+        if (sb.Length == 0) return 0;
+        var norm = sb.ToString().Replace(',', '.');
+        return double.TryParse(norm, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+    }
+
+    private void MapToView(KpiDataResponse d)
+    {
+        if (!_hasGoal)
+        {
+            _progressPct = 0;
+            _goalTitle = "No weekly goal yet — create one!";
+            _message = "Set a goal to start tracking your weekly progress.";
+            return;
+        }
+
+        double km   = ParseNumber(d.TotalDistance ?? "");
+        double elev = ParseNumber(d.TotalElevation ?? "");
+        double timeH;
+
+        var t = d.TotalTime ?? "";
+        if (t.IndexOf("min", StringComparison.OrdinalIgnoreCase) >= 0)
+            timeH = ParseNumber(t) / 60.0;
+        else if (t.Contains(":"))
+        {
+            var parts = t.Split(':');
+            if (parts.Length >= 2 && int.TryParse(parts[0], out var hh) && int.TryParse(parts[1], out var mm))
+                timeH = hh + (mm / 60.0);
+            else
+                timeH = ParseNumber(t);
+        }
+        else
+            timeH = ParseNumber(t);
+
+        double sum = 0; int count = 0;
+        if (_goal.DistanceKm > 0) { sum += Clamp01(km   / _goal.DistanceKm) * 100.0; count++; }
+        if (_goal.TimeHours  > 0) { sum += Clamp01(timeH / _goal.TimeHours ) * 100.0; count++; }
+        if (_goal.ElevationM > 0) { sum += Clamp01(elev / _goal.ElevationM) * 100.0; count++; }
+
+        _progressPct = count > 0 ? (sum / count) : 0;
+
+        _goalTitle = $"{_goal.Name}: {_goal.DistanceKm:0.#} km • {_goal.TimeHours:0.#} h • {_goal.ElevationM:0} m";
+
+        if      (_progressPct < 1)   _message = $"{_goal.Name}: Time to get started! 🚴🔥";
+        else if (_progressPct < 20)  _message = $"{_goal.Name}: Nice start — keep going! 💪✨";
+        else if (_progressPct < 50)  _message = $"{_goal.Name}: Halfway coming up — steady pace! ⏱️🏃";
+        else if (_progressPct < 80)  _message = $"{_goal.Name}: Great work — almost there! 🚀👏";
+        else if (_progressPct < 100) _message = $"{_goal.Name}: Final push to the finish! ⚡🏁";
+        else                         _message = $"{_goal.Name}: Goal achieved — awesome! 🎉🥳";
+    }
+
+    private static double Clamp01(double v) => v < 0 ? 0 : (v > 1 ? 1 : v);
+
+    private void ToggleEdit()
+    {
+        if (!_editing)
+        {
+            _snapshot = new WeeklyGoal
+            {
+                Name = _goal.Name,
+                DistanceKm = _goal.DistanceKm,
+                TimeHours = _goal.TimeHours,
+                ElevationM = _goal.ElevationM
+            };
+            _editing = true;
+        }
+        else
+        {
+            // close editor, restore snapshot
+            _goal = _snapshot;
+            _editing = false;
+        }
+    }
+
+    private void CancelEdit()
+    {
+        _goal = _snapshot;
+        _editing = false;
+    }
+
+    private async Task SaveGoal()
+    {
+        await WeeklyGoalStorageService.SetAsync("weekly-goal", _goal);
+        _hasGoal = (_goal.DistanceKm > 0 || _goal.TimeHours > 0 || _goal.ElevationM > 0);
+        _editing = false;
+        Snackbar.Add("Weekly goal saved.", Severity.Success);
+        await LoadAsync();
+    }
+
+    private async Task DeleteGoal()
+    {
+        _goal = new WeeklyGoal();
+        _hasGoal = false;
+        _editing = false;
+
+        try { await WeeklyGoalStorageService.RemoveAsync("weekly-goal"); } catch { /* ignore */ }
+
+        Snackbar.Add("Weekly goal deleted.", Severity.Info);
+        await LoadAsync();
+    }
+}

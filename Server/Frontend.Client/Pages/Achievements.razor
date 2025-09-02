@@ -1,0 +1,19 @@
+﻿@page "/achievements"
+@using Frontend.Client.Components
+@using MudBlazor
+
+<MudContainer Class="my-4 h-screen">
+    <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Class="mt-10" Typo="Typo.h5">Achievements</MudText>
+        <MudButton class = "mb-10" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Dashboard" OnClick="GoBack">
+            Back to Dashboard
+        </MudButton>
+    </MudStack>
+
+    <WeeklyAchievements />
+</MudContainer>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    private void GoBack() => Nav.NavigateTo("/");
+}

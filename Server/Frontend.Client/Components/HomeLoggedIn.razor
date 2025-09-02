@@ -6,7 +6,12 @@
     }
 </style>
 
-<MudContainer Class="mt-16 px-8 mb-16" MaxWidth="MaxWidth.False">
+<!-- Weekly Goal Process Bar -->
+<MudContainer class="px-8 mt-12 mb-8" MaxWidth="MaxWidth.False">
+    <WeeklyGoalBar/>
+</MudContainer>
+
+<MudContainer Class=" px-8 mb-16" MaxWidth="MaxWidth.False">
     <MudGrid RowSpacing="3" ColumnSpacing="3">
         <!-- KPI Tiles -->
         <KpiTiles/>
@@ -24,7 +29,7 @@
         <MudItem xs="12" sm="6">
             <MudGrid>
                 <MudItem xs="12">
-                    <WeatherTile />
+                    <WeatherTile/>
                 </MudItem>
                 <MudItem xs="12">
                     <CarbsTile/>
