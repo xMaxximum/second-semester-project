@@ -46,29 +46,27 @@ namespace Server.Controllers
                     query = query.Where(a => a.Status == status.Value);
 
                 var totalCount = await query.CountAsync();
-                
-                var activityEntities = await query
-                    .Include(a => a.SensorDataPackets)
+
+                var activities = await query
                     .OrderByDescending(a => a.StartTime)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
+                    .Select(a => new ActivityResponse
+                    {
+                        Id = a.Id,
+                        Name = a.Name,
+                        Description = a.Description,
+                        StartTime = a.StartTime,
+                        EndTime = a.EndTime,
+                        Status = a.Status,
+                        Duration = a.EndTime.HasValue ? a.EndTime.Value - a.StartTime : null,
+                        IsActive = a.Status == ActivityStatus.InProgress,
+                        DataPacketCount = a.SensorDataPackets.Count,
+                        CreatedAt = a.CreatedAt,
+                        UpdatedAt = a.UpdatedAt,
+                        Analytics = null 
+                    })
                     .ToListAsync();
-
-                var activities = activityEntities.Select(a => new ActivityResponse
-                {
-                    Id = a.Id,
-                    Name = a.Name,
-                    Description = a.Description,
-                    StartTime = a.StartTime,
-                    EndTime = a.EndTime,
-                    Status = a.Status,
-                    Duration = a.EndTime.HasValue ? a.EndTime.Value - a.StartTime : null,
-                    IsActive = a.Status == ActivityStatus.InProgress,
-                    DataPacketCount = a.SensorDataPackets.Count,
-                    CreatedAt = a.CreatedAt,
-                    UpdatedAt = a.UpdatedAt,
-                    Analytics = CalculateAnalytics(a.SensorDataPackets.OrderBy(s => s.Timestamp).ToList())
-                }).ToList();
 
                 return Ok(new ActivityListResponse
                 {
@@ -121,7 +119,7 @@ namespace Server.Controllers
                     DataPacketCount = activity.DataPacketCount,
                     CreatedAt = activity.CreatedAt,
                     UpdatedAt = activity.UpdatedAt,
-                    Analytics = CalculateAnalytics(activity.SensorDataPackets.ToList())
+                    Analytics = GetAnalytics(activity)
                 };
 
                 var sensorData = activity.SensorDataPackets.Select(s => new SensorDataPacketResponse
@@ -449,7 +447,7 @@ namespace Server.Controllers
                     DataPacketCount = activity.DataPacketCount,
                     CreatedAt = activity.CreatedAt,
                     UpdatedAt = activity.UpdatedAt,
-                    Analytics = CalculateAnalytics(packets)
+                    Analytics = GetAnalytics(activity)
                 };
 
                 return Ok(ApiResponse<ActivityResponse>.Success(response, "Seed activity created"));
@@ -496,7 +494,7 @@ namespace Server.Controllers
                     double totalDistance = 0;
                     foreach (var activity in dayActivities)
                     {
-                        var analytics = CalculateAnalytics(activity.SensorDataPackets.OrderBy(s => s.Timestamp).ToList());
+                        var analytics = GetAnalytics(activity);
                         totalDistance += analytics.TotalDistance;
                     }
 
@@ -552,7 +550,7 @@ namespace Server.Controllers
                 var currentElevation = 0.0;
                 foreach (var a in currentWeekActivities)
                 {
-                    var analytics = CalculateAnalytics(a.SensorDataPackets.ToList());
+                    var analytics = GetAnalytics(a);
                     currentDistance += analytics.TotalDistance / 1000;
                     currentElevation += analytics.ElevationGain;
                 }
@@ -564,7 +562,7 @@ namespace Server.Controllers
                 var previousElevation = 0.0;
                 foreach (var a in previousWeekActivities)
                 {
-                    var analytics = CalculateAnalytics(a.SensorDataPackets.ToList());
+                    var analytics = GetAnalytics(a);
                     previousDistance += analytics.TotalDistance / 1000;
                     previousElevation += analytics.ElevationGain;
                 }
@@ -726,53 +724,22 @@ namespace Server.Controllers
             return long.TryParse(userIdClaim, out var userId) ? userId : null;
         }
 
-        private ActivityAnalytics CalculateAnalytics(List<SensorDataPacket> sensorData)
+        private ActivityAnalytics GetAnalytics(Activity activity)
         {
-            if (!sensorData.Any())
+            if (activity.Summary == null)
                 return new ActivityAnalytics();
 
-            var analytics = new ActivityAnalytics
+            return new ActivityAnalytics
             {
-                MaxSpeed = sensorData.Max(s => s.CurrentSpeed),
-                AverageSpeed = sensorData.Average(s => s.CurrentSpeed),
-                AverageTemperature = sensorData.Average(s => s.CurrentTemperature),
-                MaxAcceleration = sensorData.Max(s => s.TotalAcceleration),
-                Route = sensorData.Select(s => new CoordinatePoint
-                {
-                    Latitude = s.Latitude,
-                    Longitude = s.Longitude,
-                    Timestamp = s.Timestamp,
-                    Speed = s.CurrentSpeed,
-                    Temperature = s.CurrentTemperature
-                }).ToList()
+                TotalDistance = activity.Summary.TotalDistanceMeters,
+                MaxSpeed = activity.Summary.MaxSpeedKmh,
+                AverageSpeed = activity.Summary.AverageSpeedKmh,
+                ElevationGain = activity.Summary.ElevationGainMeters ?? 0,
+                CaloriesBurned = activity.Summary.EstimatedCaloriesBurned,
+                AverageTemperature = activity.Summary.AverageTemperatureCelsius,
+                MaxAcceleration = activity.Summary.MaxAccelerationMs2,
+                Route = new List<CoordinatePoint>() // only populate route in detail endpoint
             };
-
-            // Calculate total distance using Haversine formula
-            analytics.TotalDistance = CalculateTotalDistance(analytics.Route);
-
-            // Simple calorie calculation (can be improved with more sophisticated algorithms)
-            var durationHours = sensorData.Count > 0 ? 
-                (sensorData.Max(s => s.Timestamp) - sensorData.Min(s => s.Timestamp)).TotalHours : 0;
-            analytics.CaloriesBurned = analytics.AverageSpeed * durationHours * 50; // Rough estimation
-
-            // Calculate elevation gain (would need altitude data from GPS or barometric sensor)
-            analytics.ElevationGain = sensorData.Max(s => s.CurrentElevation) -  sensorData.Min(s => s.CurrentElevation);
-
-            return analytics;
-        }
-
-        private double CalculateTotalDistance(List<CoordinatePoint> route)
-        {
-            if (route.Count < 2) return 0;
-
-            double totalDistance = 0;
-            for (int i = 1; i < route.Count; i++)
-            {
-                totalDistance += CalculateDistance(
-                    route[i - 1].Latitude, route[i - 1].Longitude,
-                    route[i].Latitude, route[i].Longitude);
-            }
-            return totalDistance;
         }
         
         private double CalculateTotalTime(List<Activity> activities)
@@ -810,19 +777,6 @@ namespace Server.Controllers
             var wholeHours = (int)hours;
             var minutes = (int)((hours - wholeHours) * 60);
             return $"{wholeHours}:{minutes:D2}h";
-        }
-
-        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            // Haversine formula
-            const double R = 6371000; // Earth's radius in meters
-            var dLat = (lat2 - lat1) * Math.PI / 180;
-            var dLon = (lon2 - lon1) * Math.PI / 180;
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
-                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            return R * c;
         }
     }
 }

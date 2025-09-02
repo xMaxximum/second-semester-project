@@ -58,6 +58,11 @@ namespace Server.Controllers
                 activity.Status = ActivityStatus.Completed;
                 activity.UpdatedAt = DateTime.UtcNow;
 
+                // build summary from existing packets
+                var packets = activity.SensorDataPackets.OrderBy(p => p.Timestamp).ToList();
+                var summary = BuildSummaryFromPackets(activity, packets);
+                activity.Summary = summary;
+                
                 _context.Activities.Update(activity);
                 await _context.SaveChangesAsync();
 
@@ -244,6 +249,81 @@ namespace Server.Controllers
                 _logger.LogError(ex, "Error creating activity for device {DeviceId}", deviceId);
                 return null;
             }
+        }
+
+        private ActivitySummary BuildSummaryFromPackets(Activity activity, List<SensorDataPacket> packets)
+        {
+            var summary = new ActivitySummary
+            {
+                ActivityId = activity.Id,
+                TotalDataPackets = packets.Count,
+                ValidDataPackets = packets.Count(p => p.IsChecksumValid),
+                DataQualityPercentage = packets.Count == 0 ? 0 : 
+                    (double)packets.Count(p => p.IsChecksumValid) / packets.Count * 100.0,
+                CalculatedAt = DateTime.UtcNow,
+                IsStale = false,
+            };
+            
+            if (packets.Count == 0)
+                return summary;
+            
+            // temperature
+            summary.AverageTemperatureCelsius = packets.Average(p => p.CurrentTemperature);
+            summary.MinTemperatureCelsius = packets.Min(p => p.CurrentTemperature);
+            summary.MaxTemperatureCelsius = packets.Max(p => p.CurrentTemperature);
+
+            // speed
+            summary.MaxSpeedKmh = packets.Max(p => p.CurrentSpeed) * 3.6;
+            summary.AverageSpeedKmh = packets.Average(p => p.CurrentSpeed) * 3.6;
+
+            // acceleration 
+            summary.MaxAccelerationMs2 = packets.Max(p => p.TotalAcceleration);
+            summary.AverageAccelerationMs2 = packets.Average(p => p.TotalAcceleration);
+            
+            // distance calculation
+            double totalMeters = 0;
+            for (int i = 1; i < packets.Count; i++)
+            {
+                totalMeters += CalculateDistance(
+                    packets[i - 1].Latitude, packets[i - 1].Longitude,
+                    packets[i].Latitude, packets[i].Longitude);
+            }
+            summary.TotalDistanceMeters = totalMeters;
+            
+            // elevation with CurrentElevation
+            summary.MaxElevationMeters = packets.Max(p => p.CurrentElevation);
+            summary.MinElevationMeters = packets.Min(p => p.CurrentElevation);
+            summary.ElevationGainMeters = summary.MaxElevationMeters - summary.MinElevationMeters;
+
+            // durations
+            summary.TotalDuration = (activity.EndTime ?? packets.Last().Timestamp) - activity.StartTime;
+            summary.ActiveDuration = summary.TotalDuration;
+
+            // calories
+            summary.CalculateEstimatedCalories();
+
+            // route start/end
+            var first = packets.First();
+            var last = packets.Last();
+            summary.StartLatitude = first.Latitude;
+            summary.StartLongitude = first.Longitude;
+            summary.EndLatitude = last.Latitude;
+            summary.EndLongitude = last.Longitude;
+
+            return summary;
+        }
+        
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            // Haversine formula
+            const double R = 6371000; // Earth's radius in meters
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
         }
     }
 }
