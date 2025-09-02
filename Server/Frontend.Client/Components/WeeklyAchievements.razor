@@ -1,66 +1,80 @@
-﻿@using MudBlazor
+﻿
 @using Shared.Models
-@using Frontend.Client.Services
-
 @inject ActivityService ActivityService
 @inject WeeklyGoalStorageService WeeklyGoalStorageService
 @inject ISnackbar Snackbar
 
 <MudGrid Class="h-screen">
-<MudPaper Elevation="2" Class="mb-16">
-  <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-    <MudButton Class="mt-12" Variant="Variant.Outlined" Size="Size.Small" OnClick="CheckNow">Check achievements</MudButton>
-  </MudStack>
-
-  @if (_loading)
-  {
-    <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
-      <MudProgressCircular Indeterminate="true" />
-      <MudText Typo="Typo.body2">Loading…</MudText>
+  <MudPaper Elevation="2" Class="mb-16">
+    <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+      <MudButton Class="mt-12" Variant="Variant.Outlined" Size="Size.Small" OnClick="@CheckNow">Check achievements</MudButton>
     </MudStack>
-  }
-  else
-  {
-    <MudText Typo="Typo.h6" Align="Align.Center" Class="mt-4 mb-12">
-      Earn badges for distance, time, elevation, weekly goals — and a few fun easter eggs 😉
- </MudText>
 
-    <MudGrid GutterSize="2" Class="w-100" Justify="Justify.Center">
-      @foreach (var b in _badges)
-      {
-        <MudItem xs="12" sm="6" md="4" lg="3">
-          <MudCard Class="@($"h-100 {(b.IsEasterEgg ? "easter-egg-card" : string.Empty)}")">
-            <MudCardContent>
-              <MudStack Direction="Row" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                <MudText Typo="Typo.subtitle1">@b.Icon @b.Title</MudText>
+    @if (_loading)
+    {
+      <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+        <MudProgressCircular Indeterminate="true" />
+        <MudText Typo="Typo.body2">Loading…</MudText>
+      </MudStack>
+    }
+    else
+    {
+      <MudText Typo="Typo.h6" Align="Align.Center" Class="mt-4 mb-12">
+        Earn badges for distance, time, elevation, weekly goals — and a few fun easter eggs 😉
+      </MudText>
+
+      <MudGrid GutterSize="2" Class="w-100" Justify="Justify.Center">
+        @foreach (var b in _badges)
+        {
+          <MudItem xs="12" sm="6" md="4" lg="3">
+            <MudCard Class="@($"h-100 achv-card {(b.IsEasterEgg ? "easter-egg-card" : string.Empty)}")">
+              <MudCardContent Class="pa-3">
+                <MudStack Direction="Row" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                  <MudText Typo="Typo.subtitle1">@b.Icon @b.Title</MudText>
+
+                  @if (b.EarnedAt is not null)
+                  {
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Dense="true" Size="Size.Small">Earned</MudChip>
+
+                  }
+                  else
+                  {
+                    <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined" Dense="true" Size="Size.Small">Locked</MudChip>
+
+                  }
+                </MudStack>
+
+                <MudText Typo="Typo.body2" Class="@($"mt-1 {((b.IsEasterEgg && b.EarnedAt is null) ? "egg-hidden" : "")}")">
+                  @((b.IsEasterEgg && b.EarnedAt is null) ? "???" : b.Description)
+                </MudText>
 
                 @if (b.EarnedAt is not null)
                 {
-                  <MudChip T="string" Color="Color.Success" Variant="Variant.Filled">Earned</MudChip>
+                  <MudText Typo="Typo.caption" Class="mt-1">
+                    Unlocked @b.EarnedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                  </MudText>
                 }
-                else
-                {
-                  <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">Locked</MudChip>
-                }
-              </MudStack>
+              </MudCardContent>
+            </MudCard>
+          </MudItem>
+        }
+      </MudGrid>
+    }
+  </MudPaper>
+</MudGrid>
 
-              <MudText Typo="Typo.body2" Class="@($"mt-1 {((b.IsEasterEgg && b.EarnedAt is null) ? "egg-hidden" : "")}")">
-                @((b.IsEasterEgg && b.EarnedAt is null) ? "???" : b.Description)
-              </MudText>
+<style>
 
-              @if (b.EarnedAt is not null)
-              {
-                <MudText Typo="Typo.caption" Class="mt-1">
-                  Unlocked @b.EarnedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-                </MudText>
-              }
-            </MudCardContent>
-          </MudCard>
-        </MudItem>
-      }
-    </MudGrid>
+  .achv-card .mud-card-content{
+    display:flex;
+    flex-direction:column;
+    gap:.375rem;
   }
-</MudPaper>
+
+  .egg-hidden { opacity:.75; }
+
+
+</style>
 
 @code {
   private bool _loading = true;
@@ -111,11 +125,11 @@
       _badges.Clear();
       _badges.AddRange(new[] {
         // Progress vs goal
-        B("first-step",   "First Spin",     "Make any progress (>0%).",                    "🌀", (k,g) => progress > 0),
-        B("twenty",       "Rolling Start",  "Reach 20% of your weekly goal.",             "🎯", (k,g) => progress >= 20),
-        B("halfway",      "Halfway Hero",   "Reach 50% of your weekly goal.",             "💥", (k,g) => progress >= 50),
-        B("eighty",       "Almost There",   "Reach 80% of your weekly goal.",             "🧗", (k,g) => progress >= 80),
-        B("goal-getter",  "Goal Getter",    "Hit 100% of your weekly goal.",              "🏁", (k,g) => progress >= 100),
+        B("first-step",   "First Spin",     "Make any progress (>0%).",                    "🌀", (_,_) => progress > 0),
+        B("twenty",       "Rolling Start",  "Reach 20% of your weekly goal.",             "🎯", (_,_) => progress >= 20),
+        B("halfway",      "Halfway Hero",   "Reach 50% of your weekly goal.",             "💥", (_,_) => progress >= 50),
+        B("ei_hty",       "Almost There",   "Reach 80% of your weekly _oal.",             "🧗", (_,_) => progress >= 80),
+        B("_oal-_etter",  "Goal Getter",    "Hit 100% of your weekly goal.",              "🏁", (_,_) => progress >= 100),
 
         // Distance (weekly)
         B("d10",   "Warm Wheels",     "Ride 10 km this week.",        "🚲", (k) => Km(k) >= 10),
@@ -137,60 +151,61 @@
         B("e1000", "Sky Chaser",      "Climb 1000 m this week.",      "🗻", (k) => Elev(k) >= 1000),
 
         // Goal composition
-        B("minimalist", "The Minimalist", "Goal with exactly one metric.", "🧘", (k,g)=> g is not null && CountPos(g)==1),
-        B("allrounder", "All-Rounder",    "Goal includes distance, time, and elevation.", "🔁", (k,g)=> g is not null && CountPos(g)==3),
+        B("minimalist", "The Minimalist", "Goal with exactly one metric.", "🧘", (_,g)=> g is not null && CountPos(g)==1),
+        B("allrounder", "All-Rounder",    "Goal includes distance, time, and elevation.", "🔁", (_,g)=> g is not null && CountPos(g)==3),
 
        
         // Fun / easter eggs
         B(id: "earlybird", title: "Early Bird", desc: "???", icon: "🌅",
-        cond: (k, g) => DateTime.Now.Hour < 7),                         // Open the dashboard before 07:00.
+        cond: (_, _) => DateTime.Now.Hour < 7),                         // Open the dashboard before 07:00.
 
         B(id: "nightowl", title: "Night Owl", desc: "???", icon: "🦉",
-          cond: (k, g) => DateTime.Now.Hour >= 23),                       // Open the dashboard after 23:00.
+          cond: (_, g) => DateTime.Now.Hour >= 23),                       // Open the dashboard after 23:00.
 
         B(id: "monday", title: "Monday Boost", desc: "???", icon: "📅",
-          cond: (k, g) => DateTime.Now.DayOfWeek == DayOfWeek.Monday),    // Open on a Monday.
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Monday),    // Open on a Monday.
 
         B(id: "friday", title: "Friday Vibes", desc: "???", icon: "🎉",
-          cond: (k, g) => DateTime.Now.DayOfWeek == DayOfWeek.Friday),    // Open on a Friday.
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Friday),    // Open on a Friday.
 
         B(id: "unicorn", title: "Bikeicorn", desc: "???", icon: "🦄",
-          cond: (k, g) => (g?.Name ?? "").Contains("unicorn", StringComparison.OrdinalIgnoreCase)), // Your goal name contains "unicorn".
+          cond: (_, g) => (g?.Name ?? "").Contains("🦄", StringComparison.OrdinalIgnoreCase)), // Your goal name contains "unicorn".
 
         B(id: "secret-7", title: "You Found It!", desc: "???", icon: "🕵️",
-          cond: (k, g) => IncrCounter() >= 7),                            // Open achievements 7 times in a row.
+          cond: (_, _) => IncrCounter() >= 7),                            // Open achievements 7 times in a row.
 
         B(id: "sundaychill", title: "Sunday Chill", desc: "???", icon: "☕",
-          cond: (k, g) => DateTime.Now.DayOfWeek == DayOfWeek.Sunday),    // Open on a Sunday.
-
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Sunday),    // Open on a Sunday.
         B(id: "rainyday", title: "Rain Rider", desc: "???", icon: "🌧️",
-          cond: (k, g) => DateTime.Now.DayOfWeek == DayOfWeek.Saturday && DateTime.Now.Hour < 12), // Open Saturday morning.
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Saturday && DateTime.Now.Hour < 12), // Open Saturday morning.
 
         B(id: "streak3", title: "3-Day Streak", desc: "???", icon: "🔥",
-          cond: (k, g) => DateTime.Now.Day % 3 == 0),                     // Open on a day divisible by 3.
+          cond: (_, _) => DateTime.Now.Day % 3 == 0),                     // Open on a day divisible by 3.
         
         B(id: "newmonth", title: "Fresh Start", desc: "???", icon: "📆",
-          cond: (k, g) => DateTime.Now.Day == 1),                         // Open on the 1st day of a month.
+          cond: (_, _) => DateTime.Now.Day == 1),                         // Open on the 1st day of a month.
 
         B(id: "lastminute", title: "Last Minute Rider", desc: "???", icon: "⌛",
-          cond: (k, g) => DateTime.Now.Hour == 23 && DateTime.Now.Minute >= 50), // Open at 23:50 or later.
+          cond: (_, _) => DateTime.Now.Hour == 23 && DateTime.Now.Minute >= 50), // Open at 23:50 or later.
 
         B(id: "devmode", title: "Secret Dev Mode", desc: "???", icon: "💻",
-          cond: (k, g) => (g?.Name ?? "").Contains("dev", StringComparison.OrdinalIgnoreCase)), // Your goal name contains "dev".
+          cond: (_, g) => (g?.Name ?? "").Contains("dev", StringComparison.OrdinalIgnoreCase)), // Your goal name contains "dev".
 
         B(id: "beast", title: "The Beast", desc: "???", icon: "👹",
-          cond: (k, g) => Km(k) >= 99.9),                                 // Reach 99.9 km.
+          cond: (k, _) => Km(k) >= 0.1),                                 // Reach 99.9 km.
 
         B(id: "doubletime", title: "Double Trouble", desc: "???", icon: "✌️",
-          cond: (k, g) => H(k) >= 2.22),                                  // Ride 2.22 hours.
+          cond: (k, _) => H(k) >= 2.22),                                  // Ride 2.22 hours.
 
         B(id: "lucky7", title: "Lucky Seven", desc: "???", icon: "🍀",
-          cond: (k, g) => Km(k) >= 7 && H(k) >= 0.7 && Elev(k) >= 77),    // 7 km, 0.7 h, 77 m elevation.
+          cond: (k, _) => Km(k) >= 7 && H(k) >= 0.7 && Elev(k) >= 77),    // 7 km, 0.7 h, 77 m elevation.
         
         B(id: "backtothefuture", title: "Back to the Future", desc: "???", icon: "🚀",
-          cond: (k, g) => DateTime.Now.Year > 2099),                     // Will unlock only if system clock is set far in the future.
+          cond: (_, _) => DateTime.Now.Year > 2099),                     // Will unlock only if system clock is set far in the future.
         
       });
+      
+      var newlyUnlocked = new List<string>();
 
       foreach (var b in _badges)
       {
@@ -205,9 +220,18 @@
           Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
           Snackbar.Configuration.MaxDisplayedSnackbars = 5;
           Snackbar.Add($"Unlocked: {b.Title} {b.Icon}", Severity.Success);
+          newlyUnlocked.Add($"Unlocked: {b.Title} {b.Icon}");
         }
       }
-
+      
+      if (newlyUnlocked.Count > 0)
+      {
+        var queue = await WeeklyGoalStorageService.GetAsync<List<string>>("weekly-achievements-pending")
+                    ?? new List<string>();
+        queue.AddRange(newlyUnlocked);
+        await WeeklyGoalStorageService.SetAsync("weekly-achievements-pending", queue);
+      }
+      
       await WeeklyGoalStorageService.SetAsync("weekly-achievements", saved);
     }
     catch (Exception ex)
@@ -270,29 +294,3 @@
   private int _openCounter = 0;
   private int IncrCounter() => ++_openCounter;
 }
-</MudGrid>
-
-<style>
-  
-  .easter-egg-card {
-    border: 3px solid transparent;
-    border-radius: 12px;
-    
-    background:
-      linear-gradient(#ffffff, #ffffff) padding-box,
-      linear-gradient(45deg, #ffd700, #ff8b00, #00e5ff, #b388ff) border-box;
-    
-    box-shadow: 0 0 14px rgba(255, 215, 0, .45);
-  }
-  
-  .dark .easter-egg-card {
-    background:
-      linear-gradient(#1e1e1e, #1e1e1e) padding-box,
-      linear-gradient(45deg, #ffd700, #ff8b00, #00e5ff, #b388ff) border-box;
-  }
-  .egg-hidden {
-    opacity: .7;
-  }
-
-
-</style>
