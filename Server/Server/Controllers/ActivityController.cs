@@ -40,20 +40,19 @@ namespace Server.Controllers
                     return Unauthorized(new ActivityListResponse { IsSuccess = false, Message = "User not found" });
 
                 var query = _context.Activities
-                    .Where(a => a.UserId == userId.Value);
+                    .Where(a => a.UserId == userId.Value)
+                    .Include(a => a.Summary)
+                    .OrderByDescending(a => a.StartTime)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize);
 
                 if (status.HasValue)
                     query = query.Where(a => a.Status == status.Value);
 
                 var totalCount = await query.CountAsync();
                 
-                var activityEntities = await query
-                    .Include(a => a.SensorDataPackets)
-                    .OrderByDescending(a => a.StartTime)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
+                var activityEntities = await query.ToListAsync();
+                
                 var activities = activityEntities.Select(a => new ActivityResponse
                 {
                     Id = a.Id,
@@ -67,7 +66,7 @@ namespace Server.Controllers
                     DataPacketCount = a.SensorDataPackets.Count,
                     CreatedAt = a.CreatedAt,
                     UpdatedAt = a.UpdatedAt,
-                    Analytics = CalculateAnalytics(a.SensorDataPackets.OrderBy(s => s.Timestamp).ToList())
+                    Analytics = GetAnalytics(a)
                 }).ToList();
 
                 return Ok(new ActivityListResponse
@@ -102,7 +101,7 @@ namespace Server.Controllers
                     return Unauthorized(new ActivityDetailsResponse { IsSuccess = false, Message = "User not found" });
 
                 var activity = await _context.Activities
-                    .Include(a => a.SensorDataPackets.OrderBy(s => s.Timestamp))
+                    .Include(a => a.Summary)
                     .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId.Value);
 
                 if (activity == null)
@@ -121,10 +120,15 @@ namespace Server.Controllers
                     DataPacketCount = activity.DataPacketCount,
                     CreatedAt = activity.CreatedAt,
                     UpdatedAt = activity.UpdatedAt,
-                    Analytics = CalculateAnalytics(activity.SensorDataPackets.ToList())
+                    Analytics = GetAnalytics(activity)
                 };
-
-                var sensorData = activity.SensorDataPackets.Select(s => new SensorDataPacketResponse
+                
+                var packets = await _context.SensorDataPackets
+                    .Where(p => p.ActivityId == activity.Id)
+                    .OrderBy(p => p.Timestamp)
+                    .ToListAsync();
+                
+                var sensorData = packets.Select(s => new SensorDataPacketResponse
                 {
                     Id = s.Id,
                     ActivityId = s.ActivityId,
@@ -134,7 +138,7 @@ namespace Server.Controllers
                     CurrentSpeed = s.CurrentSpeed,
                     Latitude = s.Latitude,
                     Longitude = s.Longitude,
-                    ElevationGain = s.ElevationGain,
+                    ElevationGain = s.CurrentElevation,
                     AccelerationX = s.AccelerationX,
                     AccelerationY = s.AccelerationY,
                     AccelerationZ = s.AccelerationZ,
@@ -313,6 +317,63 @@ namespace Server.Controllers
             }
         }
 
+        // GET: api/activities/{id}/navigation
+        [HttpGet("{id}/navigation")]
+        public async Task<ActionResult<ApiResponse<ActivityNavigationResponse>>> GetActivityNavigation(long id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized(ApiResponse<ActivityNavigationResponse>.Failure("User not found"));
+
+                // Check if current activity exists and belongs to user
+                var currentActivity = await _context.Activities
+                    .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId.Value);
+
+                if (currentActivity == null)
+                    return NotFound(ApiResponse<ActivityNavigationResponse>.Failure("Activity not found"));
+
+                // Get previous activity (latest activity with StartTime < current activity's StartTime)
+                // For activities with the same StartTime, use ID as secondary sort (descending for previous)
+                var previousActivity = await _context.Activities
+                    .Where(a => a.UserId == userId.Value && 
+                               (a.StartTime < currentActivity.StartTime || 
+                                (a.StartTime == currentActivity.StartTime && a.Id < currentActivity.Id)))
+                    .OrderByDescending(a => a.StartTime)
+                    .ThenByDescending(a => a.Id)
+                    .Select(a => new { a.Id, a.Name })
+                    .FirstOrDefaultAsync();
+
+                // Get next activity (earliest activity with StartTime > current activity's StartTime)
+                // For activities with the same StartTime, use ID as secondary sort (ascending for next)
+                var nextActivity = await _context.Activities
+                    .Where(a => a.UserId == userId.Value && 
+                               (a.StartTime > currentActivity.StartTime || 
+                                (a.StartTime == currentActivity.StartTime && a.Id > currentActivity.Id)))
+                    .OrderBy(a => a.StartTime)
+                    .ThenBy(a => a.Id)
+                    .Select(a => new { a.Id, a.Name })
+                    .FirstOrDefaultAsync();
+
+                var response = new ActivityNavigationResponse
+                {
+                    CurrentActivityId = id,
+                    PreviousActivityId = previousActivity?.Id,
+                    PreviousActivityName = previousActivity?.Name,
+                    NextActivityId = nextActivity?.Id,
+                    NextActivityName = nextActivity?.Name
+                };
+
+                return Ok(ApiResponse<ActivityNavigationResponse>.Success(response, "Navigation data retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving activity navigation for {ActivityId}", id);
+                return StatusCode(500, ApiResponse<ActivityNavigationResponse>.Failure("Internal server error"));
+            }
+        }
+
         // POST: api/activities/seed
         [HttpPost("seed")]
         public async Task<ActionResult<ApiResponse<ActivityResponse>>> SeedActivity([FromBody] SeedActivityRequest request)
@@ -362,7 +423,7 @@ namespace Server.Controllers
                         CurrentSpeed = p.CurrentSpeed,
                         Latitude = p.Latitude,
                         Longitude = p.Longitude,
-                        ElevationGain = p.ElevationGain,
+                        CurrentElevation = p.ElevationGain,
                         AccelerationX = p.AccelerationX,
                         AccelerationY = p.AccelerationY,
                         AccelerationZ = p.AccelerationZ,
@@ -377,6 +438,8 @@ namespace Server.Controllers
                 activity.EndTime = packets.Count > 0 ? packets[^1].Timestamp : startTime.AddMinutes(5);
                 activity.Status = ActivityStatus.Completed;
                 activity.UpdatedAt = DateTime.UtcNow;
+                var summary = SensorDataController.BuildSummaryFromPackets(activity, packets);
+                activity.Summary = summary;
                 await _context.SaveChangesAsync();
 
                 var response = new ActivityResponse
@@ -392,7 +455,7 @@ namespace Server.Controllers
                     DataPacketCount = activity.DataPacketCount,
                     CreatedAt = activity.CreatedAt,
                     UpdatedAt = activity.UpdatedAt,
-                    Analytics = CalculateAnalytics(packets)
+                    Analytics = GetAnalytics(activity)
                 };
 
                 return Ok(ApiResponse<ActivityResponse>.Success(response, "Seed activity created"));
@@ -420,7 +483,7 @@ namespace Server.Controllers
 
                 // Get all completed activities for the week
                 var activities = await _context.Activities
-                    .Include(a => a.SensorDataPackets)
+                    .Include(a => a.Summary)
                     .Where(a => a.UserId == userId.Value && 
                                 a.Status == ActivityStatus.Completed &&
                                 a.StartTime >= weekStart && 
@@ -439,7 +502,7 @@ namespace Server.Controllers
                     double totalDistance = 0;
                     foreach (var activity in dayActivities)
                     {
-                        var analytics = CalculateAnalytics(activity.SensorDataPackets.OrderBy(s => s.Timestamp).ToList());
+                        var analytics = GetAnalytics(activity);
                         totalDistance += analytics.TotalDistance;
                     }
 
@@ -473,7 +536,7 @@ namespace Server.Controllers
 
                 // Gget activities for current and previous week 
                 var currentWeekActivities = await _context.Activities
-                    .Include(a => a.SensorDataPackets)
+                    .Include(a => a.Summary)
                     .Where(a => a.UserId == userId.Value && 
                                a.Status == ActivityStatus.Completed &&
                                a.StartTime >= currentWeekStart && 
@@ -481,7 +544,7 @@ namespace Server.Controllers
                     .ToListAsync();
 
                 var previousWeekActivities = await _context.Activities
-                    .Include(a => a.SensorDataPackets)
+                    .Include(a => a.Summary)
                     .Where(a => a.UserId == userId.Value && 
                                a.Status == ActivityStatus.Completed &&
                                a.StartTime >= previousWeekStart && 
@@ -491,27 +554,15 @@ namespace Server.Controllers
                 // calculate current week stats
                 var currentActivityCount = currentWeekActivities.Count;
                 var currentTime = CalculateTotalTime(currentWeekActivities);
-                var currentDistance = 0.0;
-                var currentElevation = 0.0;
-                foreach (var a in currentWeekActivities)
-                {
-                    var analytics = CalculateAnalytics(a.SensorDataPackets.ToList());
-                    currentDistance += analytics.TotalDistance / 1000;
-                    currentElevation += analytics.ElevationGain;
-                }
+                var currentDistance = currentWeekActivities.Sum(a => (a.Summary?.TotalDistanceMeters ?? 0) / 1000.0);
+                var currentElevation = currentWeekActivities.Sum(a => a.Summary?.ElevationGainMeters ?? 0);
 
                 // calculate previous week stats
                 var previousActivityCount = previousWeekActivities.Count;
                 var previousTime = CalculateTotalTime(previousWeekActivities);
-                var previousDistance = 0.0;
-                var previousElevation = 0.0;
-                foreach (var a in previousWeekActivities)
-                {
-                    var analytics = CalculateAnalytics(a.SensorDataPackets.ToList());
-                    previousDistance += analytics.TotalDistance / 1000;
-                    previousElevation += analytics.ElevationGain;
-                }
-
+                var previousDistance = previousWeekActivities.Sum(a => (a.Summary?.TotalDistanceMeters ?? 0) / 1000.0);
+                var previousElevation = previousWeekActivities.Sum(a => a.Summary?.ElevationGainMeters ?? 0);
+                
                 var response = new KpiDataResponse
                 {
                     ActivityCount = currentActivityCount.ToString(),
@@ -669,56 +720,24 @@ namespace Server.Controllers
             return long.TryParse(userIdClaim, out var userId) ? userId : null;
         }
 
-        private ActivityAnalytics CalculateAnalytics(List<SensorDataPacket> sensorData)
+        private ActivityAnalytics GetAnalytics(Activity activity)
         {
-            if (!sensorData.Any())
+            if (activity.Summary == null)
+            {
                 return new ActivityAnalytics();
-
-            var analytics = new ActivityAnalytics
-            {
-                MaxSpeed = sensorData.Max(s => s.CurrentSpeed),
-                AverageSpeed = sensorData.Average(s => s.CurrentSpeed),
-                AverageTemperature = sensorData.Average(s => s.CurrentTemperature),
-                MaxAcceleration = sensorData.Max(s => s.TotalAcceleration),
-                Route = sensorData.Select(s => new CoordinatePoint
-                {
-                    Latitude = s.Latitude,
-                    Longitude = s.Longitude,
-                    Timestamp = s.Timestamp,
-                    Speed = s.CurrentSpeed,
-                    Temperature = s.CurrentTemperature
-                }).ToList()
-            };
-
-            // Calculate total distance using Haversine formula
-            analytics.TotalDistance = CalculateTotalDistance(analytics.Route);
-
-            // Simple calorie calculation (can be improved with more sophisticated algorithms)
-            var durationHours = sensorData.Count > 0 ? 
-                (sensorData.Max(s => s.Timestamp) - sensorData.Min(s => s.Timestamp)).TotalHours : 0;
-            analytics.CaloriesBurned = analytics.AverageSpeed * durationHours * 50; // Rough estimation
-
-            // Calculate elevation gain (would need altitude data from GPS or barometric sensor)
-            // TODO check for validity of this method
-            //analytics.ElevationGain = sensorData.Sum(s => s.ElevationGain);
-            
-            analytics.ElevationGain = sensorData.Max(s => s.ElevationGain) -  sensorData.Min(s => s.ElevationGain);
-
-            return analytics;
-        }
-
-        private double CalculateTotalDistance(List<CoordinatePoint> route)
-        {
-            if (route.Count < 2) return 0;
-
-            double totalDistance = 0;
-            for (int i = 1; i < route.Count; i++)
-            {
-                totalDistance += CalculateDistance(
-                    route[i - 1].Latitude, route[i - 1].Longitude,
-                    route[i].Latitude, route[i].Longitude);
             }
-            return totalDistance;
+
+            return new ActivityAnalytics
+            {
+                TotalDistance = activity.Summary.TotalDistanceMeters,
+                MaxSpeed = activity.Summary.MaxSpeedKmh,
+                AverageSpeed = activity.Summary.AverageSpeedKmh,
+                ElevationGain = activity.Summary.ElevationGainMeters ?? 0,
+                CaloriesBurned = activity.Summary.EstimatedCaloriesBurned,
+                AverageTemperature = activity.Summary.AverageTemperatureCelsius,
+                MaxAcceleration = activity.Summary.MaxAccelerationMs2,
+                Route = new List<CoordinatePoint>() // only populate route in detail endpoint
+            };
         }
         
         private double CalculateTotalTime(List<Activity> activities)
@@ -756,19 +775,6 @@ namespace Server.Controllers
             var wholeHours = (int)hours;
             var minutes = (int)((hours - wholeHours) * 60);
             return $"{wholeHours}:{minutes:D2}h";
-        }
-
-        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            // Haversine formula
-            const double R = 6371000; // Earth's radius in meters
-            var dLat = (lat2 - lat1) * Math.PI / 180;
-            var dLon = (lon2 - lon1) * Math.PI / 180;
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
-                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            return R * c;
         }
     }
 }

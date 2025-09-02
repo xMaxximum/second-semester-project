@@ -11,14 +11,14 @@
 <MudGrid Class="h-screen">
     <!-- Left SVG Column -->
     <MudItem xs="12" md="6" Class="p-0 d-none d-md-flex"
-             style="position: relative; background-color: #f0f4fc; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center;">
+             style="position: relative; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center; background-color: var(--pane-color);">
 
         <!-- Background Grid Pattern -->
-        <div style="position: absolute; inset: 0; opacity: 0.05;">
+        <div style="position: absolute; inset: 0; opacity: 0.1;">
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%;">
                 <defs>
                     <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="blue" stroke-width="0.5" />
+                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="var(--mud-palette-primary)" stroke-width="0.5" />
                     </pattern>
                 </defs>
                 <rect width="100" height="100" fill="url(#grid)" />

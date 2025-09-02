@@ -1,0 +1,337 @@
+@using Shared.Models
+@using MudBlazor
+
+<style>
+    .icon-header {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+    }
+</style>
+
+<MudStack Spacing="3">
+    <!-- Route Controls Header -->
+    <MudText Typo="Typo.h6" Color="Color.Primary" Class="icon-header">
+        <MudIcon Icon="@Icons.Material.Filled.Route" Class="mr-2" />
+        Route Controls
+    </MudText>
+    
+    <!-- Action Buttons -->
+    <MudStack Spacing="2">
+        <MudButton Variant="@(_routePlanningEnabled ? Variant.Filled : Variant.Outlined)" 
+                  Color="@(_routePlanningEnabled ? Color.Error : Color.Primary)"
+                  StartIcon="@(_routePlanningEnabled ? Icons.Material.Filled.Stop : Icons.Material.Filled.Place)"
+                  OnClick="ToggleRoutePlanning"
+                  FullWidth="true">
+            @(_routePlanningEnabled ? "Stop Planning" : "Start Planning")
+        </MudButton>
+        
+        @if (!_routePlanningEnabled && _waypoints.Count == 0)
+        {
+            <MudButton Variant="Variant.Outlined" 
+                      Color="Color.Primary"
+                      StartIcon="Icons.Material.Filled.MyLocation"
+                      OnClick="StartFromMyLocation" 
+                      Disabled="@_gettingLocation"
+                      FullWidth="true">
+                @if (_gettingLocation)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Getting Location...</span>
+                }
+                else
+                {
+                    <span>Start from My Location</span>
+                }
+            </MudButton>
+        }
+        
+        @if (_waypoints.Count > 0)
+        {
+            <MudButton Variant="Variant.Outlined" 
+                      Color="Color.Secondary"
+                      StartIcon="Icons.Material.Filled.Clear"
+                      OnClick="ClearWaypoints"
+                      FullWidth="true">
+                Clear Waypoints
+            </MudButton>
+        }
+        
+        @if (_waypoints.Count >= 2)
+        {
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Success"
+                      StartIcon="@(_calculatingRoute ? Icons.Material.Filled.Refresh : Icons.Material.Filled.Route)"
+                      OnClick="CalculateRoute" 
+                      Disabled="@_calculatingRoute"
+                      FullWidth="true">
+                @if (_calculatingRoute)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Calculating...</span>
+                }
+                else
+                {
+                    <span>Calculate Route</span>
+                }
+            </MudButton>
+        }
+    </MudStack>
+    
+    @if (_routePlanningEnabled)
+    {
+        <MudAlert Severity="Severity.Info">
+            Click on the map to add waypoints
+        </MudAlert>
+    }
+
+    <MudDivider />
+
+    <!-- Address Search -->
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="icon-header">
+            <MudIcon Icon="@Icons.Material.Filled.Search" Class="mr-2" />
+            Search Address
+        </MudText>
+        
+        <MudStack Row="true" Spacing="1">
+            <MudTextField @bind-Value="_searchQuery"
+                         Placeholder="Search for address..."
+                         Variant="Variant.Outlined"
+                         @onkeypress="OnSearchKeyPress"
+                         @oninput="OnSearchInput"
+                          />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="SearchAddress"
+                       Size="Size.Medium">
+                Search
+            </MudButton>
+        </MudStack>
+        
+        @if (_searchResults.Any())
+        {
+            <MudPaper Elevation="3" Class="pa-2">
+                <MudStack Spacing="1">
+                    @foreach (var result in _searchResults)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                  StartIcon="Icons.Material.Filled.Place"
+                                  OnClick="() => AddWaypointFromSearch(result)"
+                                  FullWidth="true"
+                                  Class="text-left justify-start">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body2">@result.DisplayName</MudText>
+                                @if (!string.IsNullOrEmpty(result.Address))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@result.Address</MudText>
+                                }
+                            </MudStack>
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+    </MudStack>
+
+    <MudDivider />
+
+    <!-- Route Profile Selection -->
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="icon-header">
+            <MudIcon Icon="@Icons.Material.Filled.DirectionsBike" Class="mr-2" />
+            Route Profile
+        </MudText>
+        
+        <MudSelect @bind-Value="_selectedProfile" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem Value="@RouteProfile.Cycling">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.DirectionsBike" Size="Size.Small" />
+                    <span>Cycling</span>
+                </MudStack>
+            </MudSelectItem>
+            <MudSelectItem Value="@RouteProfile.CyclingMountain">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Terrain" Size="Size.Small" />
+                    <span>Mountain Bike</span>
+                </MudStack>
+            </MudSelectItem>
+            <MudSelectItem Value="@RouteProfile.CyclingRoad">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" />
+                    <span>Road Bike</span>
+                </MudStack>
+            </MudSelectItem>
+            <MudSelectItem Value="@RouteProfile.Walking">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.DirectionsWalk" Size="Size.Small" />
+                    <span>Walking</span>
+                </MudStack>
+            </MudSelectItem>
+            <MudSelectItem Value="@RouteProfile.Driving">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Small" />
+                    <span>Driving</span>
+                </MudStack>
+            </MudSelectItem>
+        </MudSelect>
+    </MudStack>
+
+    <MudDivider />
+
+    <!-- Route Options -->
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="icon-header">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />
+            Route Options
+        </MudText>
+        
+        <MudStack Spacing="1">
+            <MudCheckBox @bind-Value="_avoidHighways" Label="Avoid Highways" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_avoidTolls" Label="Avoid Tolls" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_avoidFerries" Label="Avoid Ferries" Color="Color.Primary" />
+        </MudStack>
+    </MudStack>
+
+    <!-- Waypoints List -->
+    @if (_waypoints.Any())
+    {
+        <MudDivider />
+        
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Place" Class="mr-2" />
+                Waypoints (@_waypoints.Count)
+            </MudText>
+            
+            <MudStack Spacing="1">
+                @for (int i = 0; i < _waypoints.Count; i++)
+                {
+                    var index = i; // Capture for closure
+                    var waypoint = _waypoints[i];
+                    
+                    <MudPaper Class="pa-3" Elevation="3" Style="cursor: pointer;" @onclick="() => FocusOnWaypoint(index)">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="flex-grow-1">
+                                <div>
+                                    @if (index == 0)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" />
+                                    }
+                                    else if (index == _waypoints.Count - 1 && _waypoints.Count > 1)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Stop" Color="Color.Error" />
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@(index + 1)</MudChip>
+                                    }
+                                </div>
+                                <MudStack Spacing="0" Class="flex-grow-1">
+                                    <MudText Typo="Typo.body2">@waypoint.Name</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @waypoint.Latitude.ToString("F4"), @waypoint.Longitude.ToString("F4")
+                                    </MudText>
+                                </MudStack>
+                            </MudStack>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                          Color="Color.Error" 
+                                          Size="Size.Small"
+                                          OnClick="() => RemoveWaypoint(index)" />
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        </MudStack>
+    }
+
+    <!-- Route Information -->
+    @if (_currentRoute != null)
+    {
+        <MudDivider />
+        
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />
+                Route Information
+            </MudText>
+            
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudPaper Class="pa-3 text-center" Elevation="3">
+                        <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Straighten" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2" Color="Color.Primary">Distance</MudText>
+                            <MudText Typo="Typo.subtitle2">@FormatDistance(_currentRoute.Distance)</MudText>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudPaper Class="pa-3 text-center" Elevation="3">
+                        <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Duration</MudText>
+                            <MudText Typo="Typo.subtitle2">@FormatDuration(_currentRoute.Duration)</MudText>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudPaper Class="pa-3 text-center" Elevation="3">
+                        <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" />
+                            <MudText Typo="Typo.body2" Color="Color.Success">Elevation</MudText>
+                            <MudText Typo="Typo.subtitle2">@(_currentRoute.Elevation.ToString("F0")) m</MudText>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudStack>
+    }
+
+    <!-- Directions -->
+    @if (_currentRoute?.Directions?.Any() == true)
+    {
+        <MudDivider />
+        
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="icon-header">
+                <MudIcon Icon="@Icons.Material.Filled.Navigation" Class="mr-2" />
+                Turn-by-Turn Directions
+            </MudText>
+            
+            <MudPaper Class="pa-2" Elevation="3" Style="max-height: 300px; overflow-y: auto;">
+                <MudStack Spacing="1">
+                    @foreach (var (direction, index) in _currentRoute.Directions.Select((d, i) => (d, i)))
+                    {
+                        <MudPaper Class="pa-2" 
+                                 Elevation="0"
+                                 Style="cursor: pointer; border: 1px solid var(--mud-palette-divider);"
+                                 @onmouseenter="() => HighlightDirection(index)"
+                                 @onmouseleave="ClearDirectionHighlight"
+                                 @onclick="() => FocusOnDirection(index)">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@GetDirectionIcon(direction.Type)" Color="Color.Primary" Size="Size.Small" />
+                                <MudStack Spacing="0" Class="flex-grow-1">
+                                    <MudText Typo="Typo.body2">@direction.Instruction</MudText>
+                                    @if (direction.Distance > 0)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @FormatDistance(direction.Distance)
+                                        </MudText>
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" ShowCloseIcon="true" CloseIconClicked="ClearError">
+            @_errorMessage
+        </MudAlert>
+    }
+</MudStack>

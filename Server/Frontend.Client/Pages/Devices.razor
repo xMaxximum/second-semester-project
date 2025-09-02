@@ -154,6 +154,8 @@
         try
         {
             isLoading = true;
+            StateHasChanged();
+            
             var response = await Http.GetAsync("api/device");
             if (response.IsSuccessStatusCode)
             {
@@ -171,6 +173,7 @@
         finally
         {
             isLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -193,6 +196,7 @@
         if (!result.Canceled)
         {
             await LoadDevices();
+            StateHasChanged(); 
         }
     }
 
@@ -214,6 +218,7 @@
         if (!result.Canceled)
         {
             await LoadDevices();
+            StateHasChanged(); 
         }
     }
 

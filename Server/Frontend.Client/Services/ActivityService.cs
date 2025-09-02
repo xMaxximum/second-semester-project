@@ -100,4 +100,11 @@ public class ActivityService
         return await resp.Content.ReadFromJsonAsync<ApiResponse<KpiDataResponse>>();
     }
 
+    public async Task<ApiResponse<ActivityNavigationResponse>?> GetActivityNavigationAsync(long id)
+    {
+        var resp = await _httpClient.GetAsync($"api/activities/{id}/navigation");
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<ApiResponse<ActivityNavigationResponse>>();
+    }
+
 }

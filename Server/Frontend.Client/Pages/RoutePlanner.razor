@@ -1,0 +1,69 @@
+@page "/route-planner"
+@using Shared.Models
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-16 mb-16">
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudStack Spacing="3">
+            <!-- Page Header -->
+            <MudText Typo="Typo.h4" Color="Color.Primary" Class="icon-header">
+                <img src="/route.svg" alt="Route Icon" style="width: 24px; height: 24px; filter: brightness(0) saturate(100%) invert(33%) sepia(54%) saturate(3034%) hue-rotate(239deg) brightness(91%) contrast(89%); margin-right: 8px;" />
+                Route Planner
+            </MudText>
+            <MudText Typo="Typo.body1" Style="color: var(--mud-palette-text-primary)">
+                Plan your cycling or walking routes with turn-by-turn directions
+            </MudText>
+            
+            <MudDivider />
+            
+            <!-- Main Content Grid -->
+            <MudGrid Spacing="3" Class="route-planner-grid">
+                <!-- Route Planning Controls -->
+                <MudItem xs="12" lg="4">
+                    <MudPaper Class="pa-4" Elevation="3" Style="height: fit-content;">
+                        <SimpleRoutePlanner MapElementId="route-planner-map" 
+                                     InitialLatitude="51.505" 
+                                     InitialLongitude="-0.09"
+                                     OnRouteCalculated="HandleRouteCalculated" />
+                    </MudPaper>
+                </MudItem>
+                
+                <!-- Map Container -->
+                <MudItem xs="12" lg="8">
+                    <MudPaper Elevation="3" Style="height: 600px; border-radius: 8px; overflow: hidden;">
+                        <div id="route-planner-map" style="width: 100%; height: 100%;"></div>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private void HandleRouteCalculated(Shared.Models.RouteData route)
+    {
+        // Handle route calculation completion
+        // Could show notifications, save route, etc.
+    }
+}
+
+<style>
+    .route-planner-grid {
+        min-height: 600px;
+    }
+    
+    .icon-header {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+    }
+    
+    @@media (max-width: 1280px) {
+        .route-planner-grid .mud-item:first-child {
+            order: 2;
+        }
+        
+        .route-planner-grid .mud-item:last-child {
+            order: 1;
+        }
+    }
+</style>

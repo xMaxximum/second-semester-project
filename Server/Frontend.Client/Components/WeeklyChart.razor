@@ -17,6 +17,12 @@
     />
 </ApexChart>
 
+<style>
+    .apexcharts-tooltip-active{
+        color: black;
+    }
+</style>
+
 @code {
     private List<MyData> Data { get; set; } = new();
 
@@ -32,6 +38,33 @@
         Legend = new Legend
         {
             Show = false // Hides the legend
+        },
+        Tooltip = new Tooltip
+        {
+            Theme = Mode.Light
+        },
+        Xaxis = new XAxis
+        {
+            Labels = new XAxisLabels
+            {
+                Style = new AxisLabelStyle
+                {
+                    Colors = "var(--mud-palette-text-primary)"
+                }
+            }
+        },
+        Yaxis = new List<YAxis>
+        {
+            new YAxis
+            {
+                Labels = new YAxisLabels
+                {
+                    Style = new AxisLabelStyle
+                    {
+                        Colors = "var(--mud-palette-text-primary)"
+                    }
+                }
+            }
         }
     };
     

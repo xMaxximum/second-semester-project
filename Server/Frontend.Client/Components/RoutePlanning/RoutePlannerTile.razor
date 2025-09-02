@@ -1,5 +1,5 @@
-﻿<style>
-    .carbs-paper {
+<style>
+    .route-planner-paper {
         cursor: pointer;
         transition: background-color 0.3s ease;
         height: 200px;
@@ -8,12 +8,12 @@
         justify-content: center;
     }
 
-    .carbs-paper:hover {
+    .route-planner-paper:hover {
         filter: brightness(0.95);
         backdrop-filter: blur(0px);
     }
 
-    .carbs-tile-grid {
+    .route-planner-tile-grid {
         height: 100%;
         display: flex;
         align-items: center;      
@@ -21,15 +21,15 @@
     }
 </style>
 
-<a href="/carbscounter" style="display: block; height: 100%;">
-    <MudPaper Elevation="3" Class="pa-4 carbs-paper" Style="height: 200px;">
-        <MudStack Row="true" Spacing="4" Class="carbs-tile-grid ">
+<a href="/route-planner" style="display: block; height: 100%;">
+    <MudPaper Elevation="3" Class="pa-4 route-planner-paper" Style="height: 200px;">
+        <MudStack Row="true" Spacing="4" Class="route-planner-tile-grid ">
             <MudItem Class="pl-6 pl-md-0">
-                <img src="/nutrition.svg" alt="Nutrition Icon" style="width: 80px; height: 80px;"/>
+                <img src="/route.svg" alt="Route Icon" style="width: 80px; height: 80px; filter: brightness(0) saturate(100%) invert(33%) sepia(54%) saturate(3034%) hue-rotate(239deg) brightness(91%) contrast(89%);"/>
             </MudItem>
             <MudItem>
                 <MudText Typo="Typo.h4" Color="Color.Primary">
-                    Calculate Carbs
+                    Route Planner
                 </MudText>
             </MudItem>
         </MudStack>
