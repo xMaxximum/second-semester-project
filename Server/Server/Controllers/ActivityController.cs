@@ -40,33 +40,34 @@ namespace Server.Controllers
                     return Unauthorized(new ActivityListResponse { IsSuccess = false, Message = "User not found" });
 
                 var query = _context.Activities
-                    .Where(a => a.UserId == userId.Value);
+                    .Where(a => a.UserId == userId.Value)
+                    .Include(a => a.Summary)
+                    .OrderByDescending(a => a.StartTime)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize);
 
                 if (status.HasValue)
                     query = query.Where(a => a.Status == status.Value);
 
                 var totalCount = await query.CountAsync();
-
-                var activities = await query
-                    .OrderByDescending(a => a.StartTime)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .Select(a => new ActivityResponse
-                    {
-                        Id = a.Id,
-                        Name = a.Name,
-                        Description = a.Description,
-                        StartTime = a.StartTime,
-                        EndTime = a.EndTime,
-                        Status = a.Status,
-                        Duration = a.EndTime.HasValue ? a.EndTime.Value - a.StartTime : null,
-                        IsActive = a.Status == ActivityStatus.InProgress,
-                        DataPacketCount = a.SensorDataPackets.Count,
-                        CreatedAt = a.CreatedAt,
-                        UpdatedAt = a.UpdatedAt,
-                        Analytics = null 
-                    })
-                    .ToListAsync();
+                
+                var activityEntities = await query.ToListAsync();
+                
+                var activities = activityEntities.Select(a => new ActivityResponse
+                {
+                    Id = a.Id,
+                    Name = a.Name,
+                    Description = a.Description,
+                    StartTime = a.StartTime,
+                    EndTime = a.EndTime,
+                    Status = a.Status,
+                    Duration = a.EndTime.HasValue ? a.EndTime.Value - a.StartTime : null,
+                    IsActive = a.Status == ActivityStatus.InProgress,
+                    DataPacketCount = a.SensorDataPackets.Count,
+                    CreatedAt = a.CreatedAt,
+                    UpdatedAt = a.UpdatedAt,
+                    Analytics = GetAnalytics(a)
+                }).ToList();
 
                 return Ok(new ActivityListResponse
                 {
@@ -100,7 +101,7 @@ namespace Server.Controllers
                     return Unauthorized(new ActivityDetailsResponse { IsSuccess = false, Message = "User not found" });
 
                 var activity = await _context.Activities
-                    .Include(a => a.SensorDataPackets.OrderBy(s => s.Timestamp))
+                    .Include(a => a.Summary)
                     .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId.Value);
 
                 if (activity == null)
@@ -121,8 +122,13 @@ namespace Server.Controllers
                     UpdatedAt = activity.UpdatedAt,
                     Analytics = GetAnalytics(activity)
                 };
-
-                var sensorData = activity.SensorDataPackets.Select(s => new SensorDataPacketResponse
+                
+                var packets = await _context.SensorDataPackets
+                    .Where(p => p.ActivityId == activity.Id)
+                    .OrderBy(p => p.Timestamp)
+                    .ToListAsync();
+                
+                var sensorData = packets.Select(s => new SensorDataPacketResponse
                 {
                     Id = s.Id,
                     ActivityId = s.ActivityId,
@@ -432,6 +438,8 @@ namespace Server.Controllers
                 activity.EndTime = packets.Count > 0 ? packets[^1].Timestamp : startTime.AddMinutes(5);
                 activity.Status = ActivityStatus.Completed;
                 activity.UpdatedAt = DateTime.UtcNow;
+                var summary = SensorDataController.BuildSummaryFromPackets(activity, packets);
+                activity.Summary = summary;
                 await _context.SaveChangesAsync();
 
                 var response = new ActivityResponse
@@ -727,7 +735,9 @@ namespace Server.Controllers
         private ActivityAnalytics GetAnalytics(Activity activity)
         {
             if (activity.Summary == null)
+            {
                 return new ActivityAnalytics();
+            }
 
             return new ActivityAnalytics
             {

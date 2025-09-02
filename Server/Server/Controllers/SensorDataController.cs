@@ -59,7 +59,10 @@ namespace Server.Controllers
                 activity.UpdatedAt = DateTime.UtcNow;
 
                 // build summary from existing packets
-                var packets = activity.SensorDataPackets.OrderBy(p => p.Timestamp).ToList();
+                var packets = await _context.SensorDataPackets
+                    .Where(p => p.ActivityId == activity.Id)
+                    .OrderBy(p => p.Timestamp)
+                    .ToListAsync();
                 var summary = BuildSummaryFromPackets(activity, packets);
                 activity.Summary = summary;
                 
@@ -251,7 +254,7 @@ namespace Server.Controllers
             }
         }
 
-        private ActivitySummary BuildSummaryFromPackets(Activity activity, List<SensorDataPacket> packets)
+        public static ActivitySummary BuildSummaryFromPackets(Activity activity, List<SensorDataPacket> packets)
         {
             var summary = new ActivitySummary
             {
@@ -313,7 +316,7 @@ namespace Server.Controllers
             return summary;
         }
         
-        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        private static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             // Haversine formula
             const double R = 6371000; // Earth's radius in meters
