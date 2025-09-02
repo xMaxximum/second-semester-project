@@ -483,7 +483,7 @@ namespace Server.Controllers
 
                 // Get all completed activities for the week
                 var activities = await _context.Activities
-                    .Include(a => a.SensorDataPackets)
+                    .Include(a => a.Summary)
                     .Where(a => a.UserId == userId.Value && 
                                 a.Status == ActivityStatus.Completed &&
                                 a.StartTime >= weekStart && 
