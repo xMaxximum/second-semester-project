@@ -9,6 +9,7 @@
 // sensors
 #include <sensors/rpm.h>
 #include <sensors/gps.h>
+#include <sensors/accel-temp.h>
 
 // data specific
 // this is the address to where the sensor data is stored in the heap (96kB of RAM)
@@ -36,6 +37,10 @@ gpsData gpsdata;
 // GPS Serial
 TinyGPSPlus gps;
 
+// accelerometer and temperature
+Adafruit_MPU6050 mpu;
+// struct for the sensor data
+sensors_event_t a, g, temp;
 
 void setup()
 {
@@ -46,10 +51,14 @@ void setup()
   setupWlan();
   setupFileSystem();
   setupGPS();
+  setupMPU6050(mpu);
 
   Serial.println("Setup complete. Starting main loop...");
 
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
+  // initialize the buffer
+  for (size_t i = 0; i < RAM_ARR; i++)
+        sensorData[i] = 0;
   // pinMode(2, OUTPUT);
 
   // digital input for rpm sensor (magnet sensor)
@@ -67,15 +76,16 @@ void loop()
     dtTo200ms = currentTime - lastReadTime200ms;
     if (dtTo200ms >= 200)
     {
-
-      sensorData[bufferCounter] = 0; // temperature
+      // get data from accelerometer and temperature sensor (MPU6050)
+      mpu.getEvent(&a, &g, &temp);
+      sensorData[bufferCounter] = temp.temperature; 
       sensorData[bufferCounter + 1] = (float)speed;
-      sensorData[bufferCounter + 2] = gpsdata.latitude;  // latitude
-      sensorData[bufferCounter + 3] = gpsdata.longitude; // longitude
+      sensorData[bufferCounter + 2] = gpsdata.latitude; 
+      sensorData[bufferCounter + 3] = gpsdata.longitude;
       sensorData[bufferCounter + 4] = gpsdata.height;
-      sensorData[bufferCounter + 5] = 0;
-      sensorData[bufferCounter + 6] = 0;
-      sensorData[bufferCounter + 7] = 0;
+      sensorData[bufferCounter + 5] = a.acceleration.x;
+      sensorData[bufferCounter + 6] = a.acceleration.y;
+      sensorData[bufferCounter + 7] = a.acceleration.z;
       // create the checksum
       for (size_t i = 0; i < SENSOR_DATA_SIZE; i++)
         sensorData[bufferCounter + 8] += sensorData[i];
@@ -174,6 +184,3 @@ void setupWlan()
   Serial.print("Connected to WLAN with ip adress: ");
   Serial.println(WiFi.localIP());
 }
-
-
-

@@ -1,5 +1,4 @@
-#ifndef CONSTANTS_H
-#define CONSTANTS_H
+#pragma once
 
 #define CUSTOM_TX_GPS 17
 #define CUSTOM_RX_GPS 16
@@ -19,5 +18,3 @@
 // magnet sensor
 #define PIN_MAGNET 13
 #define WHEEL_DIAMETER 0.6 // 26 inch wheel
-
-#endif

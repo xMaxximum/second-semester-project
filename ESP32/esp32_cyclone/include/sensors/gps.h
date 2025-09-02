@@ -1,5 +1,4 @@
-#ifndef GPS_H
-#define GPS_H
+#pragma once
 
 #include "TinyGPS++.h"
 
@@ -16,5 +15,3 @@ void setupGPS();
 void readGPSData(TinyGPSPlus &gps, gpsData &gpsdata);
 void displayInfo(TinyGPSPlus &gps, gpsData &gpsdata);
 void updateAllData(TinyGPSPlus &gps, gpsData &gpsdata);
-
-#endif
