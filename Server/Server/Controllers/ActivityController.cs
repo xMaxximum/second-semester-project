@@ -536,7 +536,7 @@ namespace Server.Controllers
 
                 // Gget activities for current and previous week 
                 var currentWeekActivities = await _context.Activities
-                    .Include(a => a.SensorDataPackets)
+                    .Include(a => a.Summary)
                     .Where(a => a.UserId == userId.Value && 
                                a.Status == ActivityStatus.Completed &&
                                a.StartTime >= currentWeekStart && 
@@ -544,7 +544,7 @@ namespace Server.Controllers
                     .ToListAsync();
 
                 var previousWeekActivities = await _context.Activities
-                    .Include(a => a.SensorDataPackets)
+                    .Include(a => a.Summary)
                     .Where(a => a.UserId == userId.Value && 
                                a.Status == ActivityStatus.Completed &&
                                a.StartTime >= previousWeekStart && 
@@ -554,27 +554,15 @@ namespace Server.Controllers
                 // calculate current week stats
                 var currentActivityCount = currentWeekActivities.Count;
                 var currentTime = CalculateTotalTime(currentWeekActivities);
-                var currentDistance = 0.0;
-                var currentElevation = 0.0;
-                foreach (var a in currentWeekActivities)
-                {
-                    var analytics = GetAnalytics(a);
-                    currentDistance += analytics.TotalDistance / 1000;
-                    currentElevation += analytics.ElevationGain;
-                }
+                var currentDistance = currentWeekActivities.Sum(a => (a.Summary?.TotalDistanceMeters ?? 0) / 1000.0);
+                var currentElevation = currentWeekActivities.Sum(a => a.Summary?.ElevationGainMeters ?? 0);
 
                 // calculate previous week stats
                 var previousActivityCount = previousWeekActivities.Count;
                 var previousTime = CalculateTotalTime(previousWeekActivities);
-                var previousDistance = 0.0;
-                var previousElevation = 0.0;
-                foreach (var a in previousWeekActivities)
-                {
-                    var analytics = GetAnalytics(a);
-                    previousDistance += analytics.TotalDistance / 1000;
-                    previousElevation += analytics.ElevationGain;
-                }
-
+                var previousDistance = previousWeekActivities.Sum(a => (a.Summary?.TotalDistanceMeters ?? 0) / 1000.0);
+                var previousElevation = previousWeekActivities.Sum(a => a.Summary?.ElevationGainMeters ?? 0);
+                
                 var response = new KpiDataResponse
                 {
                     ActivityCount = currentActivityCount.ToString(),
