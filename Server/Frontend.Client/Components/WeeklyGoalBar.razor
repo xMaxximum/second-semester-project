@@ -1,95 +1,122 @@
-﻿
 @using Shared.Models
 @inject ActivityService ActivityService
 @inject WeeklyGoalStorageService WeeklyGoalStorageService
 @inject ISnackbar Snackbar
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudPaper Elevation="3" Class="pa-4 mb-4">
 
     @if (_loading)
     {
-        <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="2">
-            <MudProgressCircular Indeterminate="true" />
-            <MudText Typo="Typo.body2">Loading weekly goal…</MudText>
+        <MudStack Row="true" Style="align-items: center" Spacing="3">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            <MudText Typo="Typo.body2" Class="text--secondary">Loading weekly goal…</MudText>
         </MudStack>
     }
     else
     {
-        <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="2">
-            <MudText Typo="Typo.h6">Weekly Goal</MudText>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@ToggleEdit">
-                @(_hasGoal ? (_editing ? "Close Editor" : "Edit Goal") : (_editing ? "Close Editor" : "Create Goal"))
-            </MudButton>
-        </MudStack>
-        
-        @if (_editing)
+        @if (!_editing)
         {
-            <MudPaper Elevation="0" Class="pa-3 mt-3">
-                <MudText Typo="Typo.subtitle2" Class="mb-2">@(_hasGoal ? "Edit Weekly Goal" : "Create Weekly Goal")</MudText>
+            <MudStack Row="true" Style="align-items: center" Spacing="4">
+                <MudText Typo="Typo.body1" Class="font-weight-medium" Style="min-width: fit-content;">
+                    @(_hasGoal ? _goalTitle : "No weekly goal set")
+                </MudText>
+                
+                @if (_hasGoal)
+                {
+                    <MudProgressLinear Value="@_progressPct"
+                                           Color="Color.Primary"
+                                           Class="flex-grow-1"
+                                           Striped="@(_progressPct < 100)"
+                                           Style="height: 6px; border-radius: 3px;"/> 
+                    <div class="d-flex gap-2" style="align-items: center">
+                        <MudText Typo="Typo.body2" Class="font-weight-medium" Style="min-width: 40px;">
+                            @string.Format("{0:0}%", _progressPct)
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-medium" Style="min-width: 40px;">
+                            @_message
+                        </MudText>
 
-                <MudGrid Class="mt-2" GutterSize="2">
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="@ToggleEdit"/>
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="DeleteGoal"/>
+                    </div>
+                }
+                else
+                {
+                    <div class="flex-grow-1"></div>
+                    
+                    <div class="d-flex gap-2">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Small"
+                                       OnClick="@ToggleEdit" />
+                    </div>
+                }
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                    @(_hasGoal ? "Edit Goal" : "Create Goal")
+                </MudText>
+
+                <MudGrid GutterSize="3">
                     <MudItem xs="12">
-                        <MudTextField @bind-Value="_goal.Name" Label="Name" Immediate="true" />
+                        <MudTextField @bind-Value="_goal.Name" 
+                                     Label="Goal Name" 
+                                     Variant="Variant.Outlined"
+                                     Immediate="true" />
                     </MudItem>
 
                     <MudItem xs="12" sm="4">
                         <MudNumericField T="double" @bind-Value="_goal.DistanceKm"
-                                         Label="Distance" Min="0"
-                                         Adornment="Adornment.End" AdornmentText="km" Immediate="true" />
+                                         Label="Distance (km)" 
+                                         Min="0"
+                                         Variant="Variant.Outlined"
+                                         Immediate="true" />
                     </MudItem>
 
                     <MudItem xs="12" sm="4">
                         <MudNumericField T="double" @bind-Value="_goal.TimeHours"
-                                         Label="Time" Min="0"
-                                         Adornment="Adornment.End" AdornmentText="h" Immediate="true" />
+                                         Label="Time (hours)" 
+                                         Min="0"
+                                         Variant="Variant.Outlined"
+                                         Immediate="true" />
                     </MudItem>
 
                     <MudItem xs="12" sm="4">
                         <MudNumericField T="double" @bind-Value="_goal.ElevationM"
-                                         Label="Elevation" Min="0"
-                                         Adornment="Adornment.End" AdornmentText="m" Immediate="true" />
+                                         Label="Elevation (m)" 
+                                         Min="0"
+                                         Variant="Variant.Outlined"
+                                         Immediate="true" />
                     </MudItem>
 
-                    <MudItem xs="12" Class="mt-2">
-                        <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                            @if (_hasGoal)
-                            {
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteGoal">
-                                    Delete Goal
-                                </MudButton>
-                            }
-                            else
-                            {
-                                <span></span>
-                            }
-
-                            <MudStack Direction="Row" Spacing="2">
-                                <MudButton Variant="Variant.Text" OnClick="CancelEdit">Cancel</MudButton>
-                                <MudButton Color="Color.Primary" OnClick="SaveGoal">Save</MudButton>
-                            </MudStack>
+                    <MudItem xs="12" Class="pt-2">
+                        <MudStack Row="true" Style="justify-content: flex-end; align-items: center" Spacing="2">
+                            <MudButton Variant="Variant.Text" 
+                                      OnClick="CancelEdit"
+                                      Size="Size.Small">
+                                Cancel
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled" 
+                                      Color="Color.Primary" 
+                                      OnClick="SaveGoal"
+                                      Size="Size.Small">
+                                Save
+                            </MudButton>
                         </MudStack>
                     </MudItem>
                 </MudGrid>
-
-            </MudPaper>
-        }
-
-        <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">
-            @(_hasGoal ? _goalTitle : "No weekly goal yet — create one!")
-        </MudText>
-
-        @if (_hasGoal)
-        {
-            <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="2">
-                <MudProgressLinear Value="@_progressPct" Color="Color.Primary" Class="mud-width-full" />
-                <MudText Typo="Typo.subtitle2">@string.Format("{0:0}%", _progressPct)</MudText>
             </MudStack>
-
-            <MudText Typo="Typo.subtitle1" Class="mt-3 font-weight-bold">@_message</MudText>
-        }
-        else
-        {
-            <MudText Typo="Typo.caption" Class="mt-2">Set a goal to start tracking your weekly progress.</MudText>
         }
     }
 </MudPaper>
@@ -165,13 +192,13 @@
         _progressPct = 0;
         if (_hasGoal)
         {
-            _goalTitle = $"{_goal.Name}: {_goal.DistanceKm:0.#} km • {_goal.TimeHours:0.#} h • {_goal.ElevationM:0} m";
-            _message = $"{_goal.Name}: Failed to load KPI data.";
+            _goalTitle = $"{_goal.Name} • {_goal.DistanceKm:0.#} km • {_goal.TimeHours:0.#} h • {_goal.ElevationM:0} m";
+            _message = $"Failed to load progress data";
         }
         else
         {
-            _goalTitle = "No weekly goal yet — create one!";
-            _message = "Set a goal to start tracking your weekly progress.";
+            _goalTitle = "No weekly goal set";
+            _message = "Create a goal to start tracking your progress";
         }
     }
 
@@ -192,8 +219,8 @@
         if (!_hasGoal)
         {
             _progressPct = 0;
-            _goalTitle = "No weekly goal yet — create one!";
-            _message = "Set a goal to start tracking your weekly progress.";
+            _goalTitle = "No weekly goal set";
+            _message = "Create a goal to start tracking your progress";
             return;
         }
 
@@ -222,14 +249,14 @@
 
         _progressPct = count > 0 ? (sum / count) : 0;
 
-        _goalTitle = $"{_goal.Name}: {_goal.DistanceKm:0.#} km • {_goal.TimeHours:0.#} h • {_goal.ElevationM:0} m";
+        _goalTitle = $"{_goal.Name} • {_goal.DistanceKm:0.#} km • {_goal.TimeHours:0.#} h • {_goal.ElevationM:0} m";
 
-        if      (_progressPct < 1)   _message = $"{_goal.Name}: Time to get started! 🚴🔥";
-        else if (_progressPct < 20)  _message = $"{_goal.Name}: Nice start — keep going! 💪✨";
-        else if (_progressPct < 50)  _message = $"{_goal.Name}: Halfway coming up — steady pace! ⏱️🏃";
-        else if (_progressPct < 80)  _message = $"{_goal.Name}: Great work — almost there! 🚀👏";
-        else if (_progressPct < 100) _message = $"{_goal.Name}: Final push to the finish! ⚡🏁";
-        else                         _message = $"{_goal.Name}: Goal achieved — awesome! 🎉🥳";
+        if      (_progressPct < 1)   _message = "Get started!";
+        else if (_progressPct < 20)  _message = "Nice start!";
+        else if (_progressPct < 50)  _message = "Steady progress!";
+        else if (_progressPct < 80)  _message = "Great work!";
+        else if (_progressPct < 100) _message = "Final push!";
+        else                         _message = "Goal achieved!";
     }
 
     private static double Clamp01(double v) => v < 0 ? 0 : (v > 1 ? 1 : v);
