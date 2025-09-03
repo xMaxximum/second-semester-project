@@ -52,10 +52,10 @@
     
     <MudDrawerContainer> 
       <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Temporary" Anchor="Anchor.Left" Elevation="2" Class="app-drawer">
-        <MudNavMenu Class="drawer-menu"> <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" OnClick="CloseDrawer">Home</MudNavLink> 
-          <MudNavLink Href="/carbscounter" Icon="@Icons.Material.Filled.Backpack" OnClick="CloseDrawer">Carbs</MudNavLink> 
-          <MudNavLink Href="/route-planner" Icon="@Icons.Material.Filled.Route" OnClick="CloseDrawer">Route Planner</MudNavLink>
-          <MudNavLink Href="/achievements" Icon="@Icons.Material.Filled.EmojiEvents" OnClick="CloseDrawer">Achievements </MudNavLink>
+        <MudNavMenu Class="drawer-menu"> <MudNavLink Href="/app" Icon="@Icons.Material.Filled.Home" OnClick="CloseDrawer">Dashboard</MudNavLink> 
+          <MudNavLink Href="/app/carbscounter" Icon="@Icons.Material.Filled.Backpack" OnClick="CloseDrawer">Carbs</MudNavLink> 
+          <MudNavLink Href="/app/route-planner" Icon="@Icons.Material.Filled.Route" OnClick="CloseDrawer">Route Planner</MudNavLink>
+          <MudNavLink Href="/app/achievements" Icon="@Icons.Material.Filled.EmojiEvents" OnClick="CloseDrawer">Achievements </MudNavLink>
           <MudDivider Class="my-2" />
     
           <UserMenu/>
@@ -68,7 +68,11 @@
       </MudMainContent>
     </MudDrawerContainer>
     
-    <Footer/>
+    @* Only show footer on non-dashboard pages *@
+    @if (!Navigation.Uri.Contains("/app"))
+    {
+        <Footer/>
+    }
 
   </MudLayout>
 </CascadingAuthenticationState>
@@ -127,7 +131,7 @@
 
   void ToggleDrawer() => _drawerOpen = !_drawerOpen;
   void CloseDrawer() => _drawerOpen = false;
-  void GoHome() => NavigationManager.NavigateTo("/");
+  void GoHome() => NavigationManager.NavigateTo("/app");
 
   private async Task HandleLogout()
   {

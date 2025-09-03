@@ -1,4 +1,4 @@
-﻿@page "/achievements"
+﻿@page "/app/achievements"
 
 <MudContainer Class="my-4 h-screen">
     <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
@@ -13,5 +13,5 @@
 
 @code {
     [Inject] private NavigationManager Nav { get; set; } = default!;
-    private void GoBack() => Nav.NavigateTo("/");
+    private void GoBack() => Nav.NavigateTo("/app");
 }

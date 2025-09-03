@@ -667,7 +667,7 @@
 
     private void GoBack()
     {
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("/app");
     }
 
     private void NavigateToActivity(long? activityId)
@@ -784,7 +784,7 @@
                 if (deleteResult?.IsSuccess == true)
                 {
                     Snackbar.Add($"Activity '{_details.Activity.Name}' deleted successfully", Severity.Success);
-                    Navigation.NavigateTo("/");
+                    Navigation.NavigateTo("/app");
                 }
                 else
                 {
