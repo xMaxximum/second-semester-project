@@ -1,5 +1,10 @@
-﻿@page "/achievements"
+﻿@page "/app/achievements"
 
 <MudContainer Class="my-8 h-screen">
     <WeeklyAchievements/>
 </MudContainer>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    private void GoBack() => Nav.NavigateTo("/");
+}

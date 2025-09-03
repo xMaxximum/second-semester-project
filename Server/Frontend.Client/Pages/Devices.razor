@@ -1,4 +1,4 @@
-@page "/devices"
+@page "/app/devices"
 @rendermode InteractiveWebAssembly
 @using Microsoft.AspNetCore.Authorization
 @using Shared.Models
@@ -179,7 +179,7 @@
 
     private void GoBack()
     {
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("/app");
     }
 
     private async Task OpenAddDeviceDialog()
