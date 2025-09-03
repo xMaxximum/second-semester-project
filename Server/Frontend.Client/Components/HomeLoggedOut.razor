@@ -2,7 +2,7 @@
 <PageTitle>Home</PageTitle>
 
 <style>
-    
+
     html::-webkit-scrollbar,
     body::-webkit-scrollbar {
         width: 0;
@@ -13,17 +13,19 @@
         scrollbar-width: none;
         -ms-overflow-style: none;
     }
-    
+
     .hero-banner {
         position: relative;
         width: 100%;
         height: 100vh;
         overflow: hidden;
     }
+
     .video-wrapper {
         position: absolute;
         inset: 0;
     }
+
     .video-wrapper video {
         position: absolute;
         top: 50%;
@@ -36,6 +38,7 @@
         border: 0;
         pointer-events: none;
     }
+
     .hero-overlay {
         position: absolute;
         top: 50%;
@@ -47,30 +50,39 @@
         display: grid;
         gap: 12px;
     }
+
     .hero-overlay h1 {
         margin: 0;
         font-weight: 700;
         font-size: clamp(28px, 5vw, 56px);
     }
+
     .hero-overlay p {
         margin: 0;
         opacity: .92;
         font-size: clamp(14px, 2.2vw, 18px);
     }
+
     .hero-overlay .mud-button-root {
         width: auto !important;
         min-width: 160px;
         margin: .25rem;
     }
-    @@media (max-width:600px) {
-        .hero-overlay .mud-button-root { min-width: 140px; }
+
+    @@media (max-width: 600px) {
+        .hero-overlay .mud-button-root {
+            min-width: 140px;
+        }
     }
+
     .section-wrapper {
         padding: 3rem 1rem;
     }
+
     .section-background {
         background-color: transparent;
     }
+
     .section-card {
         background-color: var(--mud-palette-primary);
         color: #333;
@@ -79,20 +91,22 @@
         max-width: 1200px;
         margin: 0 auto;
     }
+
     .section-card h2 {
         text-align: center;
         margin-bottom: 2rem;
         font-size: 2.2rem;
         font-weight: 600;
-        color:  white;
+        color: white;
     }
+
     .feature-card {
-        background: var(--mud-palette-background); 
+        background: var(--mud-palette-background);
         color: var(--mud-palette-text-primary);
         border-radius: 12px;
         padding: 2rem;
         text-align: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .cta-footer {
@@ -105,121 +119,208 @@
     }
 
     @@media (max-width: 768px) {
-    .section-wrapper {
-        padding: 2rem 1rem;
-    }
-    .section-background {
-        padding: 2rem 1rem;
-    }
-    .section-card {
-        padding: 1.5rem 1rem;
-    }
+        .section-wrapper {
+            padding: 2rem 1rem;
+        }
+
+        .section-background {
+            padding: 2rem 1rem;
+        }
+
+        .section-card {
+            padding: 1.5rem 1rem;
+        }
     }
 
     @@media (max-width: 480px) {
-    .section-wrapper {
-        padding: 1.5rem 0.75rem;
-    }
-    .section-background {
-        padding: 1.5rem 0.75rem;
-    }
-    .section-card {
-        padding: 1.25rem 0.75rem;
-    }
+        .section-wrapper {
+            padding: 1.5rem 0.75rem;
+        }
+
+        .section-background {
+            padding: 1.5rem 0.75rem;
+        }
+
+        .section-card {
+            padding: 1.25rem 0.75rem;
+        }
     }
 </style>
 
-<!-- Hero Banner -->
-<section class="hero-banner">
-    <div class="video-wrapper">
-        <video class="hero-video"
-               autoplay
-               muted
-               loop
-               playsinline
-               preload="metadata">
-            <source src="media/Hero_Banner_Video.mp4" type="video/mp4" />
-            Your browser does not support HTML5 video.
-        </video>
-    </div>
-    <div class="hero-overlay">
-        <h1>Track every Turn.</h1>
-        <p>Your cycling data at your fingertips. Anywhere. Anytime.</p>
-        <MudStack Direction="Row" Spacing="2" Justify="Justify.Center" Class="hero-cta">
-            <MudButton Variant="@Variant.Filled" Color="@Color.Primary" Href="/register">Get Started</MudButton>
-            <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Href="/login">Login</MudButton>
-        </MudStack>
-    </div>
-</section>
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <NotAuthorized>
+            <!-- Hero Banner -->
+            <section class="hero-banner">
+                <div class="video-wrapper">
+                    <video class="hero-video"
+                           autoplay
+                           muted
+                           loop
+                           playsinline
+                           preload="metadata">
+                        <source src="media/Hero_Banner_Video.mp4" type="video/mp4"/>
+                        Your browser does not support HTML5 video.
+                    </video>
+                </div>
+                <div class="hero-overlay">
+                    <h1>Track every Turn.</h1>
+                    <p>Your cycling data at your fingertips. Anywhere. Anytime.</p>
+                    <MudStack Direction="Row" Spacing="2" Justify="Justify.Center" Class="hero-cta">
+                        <MudButton Variant="@Variant.Filled" Color="@Color.Primary" Href="/register">Get Started
+                        </MudButton>
+                        <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Href="/login">Login</MudButton>
+                    </MudStack>
+                </div>
+            </section>
 
-<MudContainer MaxWidth="@MaxWidth.False" Class="p-0">
+            <MudContainer MaxWidth="@MaxWidth.False" Class="p-0">
 
-    <!-- Features Section -->
-    <section class="section-wrapper mb-16 mt-16">
-        <MudPaper Class="section-background" Elevation="0">
-            <MudPaper Class="section-card" Elevation="3">
-                <h2>Our Features</h2>
-                <MudGrid Spacing="3" Justify="Justify.Center">
-                    @foreach (var f in FeatureList)
-                    {
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudPaper Class="feature-card" Elevation="1">
-                                <MudText Typo="@Typo.h6" GutterBottom="true">@f.Title</MudText>
-                                <MudText Typo="@Typo.body2">@f.Description</MudText>
-                            </MudPaper>
-                        </MudItem>
-                    }
-                </MudGrid>
-            </MudPaper>
-        </MudPaper>
-    </section>
-
-    <!-- Testimonials Section -->
-    <section class="section-wrapper mb-16">
-        <MudPaper Class="section-background" Elevation="0">
-            <MudPaper Class="section-card" Elevation="3">
-                <h2>What Our Riders Say</h2>
-                <MudExpansionPanels Multiple="true">
-                    @foreach (var t in Testimonials)
-                    {
-                        <MudExpansionPanel Text="@t.Name"
-                                           ExpandedIcon="Icons.Material.Filled.ExpandLess"
-                                           CollapsedIcon="Icons.Material.Filled.ExpandMore">
-                            <MudGrid AlignItems="Center" Spacing="2">
-                                <MudItem xs="12" sm="2">
-                                    <MudAvatar Size="Size.Large"
-                                               Style="@($"background-image:url('/media/{t.ImgUrl}');background-size:cover;background-position:center")" />
-                                </MudItem>
-                                <MudItem xs="12" sm="10">
-                                    <MudText Typo="@Typo.body1">“@t.Text”</MudText>
-                                    <MudText Typo="@Typo.caption">– @t.Name, @t.Role</MudText>
-                                </MudItem>
+                <!-- Features Section -->
+                <section class="section-wrapper mb-16 mt-16">
+                    <MudPaper Class="section-background" Elevation="0">
+                        <MudPaper Class="section-card" Elevation="3">
+                            <h2>Our Features</h2>
+                            <MudGrid Spacing="3" Justify="Justify.Center">
+                                @foreach (var f in FeatureList)
+                                {
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudPaper Class="feature-card" Elevation="1">
+                                            <MudText Typo="@Typo.h6" GutterBottom="true">@f.Title</MudText>
+                                            <MudText Typo="@Typo.body2">@f.Description</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
                             </MudGrid>
-                        </MudExpansionPanel>
-                    }
-                </MudExpansionPanels>
-            </MudPaper>
-        </MudPaper>
-    </section>
-</MudContainer>
+                        </MudPaper>
+                    </MudPaper>
+                </section>
+
+                <!-- Testimonials Section -->
+                <section class="section-wrapper mb-16">
+                    <MudPaper Class="section-background" Elevation="0">
+                        <MudPaper Class="section-card" Elevation="3">
+                            <h2>What Our Riders Say</h2>
+                            <MudExpansionPanels Multiple="true">
+                                @foreach (var t in Testimonials)
+                                {
+                                    <MudExpansionPanel Text="@t.Name"
+                                                       ExpandedIcon="Icons.Material.Filled.ExpandLess"
+                                                       CollapsedIcon="Icons.Material.Filled.ExpandMore">
+                                        <MudGrid AlignItems="Center" Spacing="2">
+                                            <MudItem xs="12" sm="2">
+                                                <MudAvatar Size="Size.Large"
+                                                           Style="@($"background-image:url('/media/{t.ImgUrl}');background-size:cover;background-position:center")"/>
+                                            </MudItem>
+                                            <MudItem xs="12" sm="10">
+                                                <MudText Typo="@Typo.body1">“@t.Text”</MudText>
+                                                <MudText Typo="@Typo.caption">– @t.Name, @t.Role</MudText>
+                                            </MudItem>
+                                        </MudGrid>
+                                    </MudExpansionPanel>
+                                }
+                            </MudExpansionPanels>
+                        </MudPaper>
+                    </MudPaper>
+                </section>
+            </MudContainer>
 
 
-<!-- CTA Footer Section -->
-<section style="padding-bottom:0; margin-bottom:0;">
-    <div class="cta-footer" >
-        <MudText Typo="@Typo.h4" Class="mb-3">Ready to Ride?</MudText>
-        <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Size="Size.Large" Href="/register">
-            Join Cyclone Now
-        </MudButton>
-    </div>
-</section>
+            <!-- CTA Footer Section -->
+            <section style="padding-bottom:0; margin-bottom:0;">
+                <div class="cta-footer">
+                    <MudText Typo="@Typo.h4" Class="mb-3">Ready to Ride?</MudText>
+                    <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Size="Size.Large" Href="/register">
+                        Join Cyclone Now
+                    </MudButton>
+                </div>
+            </section>
+        </NotAuthorized>
+        <Authorized>
+            <!-- Hero Banner -->
+            <section class="hero-banner">
+                <div class="video-wrapper">
+                    <video class="hero-video"
+                           autoplay
+                           muted
+                           loop
+                           playsinline
+                           preload="metadata">
+                        <source src="media/Hero_Banner_Video.mp4" type="video/mp4"/>
+                        Your browser does not support HTML5 video.
+                    </video>
+                </div>
+                <div class="hero-overlay">
+                    <h1>Track every Turn.</h1>
+                    <p>Your cycling data at your fingertips. Anywhere. Anytime.</p>
+                    <MudStack Direction="Row" Spacing="2" Justify="Justify.Center" Class="hero-cta">
+                        <MudButton Variant="@Variant.Filled" Color="@Color.Secondary" Href="/login">Login</MudButton>
+                    </MudStack>
+                </div>
+            </section>
+
+            <MudContainer MaxWidth="@MaxWidth.False" Class="p-0">
+
+                <!-- Features Section -->
+                <section class="section-wrapper mb-16 mt-16">
+                    <MudPaper Class="section-background" Elevation="0">
+                        <MudPaper Class="section-card" Elevation="3">
+                            <h2>Our Features</h2>
+                            <MudGrid Spacing="3" Justify="Justify.Center">
+                                @foreach (var f in FeatureList)
+                                {
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudPaper Class="feature-card" Elevation="1">
+                                            <MudText Typo="@Typo.h6" GutterBottom="true">@f.Title</MudText>
+                                            <MudText Typo="@Typo.body2">@f.Description</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    </MudPaper>
+                </section>
+
+                <!-- Testimonials Section -->
+                <section class="section-wrapper mb-16">
+                    <MudPaper Class="section-background" Elevation="0">
+                        <MudPaper Class="section-card" Elevation="3">
+                            <h2>What Our Riders Say</h2>
+                            <MudExpansionPanels Multiple="true">
+                                @foreach (var t in Testimonials)
+                                {
+                                    <MudExpansionPanel Text="@t.Name"
+                                                       ExpandedIcon="Icons.Material.Filled.ExpandLess"
+                                                       CollapsedIcon="Icons.Material.Filled.ExpandMore">
+                                        <MudGrid AlignItems="Center" Spacing="2">
+                                            <MudItem xs="12" sm="2">
+                                                <MudAvatar Size="Size.Large"
+                                                           Style="@($"background-image:url('/media/{t.ImgUrl}');background-size:cover;background-position:center")"/>
+                                            </MudItem>
+                                            <MudItem xs="12" sm="10">
+                                                <MudText Typo="@Typo.body1">“@t.Text”</MudText>
+                                                <MudText Typo="@Typo.caption">– @t.Name, @t.Role</MudText>
+                                            </MudItem>
+                                        </MudGrid>
+                                    </MudExpansionPanel>
+                                }
+                            </MudExpansionPanels>
+                        </MudPaper>
+                    </MudPaper>
+                </section>
+            </MudContainer>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
 
 @code {
+
     class Feature
     {
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
     }
+
     class Testimonial
     {
         public string Name { get; set; } = "";
@@ -227,18 +328,20 @@
         public string Text { get; set; } = "";
         public string Role { get; set; } = "";
     }
+
     private List<Feature> FeatureList = new()
     {
-        new Feature { Title="Live Tracking", Description="Receive real-time speed, distance, elevation, and performance alerts." },
-        new Feature { Title="Analytics", Description="Analyze sessions with AI-driven charts and export detailed reports." },
-        new Feature { Title="Community", Description="Join challenges, share routes, earn badges, and compete." }
+        new Feature { Title = "Live Tracking", Description = "Receive real-time speed, distance, elevation, and performance alerts." },
+        new Feature { Title = "Analytics", Description = "Analyze sessions with AI-driven charts and export detailed reports." },
+        new Feature { Title = "Community", Description = "Join challenges, share routes, earn badges, and compete." }
     };
+
     private List<Testimonial> Testimonials = new()
     {
-        new() { Name="Alex Rider",  ImgUrl="Alex_Rider.jpg",   Text="Boosted my performance!", Role="Competitive Cyclist" },
-        new() { Name="Maria Wheels", ImgUrl="Maria_Wheels.jpeg", Text="Community keeps me motivated.", Role="Fitness Enthusiast" },
-        new() { Name="John Trail",  ImgUrl="John_Trail.jpeg",  Text="Discovering new routes is amazing.", Role="Adventure Seeker" },
-        new() { Name="Sarah Pace",  ImgUrl="Sarah_Pace.jpg",   Text="Intuitive dashboard & real-time stats.", Role="Weekend Rider" }
+        new() { Name = "Alex Rider", ImgUrl = "Alex_Rider.jpg", Text = "Boosted my performance!", Role = "Competitive Cyclist" },
+        new() { Name = "Maria Wheels", ImgUrl = "Maria_Wheels.jpeg", Text = "Community keeps me motivated.", Role = "Fitness Enthusiast" },
+        new() { Name = "John Trail", ImgUrl = "John_Trail.jpeg", Text = "Discovering new routes is amazing.", Role = "Adventure Seeker" },
+        new() { Name = "Sarah Pace", ImgUrl = "Sarah_Pace.jpg", Text = "Intuitive dashboard & real-time stats.", Role = "Weekend Rider" }
     };
 
 }
