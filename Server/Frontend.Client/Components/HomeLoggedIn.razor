@@ -1,4 +1,7 @@
-﻿<style>
+﻿@inject WeeklyGoalStorageService WeeklyGoalStorageService
+@inject ISnackbar Snackbar
+
+<style>
     .chart-card {
         height: 150px;
         align-items: center;
@@ -6,7 +9,12 @@
     }
 </style>
 
-<MudContainer Class="mt-16 px-8 mb-16" MaxWidth="MaxWidth.False">
+<!-- Weekly Goal Process Bar -->
+<MudContainer class="px-8 mt-12 mb-8" MaxWidth="MaxWidth.False">
+    <WeeklyGoalBar/>
+</MudContainer>
+
+<MudContainer Class=" px-8 mb-16" MaxWidth="MaxWidth.False">
     <MudGrid RowSpacing="3" ColumnSpacing="3">
         <!-- KPI Tiles -->
         <KpiTiles/>
@@ -24,7 +32,7 @@
         <MudItem xs="12" sm="6">
             <MudGrid>
                 <MudItem xs="12">
-                    <WeatherTile />
+                    <WeatherTile/>
                 </MudItem>
                 <MudItem xs="12">
                     <CarbsTile/>
@@ -45,3 +53,39 @@
 
     </MudGrid>
 </MudContainer>
+
+@code {
+    private bool _toastsShown;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _toastsShown) return;
+
+        try
+        {
+            var pending = await WeeklyGoalStorageService.GetAsync<List<string>>("weekly-achievements-pending");
+            if (pending is { Count: > 0 })
+            {
+                Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+                Snackbar.Configuration.MaxDisplayedSnackbars = 5;
+
+                foreach (var msg in pending)
+                {
+                    Snackbar.Add(msg, Severity.Success);
+                }
+                
+                await WeeklyGoalStorageService.RemoveAsync("weekly-achievements-pending");
+            }
+        }
+        catch
+        {
+            // quietly ignore
+        }
+        finally
+        {
+            _toastsShown = true;
+        }
+    }
+}
+
+

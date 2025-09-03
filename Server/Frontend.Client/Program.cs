@@ -59,6 +59,10 @@ namespace Frontend.Client
 
             // Add Theme Service
             builder.Services.AddSingleton<ThemeService>();
+            
+            //Add WeeklyGoalStorageService (Frontend only!)
+            builder.Services.AddMudServices();
+            builder.Services.AddScoped<WeeklyGoalStorageService>();
 
             var app = builder.Build();
 

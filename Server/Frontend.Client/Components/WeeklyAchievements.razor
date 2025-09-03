@@ -1,0 +1,296 @@
+﻿
+@using Shared.Models
+@inject ActivityService ActivityService
+@inject WeeklyGoalStorageService WeeklyGoalStorageService
+@inject ISnackbar Snackbar
+
+<MudGrid Class="h-screen">
+  <MudPaper Elevation="2" Class="mb-16">
+    <MudStack Direction="Row" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+      <MudButton Class="mt-12" Variant="Variant.Outlined" Size="Size.Small" OnClick="@CheckNow">Check achievements</MudButton>
+    </MudStack>
+
+    @if (_loading)
+    {
+      <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+        <MudProgressCircular Indeterminate="true" />
+        <MudText Typo="Typo.body2">Loading…</MudText>
+      </MudStack>
+    }
+    else
+    {
+      <MudText Typo="Typo.h6" Align="Align.Center" Class="mt-4 mb-12">
+        Earn badges for distance, time, elevation, weekly goals — and a few fun easter eggs 😉
+      </MudText>
+
+      <MudGrid GutterSize="2" Class="w-100" Justify="Justify.Center">
+        @foreach (var b in _badges)
+        {
+          <MudItem xs="12" sm="6" md="4" lg="3">
+            <MudCard Class="@($"h-100 achv-card {(b.IsEasterEgg ? "easter-egg-card" : string.Empty)}")">
+              <MudCardContent Class="pa-3">
+                <MudStack Direction="Row" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                  <MudText Typo="Typo.subtitle1">@b.Icon @b.Title</MudText>
+
+                  @if (b.EarnedAt is not null)
+                  {
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Dense="true" Size="Size.Small">Earned</MudChip>
+
+                  }
+                  else
+                  {
+                    <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined" Dense="true" Size="Size.Small">Locked</MudChip>
+
+                  }
+                </MudStack>
+
+                <MudText Typo="Typo.body2" Class="@($"mt-1 {((b.IsEasterEgg && b.EarnedAt is null) ? "egg-hidden" : "")}")">
+                  @((b.IsEasterEgg && b.EarnedAt is null) ? "???" : b.Description)
+                </MudText>
+
+                @if (b.EarnedAt is not null)
+                {
+                  <MudText Typo="Typo.caption" Class="mt-1">
+                    Unlocked @b.EarnedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                  </MudText>
+                }
+              </MudCardContent>
+            </MudCard>
+          </MudItem>
+        }
+      </MudGrid>
+    }
+  </MudPaper>
+</MudGrid>
+
+<style>
+
+  .achv-card .mud-card-content{
+    display:flex;
+    flex-direction:column;
+    gap:.375rem;
+  }
+
+  .egg-hidden { opacity:.75; }
+
+
+</style>
+
+@code {
+  private bool _loading = true;
+
+  private class BadgeSave { public Dictionary<string, DateTime> Earned { get; set; } = new(); }
+
+  private class WeeklyGoal { public string Name { get; set; } = "Weekly Goal"; public double DistanceKm { get; set; } public double TimeHours { get; set; } public double ElevationM { get; set; } }
+
+  private class Badge {
+    public string Id { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Description { get; init; } = "";
+    public string Icon { get; init; } = "🏆";
+    public Func<KpiDataResponse, WeeklyGoal?, bool> Condition { get; init; } = (_, _) => false;
+    public DateTime? EarnedAt { get; set; }
+    public bool IsEasterEgg { get; init; } = false;
+    
+    private static Badge B(string id,string title,string desc,string icon, Func<KpiDataResponse,WeeklyGoal?,bool> cond,bool easterEgg=false)
+      => new Badge{ Id=id, Title=title, Description=desc, Icon=icon, Condition=cond, IsEasterEgg=easterEgg };
+
+    private static Badge B(string id,string title,string desc,string icon, Func<KpiDataResponse,bool> cond,bool easterEgg=false)
+      => new Badge{ Id=id, Title=title, Description=desc, Icon=icon, Condition=(k,_)=>cond(k), IsEasterEgg=easterEgg };
+
+  }
+
+  private readonly List<Badge> _badges = new();
+
+  protected override async Task OnInitializedAsync() => await LoadAndEvaluate();
+  private async Task CheckNow() => await LoadAndEvaluate();
+
+  private async Task LoadAndEvaluate()
+  {
+    _loading = true;
+    try
+    {
+      var resp = await ActivityService.GetKpiDataAsync();
+      if (resp?.IsSuccess != true || resp.Data is null)
+      {
+        Snackbar.Add(resp?.Message ?? "Could not load KPI data for achievements.", Severity.Error);
+        _loading = false; return;
+      }
+
+      var d = resp.Data;
+      var goal = await WeeklyGoalStorageService.GetAsync<WeeklyGoal>("weekly-goal");
+      var saved = await WeeklyGoalStorageService.GetAsync<BadgeSave>("weekly-achievements") ?? new BadgeSave();
+      var progress = CalcProgress(d, goal); 
+
+      _badges.Clear();
+      _badges.AddRange(new[] {
+        // Progress vs goal
+        B("first-step",   "First Spin",     "Make any progress (>0%).",                    "🌀", (_,_) => progress > 0),
+        B("twenty",       "Rolling Start",  "Reach 20% of your weekly goal.",             "🎯", (_,_) => progress >= 20),
+        B("halfway",      "Halfway Hero",   "Reach 50% of your weekly goal.",             "💥", (_,_) => progress >= 50),
+        B("ei_hty",       "Almost There",   "Reach 80% of your weekly _oal.",             "🧗", (_,_) => progress >= 80),
+        B("_oal-_etter",  "Goal Getter",    "Hit 100% of your weekly goal.",              "🏁", (_,_) => progress >= 100),
+
+        // Distance (weekly)
+        B("d10",   "Warm Wheels",     "Ride 10 km this week.",        "🚲", (k) => Km(k) >= 10),
+        B("d25",   "Cruiser",         "Ride 25 km this week.",        "🛼", (k) => Km(k) >= 25),
+        B("d42",   "Marathon Rider",  "Ride 42 km this week.",        "🎖️", (k) => Km(k) >= 42),
+        B("d50",   "Fifty-Fifty",     "Ride 50 km this week.",        "5️⃣0️⃣", (k) => Km(k) >= 50),
+        B("d75",   "High Roller",     "Ride 75 km this week.",        "🎢", (k) => Km(k) >= 75),
+        B("d100",  "Century Rider",   "Ride 100 km this week.",       "💯", (k) => Km(k) >= 100),
+        B("d150",  "One-Fifty Club",  "Ride 150 km this week.",       "🥇", (k) => Km(k) >= 150),
+
+        // Time
+        B("t2h",   "Time On Saddle",  "Ride 2 hours this week.",      "⏱️", (k) => H(k) >= 2),
+        B("t5h",   "Time Lord",       "Ride 5 hours this week.",      "⏳", (k) => H(k) >= 5),
+        B("t8h",   "Endurance",       "Ride 8 hours this week.",      "🧭", (k) => H(k) >= 8),
+
+        // Elevation
+        B("e250",  "Hill Hopper",     "Climb 250 m this week.",       "🏞️", (k) => Elev(k) >= 250),
+        B("e500",  "Climber",         "Climb 500 m this week.",       "⛰️", (k) => Elev(k) >= 500),
+        B("e1000", "Sky Chaser",      "Climb 1000 m this week.",      "🗻", (k) => Elev(k) >= 1000),
+
+        // Goal composition
+        B("minimalist", "The Minimalist", "Goal with exactly one metric.", "🧘", (_,g)=> g is not null && CountPos(g)==1),
+        B("allrounder", "All-Rounder",    "Goal includes distance, time, and elevation.", "🔁", (_,g)=> g is not null && CountPos(g)==3),
+
+       
+        // Fun / easter eggs
+        B(id: "earlybird", title: "Early Bird", desc: "???", icon: "🌅",
+        cond: (_, _) => DateTime.Now.Hour < 7),                         // Open the dashboard before 07:00.
+
+        B(id: "nightowl", title: "Night Owl", desc: "???", icon: "🦉",
+          cond: (_, g) => DateTime.Now.Hour >= 23),                       // Open the dashboard after 23:00.
+
+        B(id: "monday", title: "Monday Boost", desc: "???", icon: "📅",
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Monday),    // Open on a Monday.
+
+        B(id: "friday", title: "Friday Vibes", desc: "???", icon: "🎉",
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Friday),    // Open on a Friday.
+
+        B(id: "unicorn", title: "Bikeicorn", desc: "???", icon: "🦄",
+          cond: (_, g) => (g?.Name ?? "").Contains("🦄", StringComparison.OrdinalIgnoreCase)), // Your goal name contains "unicorn".
+
+        B(id: "secret-7", title: "You Found It!", desc: "???", icon: "🕵️",
+          cond: (_, _) => IncrCounter() >= 7),                            // Open achievements 7 times in a row.
+
+        B(id: "sundaychill", title: "Sunday Chill", desc: "???", icon: "☕",
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Sunday),    // Open on a Sunday.
+        B(id: "rainyday", title: "Rain Rider", desc: "???", icon: "🌧️",
+          cond: (_, _) => DateTime.Now.DayOfWeek == DayOfWeek.Saturday && DateTime.Now.Hour < 12), // Open Saturday morning.
+
+        B(id: "streak3", title: "3-Day Streak", desc: "???", icon: "🔥",
+          cond: (_, _) => DateTime.Now.Day % 3 == 0),                     // Open on a day divisible by 3.
+        
+        B(id: "newmonth", title: "Fresh Start", desc: "???", icon: "📆",
+          cond: (_, _) => DateTime.Now.Day == 1),                         // Open on the 1st day of a month.
+
+        B(id: "lastminute", title: "Last Minute Rider", desc: "???", icon: "⌛",
+          cond: (_, _) => DateTime.Now.Hour == 23 && DateTime.Now.Minute >= 50), // Open at 23:50 or later.
+
+        B(id: "devmode", title: "Secret Dev Mode", desc: "???", icon: "💻",
+          cond: (_, g) => (g?.Name ?? "").Contains("dev", StringComparison.OrdinalIgnoreCase)), // Your goal name contains "dev".
+
+        B(id: "beast", title: "The Beast", desc: "???", icon: "👹",
+          cond: (k, _) => Km(k) >= 0.1),                                 // Reach 99.9 km.
+
+        B(id: "doubletime", title: "Double Trouble", desc: "???", icon: "✌️",
+          cond: (k, _) => H(k) >= 2.22),                                  // Ride 2.22 hours.
+
+        B(id: "lucky7", title: "Lucky Seven", desc: "???", icon: "🍀",
+          cond: (k, _) => Km(k) >= 7 && H(k) >= 0.7 && Elev(k) >= 77),    // 7 km, 0.7 h, 77 m elevation.
+        
+        B(id: "backtothefuture", title: "Back to the Future", desc: "???", icon: "🚀",
+          cond: (_, _) => DateTime.Now.Year > 2099),                     // Will unlock only if system clock is set far in the future.
+        
+      });
+      
+      var newlyUnlocked = new List<string>();
+
+      foreach (var b in _badges)
+      {
+        if (saved.Earned.TryGetValue(b.Id, out var ts))
+          b.EarnedAt = ts;
+
+        if (b.EarnedAt is null && b.Condition(d, goal))
+        {
+          b.EarnedAt = DateTime.UtcNow;
+          saved.Earned[b.Id] = b.EarnedAt.Value;
+
+          Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+          Snackbar.Configuration.MaxDisplayedSnackbars = 5;
+          Snackbar.Add($"Unlocked: {b.Title} {b.Icon}", Severity.Success);
+          newlyUnlocked.Add($"Unlocked: {b.Title} {b.Icon}");
+        }
+      }
+      
+      if (newlyUnlocked.Count > 0)
+      {
+        var queue = await WeeklyGoalStorageService.GetAsync<List<string>>("weekly-achievements-pending")
+                    ?? new List<string>();
+        queue.AddRange(newlyUnlocked);
+        await WeeklyGoalStorageService.SetAsync("weekly-achievements-pending", queue);
+      }
+      
+      await WeeklyGoalStorageService.SetAsync("weekly-achievements", saved);
+    }
+    catch (Exception ex)
+    {
+      Snackbar.Add($"Achievements: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+      _loading = false;
+      StateHasChanged();
+    }
+  }
+
+  // helpers
+  private static double Km(KpiDataResponse d)   => ParseNumber(d.TotalDistance ?? "");
+  private static double Elev(KpiDataResponse d) => ParseNumber(d.TotalElevation ?? "");
+  private static double H(KpiDataResponse d)
+  {
+    var t = d.TotalTime ?? "";
+    if (t.IndexOf("min", StringComparison.OrdinalIgnoreCase) >= 0) return ParseNumber(t)/60.0;
+    if (t.Contains(':'))
+    {
+      var p = t.Split(':');
+      if (p.Length>=2 && int.TryParse(p[0], out var hh) && int.TryParse(p[1], out var mm)) return hh + (mm/60.0);
+    }
+    return ParseNumber(t);
+  }
+
+  private static int CountPos(WeeklyGoal g){ int c=0; if(g.DistanceKm>0)c++; if(g.TimeHours>0)c++; if(g.ElevationM>0)c++; return c; }
+
+  private static double ParseNumber(string s)
+  {
+    if (string.IsNullOrWhiteSpace(s)) return 0;
+    Span<char> buf = stackalloc char[s.Length];
+    int j=0; foreach (var ch in s) if ((ch>='0'&&ch<='9')||ch=='.'||ch==',') buf[j++]=ch;
+    if (j==0) return 0;
+    var digits = new string(buf[..j]).Replace(',', '.');
+    return double.TryParse(digits, System.Globalization.NumberStyles.Any,
+      System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+  }
+
+  private static double Clamp01(double v) => v < 0 ? 0 : (v > 1 ? 1 : v);
+
+  private static double CalcProgress(KpiDataResponse d, WeeklyGoal? g)
+  {
+    if (g is null) return 0;
+    var km = Km(d); var h = H(d); var e = Elev(d);
+    double sum=0; int n=0;
+    if (g.DistanceKm>0){ sum += Clamp01(km/g.DistanceKm)*100; n++; }
+    if (g.TimeHours >0){ sum += Clamp01(h /g.TimeHours )*100; n++; }
+    if (g.ElevationM>0){ sum += Clamp01(e /g.ElevationM)*100; n++; }
+    return n>0 ? sum/n : 0;
+  }
+
+  private static Badge B(string id, string title, string desc, string icon, Func<KpiDataResponse, WeeklyGoal?, bool> cond)
+    => new Badge { Id=id, Title=title, Description=desc, Icon=icon, Condition=cond };
+  private static Badge B(string id, string title, string desc, string icon, Func<KpiDataResponse, bool> cond)
+    => new Badge { Id=id, Title=title, Description=desc, Icon=icon, Condition=(k, _) => cond(k) };
+
+  private int _openCounter = 0;
+  private int IncrCounter() => ++_openCounter;
+}
