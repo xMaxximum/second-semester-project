@@ -1,59 +1,54 @@
 @page "/"
 @rendermode InteractiveWebAssembly
-
 @using Frontend.Client.Components
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>Home</PageTitle>
 
-<style>
-    
-    
-    html, body, #app {
-        margin: 0; padding: 0; overflow-x: hidden;
-    }
-    
-    .hero-banner { position: relative; left:50%; margin-left:-50vw; width:100vw; height:100vh; overflow:hidden; }
-    .video-wrapper { position:absolute; inset:0; z-index:-1; overflow:hidden; }
-    .video-wrapper iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:100vw; height:100vh; object-fit: cover; pointer-events:none; }
-    .hero-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#fff; padding:2rem; max-width:600px; }
-    .hero-overlay h1 { font-size:3rem; margin-bottom:1rem; }
-    .hero-overlay p  { font-size:1.25rem; margin-bottom:1.5rem; }
-    @@media (max-width:768px) { .hero-banner { height:60vh; } .hero-overlay h1 { font-size:2.5rem; } .hero-overlay p  { font-size:1rem; } }
-    @@media (max-width:480px) { .hero-banner { height:50vh; } .hero-overlay h1 { font-size:2rem; } .hero-overlay p  { font-size:0.9rem; } }
-    .section { padding:6rem 2rem; max-width:1200px; margin:auto; }
-    .section h2 { text-align:center; margin-bottom:2rem; }
-    .feature-card { padding:2rem; text-align:center; border-radius:8px; }
-    .testimonial-header { display:flex; align-items:center; gap:1rem; }
-    
-    
-    
-    .cta-footer {
-        background: var(--mud-palette-primary);
-        color: #fff;
-        text-align: center;
-        padding: 4rem 2rem;
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            @* Landing page content for logged-in users *@
+            <MudContainer MaxWidth="MaxWidth.Large" Class="pa-8" Style="min-height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                <div style="max-width: 600px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Large" Color="Color.Primary" Class="mb-4" Style="font-size: 4rem;" />
+                    <MudText Typo="Typo.h3" Class="mb-4" Color="Color.Primary">Welcome back!</MudText>
+                    <MudText Typo="Typo.h6" Class="mb-6" Color="Color.Secondary">Ready to track your cycling activities?</MudText>
+                    
+                    <MudStack Direction="Row" Spacing="3" Justify="Justify.Center" Class="mb-8" Style="flex-wrap: wrap;">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Primary" 
+                                  Size="Size.Large"
+                                  StartIcon="@Icons.Material.Filled.Dashboard"
+                                  Href="/app"
+                                  Style="min-width: 200px; height: 56px;">
+                            Open Dashboard
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Primary" 
+                                  Size="Size.Large"
+                                  StartIcon="@Icons.Material.Filled.Route"
+                                  Href="/app/route-planner"
+                                  Style="min-width: 200px; height: 56px;">
+                            Plan Route
+                        </MudButton>
+                    </MudStack>
+                    
+                    <MudDivider Class="my-6" />
+                    
+                    <MudStack Direction="Row" Spacing="2" Justify="Justify.Center" AlignItems="AlignItems.Center" Style="flex-wrap: wrap; gap: 0.5rem;">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2" Style="width: 100%; text-align: center;">Quick access:</MudText>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Href="/app/carbscounter" StartIcon="@Icons.Material.Filled.Calculate">Carbs Calculator</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Href="/app/achievements" StartIcon="@Icons.Material.Filled.EmojiEvents">Achievements</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Href="/app/profile" StartIcon="@Icons.Material.Filled.AccountCircle">Profile</MudButton>
+                    </MudStack>
+                </div>
+            </MudContainer>
+        </Authorized>
         
-        
-        position: relative;
-        left: 50%;
-        right: 50%;
-        margin-left: -50vw;
-        margin-right: -50vw;
-        width: 100vw;
-    }
-</style>
-
-    <CascadingAuthenticationState>
-        <AuthorizeView>
-            <Authorized>
-                <HomeLoggedIn/>
-            </Authorized>
-            
-            <NotAuthorized>
-                
-                <HomeLoggedOut/>
-                
-            </NotAuthorized>
-        </AuthorizeView>
-
-    </CascadingAuthenticationState>
+        <NotAuthorized>
+            @* Original landing page content for non-authenticated users *@
+            <HomeLoggedOut />
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
