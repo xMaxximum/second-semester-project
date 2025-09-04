@@ -23,7 +23,7 @@
         <MudItem xs="12" sm="8" md="4">
             <MudCard Class="pa-4 chart-card" Elevation="3">
                 <div style="margin-top: -20px">
-                    <WeeklyChart/>
+                    <WeeklyChart @ref="_weeklyChartRef"/>
                 </div>
             </MudCard>
         </MudItem>
@@ -57,6 +57,7 @@
 @code {
     private bool _toastsShown;
     private CalenderTile? _calendarRef;
+    private WeeklyChart? _weeklyChartRef;
 
     private async Task HandleActivityCreated()
     {
@@ -64,6 +65,12 @@
         if (_calendarRef != null)
         {
             await _calendarRef.RefreshAsync();
+        }
+        
+        // Refresh weekly chart when a new activity is created
+        if (_weeklyChartRef != null)
+        {
+            await _weeklyChartRef.RefreshAsync();
         }
     }
 

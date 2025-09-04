@@ -1,76 +1,71 @@
 ﻿@using System.Net
-@using ApexCharts
-@using MudBlazor.Extensions
 @using Shared.Models
 @inject HttpClient Http
 
-<ApexChart TItem="MyData"
-           Options="chartOptions" Height="150">
-
-    <ApexPointSeries TItem="MyData"
-                     Items="Data"
-                     Name="Distance"
-                     SeriesType="SeriesType.Line"
-                     XValue="e => e.Category"
-                     YValue="e => e.Distance"
-                     Color="#685ce4"
-    />
-</ApexChart>
+@if (IsDataLoaded)
+{
+        <MudChart ChartType="ChartType.Line" 
+                  ChartSeries="@Series" 
+                  XAxisLabels="@XAxisLabels" 
+                  Width="101%" 
+                  Height="150px"
+                  ChartOptions="@Options"
+                  AxisChartOptions="@AxisOptions"/>
+}
+else
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="150px" />
+}
 
 <style>
-    .apexcharts-tooltip-active{
-        color: black;
+    .mud-chart {
+        color: var(--mud-palette-text-primary);
+    }
+    
+    .mud-chart .mud-chart-legend {
+        display: none;
+    }
+    
+    /* Prevent any potential chart animations */
+    .mud-chart svg, 
+    .mud-chart svg * {
+        transition: none !important;
+        animation: none !important;
     }
 </style>
 
 @code {
-    private List<MyData> Data { get; set; } = new();
-
-    private ApexChartOptions<MyData> chartOptions = new()
+    private List<ChartSeries> Series = new();
+    private string[] XAxisLabels = Array.Empty<string>();
+    private bool IsDataLoaded = false;
+    
+    private ChartOptions Options = new()
     {
-        Chart = new Chart
-        {
-            Toolbar = new Toolbar
-            {
-                Show = false // Hides the download/export options
-            },
-        },
-        Legend = new Legend
-        {
-            Show = false // Hides the legend
-        },
-        Tooltip = new Tooltip
-        {
-            Theme = Mode.Light
-        },
-        Xaxis = new XAxis
-        {
-            Labels = new XAxisLabels
-            {
-                Style = new AxisLabelStyle
-                {
-                    Colors = "var(--mud-palette-text-primary)"
-                }
-            }
-        },
-        Yaxis = new List<YAxis>
-        {
-            new YAxis
-            {
-                Labels = new YAxisLabels
-                {
-                    Style = new AxisLabelStyle
-                    {
-                        Colors = "var(--mud-palette-text-primary)"
-                    }
-                }
-            }
-        }
+        YAxisTicks = 1,
+        MaxNumYAxisTicks = 5,
+        YAxisLines = true,
+        XAxisLines = false,
+        ChartPalette = new[] { "#685ce4" },
+        InterpolationOption = InterpolationOption.Straight,
+        LineStrokeWidth = 2,
+    };
+
+    private AxisChartOptions AxisOptions = new()
+    {
+        MatchBoundsToSize = true,
+        XAxisLabelRotation = 0
     };
     
     protected override async Task OnInitializedAsync()
     {
         await LoadWeeklyData();
+    }
+    
+    public async Task RefreshAsync()
+    {
+        IsDataLoaded = false;
+        await LoadWeeklyData();
+        StateHasChanged();
     }
     
     private async Task LoadWeeklyData()
@@ -82,11 +77,23 @@
 
             if (response?.IsSuccess == true && response.Data != null)
             {
-                Data = response.Data.Select(item => new MyData()
+                var data = response.Data.ToList();
+                
+                // Set X-axis labels (days)
+                XAxisLabels = data.Select(item => item.Day).ToArray();
+                
+                // Create chart series
+                Series = new List<ChartSeries>
                 {
-                    Category = item.Day,
-                    Distance = (int)Math.Round(item.Distance)
-                }).ToList();
+                    new ChartSeries
+                    {
+                        Name = "Distance",
+                        Data = data.Select(item => (double)Math.Round(item.Distance, 1)).ToArray(),
+                        ShowDataMarkers = false
+                    }
+                };
+                
+                IsDataLoaded = true;
             }
         }
         catch (Exception ex)
@@ -98,11 +105,4 @@
             StateHasChanged();
         }
     }
-
-    public class MyData
-    {
-        public string Category { get; set; }
-        public int Distance { get; set; }
-    }
-
 }

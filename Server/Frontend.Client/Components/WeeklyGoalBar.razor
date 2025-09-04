@@ -3,7 +3,7 @@
 @inject WeeklyGoalStorageService WeeklyGoalStorageService
 @inject ISnackbar Snackbar
 
-<MudPaper Elevation="3" Class="pa-4 mb-4">
+<MudPaper Elevation="3" Class="pa-3 pa-md-4 mb-4">
 
     @if (_loading)
     {
@@ -16,50 +16,111 @@
     {
         @if (!_editing)
         {
-            <MudStack Row="true" Style="align-items: center" Spacing="4">
-                <MudText Typo="Typo.body1" Class="font-weight-medium" Style="min-width: fit-content;">
-                    @(_hasGoal ? _goalTitle : "No weekly goal set")
-                </MudText>
-                
+            <!-- Desktop layout (preserved original design) -->
+            <div class="d-none d-md-block">
+                <MudStack Row="true" Style="align-items: center" Spacing="4">
+                    <MudText Typo="Typo.body1" Class="font-weight-medium" Style="min-width: fit-content;">
+                        @(_hasGoal ? _goalTitle : "No weekly goal set")
+                    </MudText>
+                    
+                    @if (_hasGoal)
+                    {
+                        <MudProgressLinear Value="@_progressPct"
+                                               Color="Color.Primary"
+                                               Class="flex-grow-1"
+                                               Striped="@(_progressPct < 100)"
+                                               Style="height: 6px; border-radius: 3px;"/> 
+                        <div class="d-flex gap-2" style="align-items: center">
+                            <MudText Typo="Typo.body2" Class="font-weight-medium" Style="min-width: 40px;">
+                                @string.Format("{0:0}%", _progressPct)
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium" Style="min-width: 40px;">
+                                @_message
+                            </MudText>
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@ToggleEdit"/>
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           OnClick="DeleteGoal"/>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="flex-grow-1"></div>
+                        
+                        <div class="d-flex gap-2">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                           Color="Color.Primary" 
+                                           Size="Size.Small"
+                                           OnClick="@ToggleEdit" />
+                        </div>
+                    }
+                </MudStack>
+            </div>
+
+            <!-- Mobile layout (responsive alternative) -->
+            <div class="d-md-none">
                 @if (_hasGoal)
                 {
-                    <MudProgressLinear Value="@_progressPct"
-                                           Color="Color.Primary"
-                                           Class="flex-grow-1"
-                                           Striped="@(_progressPct < 100)"
-                                           Style="height: 6px; border-radius: 3px;"/> 
-                    <div class="d-flex gap-2" style="align-items: center">
-                        <MudText Typo="Typo.body2" Class="font-weight-medium" Style="min-width: 40px;">
-                            @string.Format("{0:0}%", _progressPct)
-                        </MudText>
-                        <MudText Typo="Typo.body2" Class="font-weight-medium" Style="min-width: 40px;">
-                            @_message
-                        </MudText>
+                    <MudStack Spacing="2">
+                        <!-- Goal name and actions -->
+                        <MudStack Row="true" Style="align-items: center; justify-content: space-between;">
+                            <MudText Typo="Typo.body1" Class="font-weight-medium">
+                                @_goal.Name
+                            </MudText>
+                            <div class="d-flex gap-1">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               OnClick="@ToggleEdit"/>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="DeleteGoal"/>
+                            </div>
+                        </MudStack>
 
+                        <!-- Progress bar and percentage -->
+                        <MudStack Row="true" Style="align-items: center;" Spacing="2">
+                            <MudProgressLinear Value="@_progressPct"
+                                               Color="Color.Primary"
+                                               Class="flex-grow-1"
+                                               Striped="@(_progressPct < 100)"
+                                               Style="height: 6px; border-radius: 3px;"/>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium" Style="min-width: 45px;">
+                                @string.Format("{0:0}%", _progressPct)
+                            </MudText>
+                        </MudStack>
 
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                       Color="Color.Primary"
-                                       Size="Size.Small"
-                                       OnClick="@ToggleEdit"/>
-
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Color="Color.Error"
-                                       Size="Size.Small"
-                                       OnClick="DeleteGoal"/>
-                    </div>
+                        <!-- Goal details and message -->
+                        <MudStack Row="true" Style="justify-content: space-between; align-items: center;">
+                            <MudText Typo="Typo.caption" Class="text--secondary">
+                                @string.Format("{0:0.#} km • {1:0.#} h • {2:0} m", _goal.DistanceKm, _goal.TimeHours, _goal.ElevationM)
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium" Color="Color.Primary">
+                                @_message
+                            </MudText>
+                        </MudStack>
+                    </MudStack>
                 }
                 else
                 {
-                    <div class="flex-grow-1"></div>
-                    
-                    <div class="d-flex gap-2">
+                    <MudStack Row="true" Style="align-items: center; justify-content: space-between;">
+                        <MudText Typo="Typo.body1" Class="font-weight-medium">
+                            No weekly goal set
+                        </MudText>
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" 
                                        Color="Color.Primary" 
                                        Size="Size.Small"
                                        OnClick="@ToggleEdit" />
-                    </div>
+                    </MudStack>
                 }
-            </MudStack>
+            </div>
         }
         else
         {
@@ -76,6 +137,7 @@
                                      Immediate="true" />
                     </MudItem>
 
+                    <!-- Mobile: Stack vertically, Tablet+: 3 columns -->
                     <MudItem xs="12" sm="4">
                         <MudNumericField T="double" @bind-Value="_goal.DistanceKm"
                                          Label="Distance (km)" 
