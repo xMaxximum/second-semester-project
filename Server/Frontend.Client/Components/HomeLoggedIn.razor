@@ -43,12 +43,12 @@
             </MudGrid>
         </MudItem>
         <MudItem xs="12" sm="6">
-            <CalenderTile/>
+            <CalenderTile @ref="_calendarRef" />
         </MudItem>
 
         <!-- Activity Table -->
         <MudItem xs="12" sm="12" md="12">
-            <ActivityTable></ActivityTable>
+            <ActivityTable OnActivityCreated="HandleActivityCreated"></ActivityTable>
         </MudItem>
 
     </MudGrid>
@@ -56,6 +56,16 @@
 
 @code {
     private bool _toastsShown;
+    private CalenderTile? _calendarRef;
+
+    private async Task HandleActivityCreated()
+    {
+        // Refresh calendar when a new activity is created
+        if (_calendarRef != null)
+        {
+            await _calendarRef.RefreshAsync();
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

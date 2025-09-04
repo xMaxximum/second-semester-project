@@ -294,6 +294,8 @@
 </MudTable>
 
 @code {
+    [Parameter] public EventCallback OnActivityCreated { get; set; }
+    
     private bool dense = false;
     private bool hover = true;
     private bool striped = true;
@@ -371,6 +373,12 @@
         await LoadActivities();
     }
 
+    public async Task RefreshAsync()
+    {
+        await LoadActivities();
+        StateHasChanged();
+    }
+
     private async Task LoadActivities()
     {
         _loading = true;
@@ -439,6 +447,8 @@
         if (!res.Canceled)
         {
             await LoadActivities();
+            // Notify parent component that an activity was created
+            await OnActivityCreated.InvokeAsync();
         }
     }
 
