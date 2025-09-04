@@ -7,12 +7,22 @@
 
 <AuthorizeView>
     <Authorized>
+        <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" OnClick="CloseDrawer" Class="icon-header">Home</MudNavLink>
+        <MudNavLink Href="/app" Icon="@Icons.Material.Filled.Dashboard" OnClick="CloseDrawer">Dashboard</MudNavLink>
+        <MudNavLink Href="/app/carbscounter" Icon="@Icons.Material.Filled.Restaurant" OnClick="CloseDrawer">Carbs</MudNavLink>
+        <MudNavLink Href="/app/route-planner" Icon="@Icons.Material.Filled.Route" OnClick="CloseDrawer">Route Planner</MudNavLink>
+        <MudNavLink Href="/app/achievements" Icon="@Icons.Material.Filled.EmojiEvents" OnClick="CloseDrawer">Achievements </MudNavLink>
+        <MudDivider Class="my-2"/>
+
         <MudNavLink Href="/app/profile" Icon="@Icons.Material.Filled.AccountCircle" OnClick="CloseDrawer">Profile</MudNavLink>
         <MudNavLink Href="/app/devices" Icon="@Icons.Material.Filled.Memory" OnClick="CloseDrawer">My Devices</MudNavLink>
         <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="@HandleLogout">Logout</MudMenuItem>
     </Authorized>
 
     <NotAuthorized>
+        <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" OnClick="CloseDrawer" Class="icon-header">Home</MudNavLink>
+        <MudDivider Class="my-2"/>
+        
         <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login" OnClick="CloseDrawer">Login</MudNavLink>
         <MudNavLink Href="/register" Icon="@Icons.Material.Filled.AppRegistration" OnClick="CloseDrawer">Register</MudNavLink>
     </NotAuthorized>

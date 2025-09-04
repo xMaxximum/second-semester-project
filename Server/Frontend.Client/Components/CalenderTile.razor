@@ -137,6 +137,12 @@
         await LoadActivities();
     }
 
+    public async Task RefreshAsync()
+    {
+        await LoadActivities();
+        StateHasChanged();
+    }
+
     private async Task LoadActivities()
     {
         _loading = true;
