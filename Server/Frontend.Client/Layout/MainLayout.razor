@@ -56,9 +56,20 @@
           <UserMenu/>
         </MudNavMenu> 
       </MudDrawer> 
-      <MudMainContent Class="app-main"> <div style="--pane-color:@PaneColor;">
-          @Body
-        </div>
+      <MudMainContent Class="app-main">
+        @if (Navigation.Uri.Contains("/app") || Navigation.Uri.Contains("/profile") || Navigation.Uri.Contains("/activity"))
+        {
+            <div style="--pane-color:@PaneColor;" class="my-8">
+              @Body
+            </div>
+        }
+        else
+        {
+          <div style="--pane-color:@PaneColor;">
+            @Body
+          </div>
+        }
+        
       </MudMainContent>
     </MudDrawerContainer>
     

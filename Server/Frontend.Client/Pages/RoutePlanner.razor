@@ -1,32 +1,36 @@
 @page "/app/route-planner"
-@using Shared.Models
+@inject NavigationManager Navigation
 
-<MudContainer MaxWidth="MaxWidth.False" Class="my-16">
+<MudContainer MaxWidth="MaxWidth.False">
+    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.ArrowBack"
+               Color="Color.Primary" OnClick="GoBack" Size="Size.Small" Class="mb-2">
+        Back
+    </MudButton>
     <MudPaper Class="pa-6" Elevation="3">
         <MudStack Spacing="3">
             <!-- Page Header -->
             <MudText Typo="Typo.h4" Color="Color.Primary" Class="icon-header">
-                <img src="/route.svg" alt="Route Icon" style="width: 24px; height: 24px; filter: brightness(0) saturate(100%) invert(33%) sepia(54%) saturate(3034%) hue-rotate(239deg) brightness(91%) contrast(89%); margin-right: 8px;" />
+                <img src="/route.svg" alt="Route Icon" style="width: 24px; height: 24px; filter: brightness(0) saturate(100%) invert(33%) sepia(54%) saturate(3034%) hue-rotate(239deg) brightness(91%) contrast(89%); margin-right: 8px;"/>
                 Route Planner
             </MudText>
             <MudText Typo="Typo.body1" Style="color: var(--mud-palette-text-primary)">
                 Plan your cycling or walking routes with turn-by-turn directions
             </MudText>
-            
-            <MudDivider />
-            
+
+            <MudDivider/>
+
             <!-- Main Content Grid -->
             <MudGrid Spacing="3" Class="route-planner-grid">
                 <!-- Route Planning Controls -->
                 <MudItem xs="12" lg="4">
                     <MudPaper Class="pa-4" Elevation="3" Style="height: fit-content;">
-                        <SimpleRoutePlanner MapElementId="route-planner-map" 
-                                     InitialLatitude="51.505" 
-                                     InitialLongitude="-0.09"
-                                     OnRouteCalculated="HandleRouteCalculated" />
+                        <SimpleRoutePlanner MapElementId="route-planner-map"
+                                            InitialLatitude="51.505"
+                                            InitialLongitude="-0.09"
+                                            OnRouteCalculated="HandleRouteCalculated"/>
                     </MudPaper>
                 </MudItem>
-                
+
                 <!-- Map Container -->
                 <MudItem xs="12" lg="8">
                     <MudPaper Elevation="3" Style="height: 600px; border-radius: 8px; overflow: hidden;">
@@ -39,6 +43,11 @@
 </MudContainer>
 
 @code {
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/app");
+    }
+    
     private void HandleRouteCalculated(Shared.Models.RouteData route)
     {
         // Handle route calculation completion
