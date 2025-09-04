@@ -11,20 +11,61 @@
 
     <script type="importmap"></script>
     <script src="js/calendarStreaks.js"></script>
+    <style>
+        .not-found-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+            font-family: 'Roboto', sans-serif;
+        }
+        .not-found-paper {
+            background-color: white;
+            padding: 2rem;
+            text-align: center;
+            border-radius: 4px;
+            box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+            max-width: 400px;
+        }
+        .not-found-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: rgba(0, 0, 0, 0.87);
+        }
+        .not-found-text {
+            margin-bottom: 1.5rem;
+            color: rgba(0, 0, 0, 0.6);
+        }
+        .not-found-button {
+            background-color: #594ae2;
+            color: white;
+            border: none;
+            padding: 8px 22px;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            transition: background-color 0.25s;
+        }
+        .not-found-button:hover {
+            background-color: #4c41d4;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
-    </div>
-
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
-        <span class="dismiss">🗙</span>
+        <div class="not-found-container">
+            <div class="not-found-paper">
+                <h6 class="not-found-title">Page Not Found</h6>
+                <p class="not-found-text">Sorry, there's nothing at this address.</p>
+                <a href="/" class="not-found-button">Go Home</a>
+            </div>
+        </div>
     </div>
 
     <script src="_framework/blazor.webassembly.js"></script>
