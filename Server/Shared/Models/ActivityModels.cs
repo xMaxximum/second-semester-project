@@ -174,6 +174,14 @@ namespace Shared.Models
         public bool IsSuccess { get; set; }
         public string Message { get; set; } = string.Empty;
         public ActivityResponse? Activity { get; set; }
+        public int SensorDataPacketCount { get; set; }
+    }
+
+    public class PagedSensorDataResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? Message { get; set; }
+        public int TotalCount { get; set; }
         public List<SensorDataPacketResponse> SensorData { get; set; } = new();
     }
 

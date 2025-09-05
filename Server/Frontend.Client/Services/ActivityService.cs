@@ -29,6 +29,13 @@ public class ActivityService
         if (!resp.IsSuccessStatusCode) return null;
         return await resp.Content.ReadFromJsonAsync<ActivityDetailsResponse>();
     }
+    
+    public async Task<PagedSensorDataResponse?> GetSensorDataAsync(long activityId, int page, int pageSize)
+    {
+        var resp = await _httpClient.GetAsync($"api/activities/{activityId}/sensor-data?page={page}&pageSize={pageSize}");
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<PagedSensorDataResponse>();
+    }
 
     public async Task<ApiResponse<ActivityResponse>?> UpdateActivityAsync(long id, ActivityUpdateRequest request)
     {
