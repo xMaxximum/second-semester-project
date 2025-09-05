@@ -467,7 +467,7 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent Class="pa-0">
-                        <MudTable Items="_details.SensorData" Dense="true" Hover="true" Striped="true" 
+                        <MudTable ServerData="LoadServerData" Dense="true" Hover="true" Striped="true" 
                                   FixedHeader="true" Height="400px">
                             <HeaderContent>
                                 <MudTh>
@@ -532,6 +532,9 @@
                                     <MudText Typo="Typo.body2">@context.ElevationGain.ToString("F0")m</MudText>
                                 </MudTd>
                             </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="new int[]{50, 100, 250, 500}" />
+                            </PagerContent>
                         </MudTable>
                     </MudCardContent>
                 </MudCard>
@@ -559,6 +562,23 @@
 
     private bool HasValidSensorData() =>
     _details?.SensorData?.Any(s => s.Latitude != 0 && s.Longitude != 0) == true;
+    
+    private async Task<TableData<SensorDataPacketResponse>> LoadServerData(TableState state, CancellationToken token)
+    {
+        // paginated backend call
+        var resp = await ActivityService.GetSensorDataAsync(Id, state.Page + 1, state.PageSize);
+        
+        if (resp?.IsSuccess == true)
+        {
+            return new TableData<SensorDataPacketResponse>()
+            {
+                TotalItems = resp.TotalCount,
+                Items = resp.SensorData
+            };
+        }
+
+        return new TableData<SensorDataPacketResponse>() { TotalItems = 0, Items = new List<SensorDataPacketResponse>() };
+    }
 
     protected override async Task OnParametersSetAsync()
     {
