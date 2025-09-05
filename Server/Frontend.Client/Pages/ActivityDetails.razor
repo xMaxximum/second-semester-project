@@ -444,7 +444,7 @@
                                 </div>
                             }
 
-                            @if (_hasValidSensorData && !_loading)
+                            @if (!_hasValidSensorData && !_loading)
                             {
                                 <div style="position: absolute; inset: 0; display:flex; align-items:center; justify-content:center;">
                                     <MudText Typo="Typo.body2" Style="color:#888">No GPS data available.</MudText>
