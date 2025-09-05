@@ -177,6 +177,14 @@ namespace Shared.Models
         public List<SensorDataPacketResponse> SensorData { get; set; } = new();
     }
 
+    public class PagedSensorDataResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? Message { get; set; }
+        public int TotalCount { get; set; }
+        public List<SensorDataPacketResponse> SensorData { get; set; } = new();
+    }
+
     // Seeding request for creating demo activities
     public class SeedActivityRequest
     {
