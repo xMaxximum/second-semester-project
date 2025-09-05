@@ -128,6 +128,8 @@ namespace Server.Controllers
                     .OrderBy(p => p.Timestamp)
                     .ToListAsync();
                 
+                var totalCount = packets.Count;
+                
                 var sensorData = packets.Select(s => new SensorDataPacketResponse
                 {
                     Id = s.Id,
@@ -152,13 +154,62 @@ namespace Server.Controllers
                     IsSuccess = true,
                     Message = "Activity retrieved successfully",
                     Activity = activityResponse,
-                    SensorData = sensorData
+                    SensorDataPacketCount = totalCount,
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving activity {ActivityId}", id);
                 return StatusCode(500, new ActivityDetailsResponse
+                {
+                    IsSuccess = false,
+                    Message = "Internal server error"
+                });
+            }
+        }
+        
+        [HttpGet("{id}/sensor-data")]
+        public async Task<ActionResult<PagedSensorDataResponse>> GetSensorData(long id, int page = 1, int pageSize = 100)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                    return Unauthorized();
+
+                var query = _context.SensorDataPackets
+                    .Where(p => p.ActivityId == id)
+                    .OrderBy(p => p.Timestamp);
+
+                var totalCount = await query.CountAsync();
+                var packets = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var response = new PagedSensorDataResponse
+                {
+                    TotalCount = totalCount,
+                    SensorData = packets.Select(s => new SensorDataPacketResponse
+                    {
+                        Id = s.Id,
+                        ActivityId = s.ActivityId,
+                        Timestamp = s.Timestamp,
+                        CurrentTemperature = s.CurrentTemperature,
+                        CurrentSpeed = s.CurrentSpeed,
+                        Latitude = s.Latitude,
+                        Longitude = s.Longitude,
+                        ElevationGain = s.CurrentElevation
+                    }).ToList(),
+                    IsSuccess = true
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sensor data for activity {ActivityId}", id);
+                return StatusCode(500, new PagedSensorDataResponse
                 {
                     IsSuccess = false,
                     Message = "Internal server error"

@@ -2,6 +2,7 @@
 @using Shared.Models
 @using Frontend.Client.Services
 @using Microsoft.JSInterop
+@using MudBlazor.Extensions
 @inject ActivityService ActivityService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
@@ -399,7 +400,7 @@
                             </MudStack>
                             <MudStack Row="true" Justify="Justify.SpaceBetween">
                                 <MudText Typo="Typo.body2">Data Points:</MudText>
-                                <MudText Typo="Typo.body2"><strong>@_details.SensorData.Count</strong></MudText>
+                                <MudText Typo="Typo.body2"><strong>@_details.SensorDataPacketCount</strong></MudText>
                             </MudStack>
                             <MudStack Row="true" Justify="Justify.SpaceBetween">
                                 <MudText Typo="Typo.body2">Calories Burned:</MudText>
@@ -417,7 +418,7 @@
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6" Class="icon-header">
                                 <MudIcon Icon="@Icons.Material.Filled.Map" Class="mr-2" />
-                                GPS Route (@_details.SensorData.Count GPS points)
+                                GPS Route (@_details.SensorDataPacketCount GPS points)
                             </MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -443,7 +444,7 @@
                                 </div>
                             }
 
-                            @if (!HasValidSensorData() && !_loading)
+                            @if (!_hasValidSensorData && !_loading)
                             {
                                 <div style="position: absolute; inset: 0; display:flex; align-items:center; justify-content:center;">
                                     <MudText Typo="Typo.body2" Style="color:#888">No GPS data available.</MudText>
@@ -462,12 +463,12 @@
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6" Class="icon-header">
                                 <MudIcon Icon="@Icons.Material.Filled.DataUsage" Class="mr-2" />
-                                Sensor Data (@_details.SensorData.Count points)
+                                Sensor Data (@_details.SensorDataPacketCount points)
                             </MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent Class="pa-0">
-                        <MudTable Items="_details.SensorData" Dense="true" Hover="true" Striped="true" 
+                        <MudTable ServerData="LoadServerData" Dense="true" Hover="true" Striped="true" 
                                   FixedHeader="true" Height="400px">
                             <HeaderContent>
                                 <MudTh>
@@ -532,6 +533,9 @@
                                     <MudText Typo="Typo.body2">@context.ElevationGain.ToString("F0")m</MudText>
                                 </MudTd>
                             </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="new int[]{50, 100, 250, 500}" />
+                            </PagerContent>
                         </MudTable>
                     </MudCardContent>
                 </MudCard>
@@ -556,13 +560,38 @@
     private bool _mapInitialized = false;
     private string? _mapError;
     private bool _initializingMap;
+    private bool _hasValidSensorData;
 
-    private bool HasValidSensorData() =>
-    _details?.SensorData?.Any(s => s.Latitude != 0 && s.Longitude != 0) == true;
+    private async Task<bool> HasValidSensorData()
+    {
+        var resp = await ActivityService.GetSensorDataAsync(Id, 1, 50);
+        if (resp?.SensorData != null && resp.SensorData.Any(s => s.Latitude != 0 && s.Longitude != 0))
+            return true;
+        return false;
+    }
+    
+    private async Task<TableData<SensorDataPacketResponse>> LoadServerData(TableState state, CancellationToken token)
+    {
+        // paginated backend call
+        var resp = await ActivityService.GetSensorDataAsync(Id, state.Page + 1, state.PageSize);
+        
+        if (resp?.IsSuccess == true)
+        {
+            return new TableData<SensorDataPacketResponse>()
+            {
+                TotalItems = resp.TotalCount,
+                Items = resp.SensorData
+            };
+        }
+
+        return new TableData<SensorDataPacketResponse>() { TotalItems = 0, Items = new List<SensorDataPacketResponse>() };
+    }
 
     protected override async Task OnParametersSetAsync()
     {
         _loading = true; _error = null;
+
+        _hasValidSensorData = await HasValidSensorData();
 
         _details = await ActivityService.GetActivityAsync(Id);
         if (_details is null || !_details.IsSuccess)
@@ -584,7 +613,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_mapInitialized && !_initializingMap && HasValidSensorData())
+        if (!_mapInitialized && !_initializingMap && _hasValidSensorData)
         {
             _initializingMap = true;
             try { await InitializeMapAsync(); }
@@ -594,56 +623,63 @@
 
     private async Task InitializeMapAsync()
     {
-        if (!HasValidSensorData()) return; // safety
+        if (!_hasValidSensorData) return; // safety
 
         try
         {
             _mapError = null;
-            var sensorData = _details.SensorData.Where(s => s.Latitude != 0 && s.Longitude != 0).ToList();
-            if (!sensorData.Any())
+            var resp = await ActivityService.GetSensorDataAsync(Id, 1, 1000000);
+
+            if (resp?.SensorData != null)
             {
-                _mapError = "No valid GPS coordinates found";
-                StateHasChanged();
-                return;
+                var sensorData = resp.SensorData
+                    .Where(s => s.Latitude != 0 && s.Longitude != 0)
+                    .ToList();
+                if (!sensorData.Any())
+                {
+                    _mapError = "No valid GPS coordinates found";
+                    StateHasChanged();
+                    return;
+                }
+
+                // Use first GPS point as map center
+                var firstPoint = sensorData.First();
+            
+                // Create map configuration for cycling
+                var config = new MapConfiguration
+                {
+                    ShowMarkers = true,
+                    EnableClustering = false,
+                    DefaultTileLayer = "osm",
+                    ShowElevationProfile = false,
+                    ClusterDistance = 80,
+                    MaxZoom = 19,
+                    ShowSpeedColors = true,
+                    ShowTemperatureMarkers = true
+                };
+                // Initialize the map
+                _mapInstance = await MapService.InitializeMapAsync("cycling-map", firstPoint.Latitude, firstPoint.Longitude, config);
+                _mapInitialized = true;
+
+                // Prepare sensor data for JavaScript
+                var coordinates = sensorData.Select(s => new
+                {
+                    latitude = s.Latitude,
+                    longitude = s.Longitude,
+                    elevation = s.ElevationGain,
+                    speed = s.CurrentSpeed,
+                    temperature = s.CurrentTemperature,
+                    timestamp = s.Timestamp.ToString("O"),
+                    accelerationX = s.AccelerationX,
+                    accelerationY = s.AccelerationY,
+                    accelerationZ = s.AccelerationZ
+                }).ToArray();
+
+                // Add route data to map
+                await MapService.AddRouteDataAsync(coordinates);
             }
 
-            // Use first GPS point as map center
-            var firstPoint = sensorData.First();
-            
-            // Create map configuration for cycling
-            var config = new MapConfiguration
-            {
-                ShowMarkers = true,
-                EnableClustering = false,
-                DefaultTileLayer = "osm",
-                ShowElevationProfile = false,
-                ClusterDistance = 80,
-                MaxZoom = 19,
-                ShowSpeedColors = true,
-                ShowTemperatureMarkers = true
-            };
-            // Initialize the map
-            _mapInstance = await MapService.InitializeMapAsync("cycling-map", firstPoint.Latitude, firstPoint.Longitude, config);
-            _mapInitialized = true;
-
-            // Prepare sensor data for JavaScript
-            var coordinates = sensorData.Select(s => new
-            {
-                latitude = s.Latitude,
-                longitude = s.Longitude,
-                elevation = s.ElevationGain,
-                speed = s.CurrentSpeed,
-                temperature = s.CurrentTemperature,
-                timestamp = s.Timestamp.ToString("O"),
-                accelerationX = s.AccelerationX,
-                accelerationY = s.AccelerationY,
-                accelerationZ = s.AccelerationZ
-            }).ToArray();
-
-            // Add route data to map
-            await MapService.AddRouteDataAsync(coordinates);
-            
-                        StateHasChanged();
+            StateHasChanged();
         }
         catch (Exception ex)
         {
