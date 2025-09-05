@@ -128,6 +128,8 @@ namespace Server.Controllers
                     .OrderBy(p => p.Timestamp)
                     .ToListAsync();
                 
+                var totalCount = packets.Count;
+                
                 var sensorData = packets.Select(s => new SensorDataPacketResponse
                 {
                     Id = s.Id,
@@ -152,7 +154,7 @@ namespace Server.Controllers
                     IsSuccess = true,
                     Message = "Activity retrieved successfully",
                     Activity = activityResponse,
-                    SensorData = sensorData
+                    SensorDataPacketCount = totalCount,
                 });
             }
             catch (Exception ex)
