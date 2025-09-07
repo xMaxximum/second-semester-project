@@ -27,7 +27,7 @@ File file;
 Preferences preferences;
 
 // defines the task of the esp (record data every 200ms or upload data at once)
-bool recordOrUpload = false; // upload from the start (for testing), has to be saved to flash in case the esp loses power
+bool recordOrUpload = true; // upload from the start (for testing), has to be saved to flash in case the esp loses power
 
 // only get data every 200ms
 unsigned long currentTime = 0, lastReadTime200ms = 0, lastReadTime1000ms = 0, dtTo1000ms = 0, dtTo200ms = 0;
@@ -78,14 +78,31 @@ void loop()
     {
       // get data from accelerometer and temperature sensor (MPU6050)
       mpu.getEvent(&a, &g, &temp);
-      sensorData[bufferCounter] = temp.temperature; 
+      sensorData[bufferCounter] = temp.temperature;   
+      Serial.print("temp: ");
+      Serial.print(sensorData[bufferCounter]);    
       sensorData[bufferCounter + 1] = (float)speed;
+      Serial.print(" speed: ");
+      Serial.print(sensorData[bufferCounter + 1]); 
       sensorData[bufferCounter + 2] = gpsdata.latitude; 
+      Serial.print(" lat: ");
+      Serial.print(sensorData[bufferCounter + 2]); 
       sensorData[bufferCounter + 3] = gpsdata.longitude;
+      Serial.print(" long: ");
+      Serial.print(sensorData[bufferCounter + 3]); 
       sensorData[bufferCounter + 4] = gpsdata.height;
+      Serial.print(" NN: ");
+      Serial.print(sensorData[bufferCounter + 4]); 
       sensorData[bufferCounter + 5] = a.acceleration.x;
+      Serial.print(" x: ");
+      Serial.print(sensorData[bufferCounter + 5]); 
       sensorData[bufferCounter + 6] = a.acceleration.y;
+      Serial.print(" y: ");
+      Serial.print(sensorData[bufferCounter + 6]); 
       sensorData[bufferCounter + 7] = a.acceleration.z;
+      Serial.print(" z: ");
+      Serial.println(sensorData[bufferCounter + 7]); 
+      
       // create the checksum
       for (size_t i = 0; i < SENSOR_DATA_SIZE; i++)
         sensorData[bufferCounter + 8] += sensorData[i];

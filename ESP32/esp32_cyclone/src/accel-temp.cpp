@@ -1,12 +1,12 @@
 #include <sensors/accel-temp.h>
+#include <constants.h>
 
 
 
 void setupMPU6050(Adafruit_MPU6050 &mpu) { 
-
-  Serial.println("Adafruit MPU6050 test!");
-
-  // Try to initialize!
+  // set pins for I2C
+  Wire.begin(CUSTOM_SDA_MPU, CUSTOM_SCL_MPU);
+  // initialize MPU sensor over I2C
   if (!mpu.begin()) {
     Serial.println("Failed to find MPU6050 chip");
     while (1) {

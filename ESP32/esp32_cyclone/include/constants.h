@@ -1,5 +1,7 @@
 #pragma once
 
+#define CUSTOM_SCL_MPU 22
+#define CUSTOM_SDA_MPU 23
 #define CUSTOM_TX_GPS 17
 #define CUSTOM_RX_GPS 16
 #define CUSTOM_MOSI 18
