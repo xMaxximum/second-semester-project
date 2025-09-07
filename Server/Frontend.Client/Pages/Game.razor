@@ -1,0 +1,254 @@
+@page "/game"
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>🚴‍♂️ Cyclone Escape Game</PageTitle>
+
+<div class="ceg-root">
+    <header class="ceg-bar">
+        <div class="ceg-left">
+            <strong>🚴‍♂️ CYCLONE ESCAPE!</strong>
+        </div>
+        <div class="ceg-mid">
+            <span>Score: <b>@_score</b></span>
+            <span>Speed: <b>@_speed.ToString("0.0")</b></span>
+            <span>High: <b>@_highScore</b></span>
+        </div>
+        <div class="ceg-right">
+            <button class="ceg-btn" @onclick="Start">🎮 Start</button>
+            <button class="ceg-btn" @onclick="TogglePause">@(_paused ? "▶️ Resume" : "⏸️ Pause")</button>
+            <button class="ceg-btn" @onclick="@(()=> Nav.NavigateTo("/"))">🏠 Exit</button>
+        </div>
+    </header>
+
+    <div class="ceg-stage">
+        <canvas @ref="_canvas" tabindex="0" id="cycloneCanvas" aria-label="Cyclone Escape Game"></canvas>
+
+        <div class="ceg-instructions" id="cycloneHelp">
+            <h2>🚴‍♂️ CYCLONE ESCAPE!</h2>
+            <p><strong>Desktop:</strong> SPACE to jump • ESC to pause</p>
+            <p><strong>Mobile:</strong> TAP to jump • DOUBLE TAP to pause</p>
+            <ul>
+                <li>Avoid trees 🌳, rocks 🪨, cacti 🌵 and barriers 🚧</li>
+                <li>Duck under flying birds 🦅🦇🐦 - jumping will hit them!</li>
+                <li>Survive to score. Speed ramps every 50 points.</li>
+                <li>Beat your high score!</li>
+            </ul>
+            <div class="ceg-ctrls">
+                <button class="ceg-btn primary" @onclick="Start">🎮 Start Game</button>
+                <button class="ceg-btn" @onclick="@(()=> Nav.NavigateTo("/"))">🏠 Go Back</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div class="ceg-game-over" id="cycloneGameOver">
+            <div class="ceg-game-over-content">
+                <h2>💀 GAME OVER! 💀</h2>
+                <div class="ceg-score-display">
+                    <div class="final-score">Final Score: <span id="finalScore">0</span></div>
+                    <div class="high-score">High Score: <span id="gameOverHighScore">0</span></div>
+                    <div class="new-high-score" id="newHighScore">🎉 NEW HIGH SCORE! 🎉</div>
+                </div>
+                <div class="ceg-game-over-buttons">
+                    <button class="ceg-btn primary" @onclick="RestartGame">🔄 Play Again</button>
+                    <button class="ceg-btn" @onclick="ExitGame">🏠 Exit Game</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="ceg-foot">
+        <small>Desktop: SPACE to jump • ESC to pause | Mobile: TAP to jump • DOUBLE TAP to pause | Watch for flying birds! 🦅</small>
+    </footer>
+</div>
+
+@code
+{
+    private ElementReference _canvas;
+    private IJSObjectReference? _mod;
+    private DotNetObjectReference<Game>? _selfRef;
+
+    private int _score, _highScore;
+    private double _speed;
+    private bool _paused;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _mod = await JS.InvokeAsync<IJSObjectReference>("import", "./js/cycloneGame.js");
+        _selfRef = DotNetObjectReference.Create(this);
+        await _mod.InvokeVoidAsync("initCycloneGame", _canvas, _selfRef);
+    }
+
+    private async Task Start()
+    {
+        if (_mod is null) return;
+        await _mod.InvokeVoidAsync("startCycloneGame");
+        _paused = false;
+        StateHasChanged();
+    }
+
+    private async Task TogglePause()
+    {
+        if (_mod is null) return;
+        _paused = !_paused;
+        await _mod.InvokeVoidAsync(_paused ? "pauseCycloneGame" : "resumeCycloneGame");
+        StateHasChanged();
+    }
+
+    private async Task RestartGame()
+    {
+        if (_mod is null) return;
+        await _mod.InvokeVoidAsync("startCycloneGame");
+        _paused = false;
+        StateHasChanged();
+    }
+
+    private async Task ExitGame()
+    {
+        if (_mod is null) return;
+        await _mod.InvokeVoidAsync("exitGame");
+        Nav.NavigateTo("/");
+    }
+
+    [JSInvokable("CycloneScoreUpdate")]
+    public void OnScore(int score, int high, double speed)
+    {
+        _score = score;
+        _highScore = high;
+        _speed = speed;
+        StateHasChanged();
+    }
+
+    [JSInvokable("CyclonePaused")]
+    public void OnPaused(bool isPaused)
+    {
+        _paused = isPaused;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_mod is not null)
+        {
+            try { await _mod.InvokeVoidAsync("destroyCycloneGame"); } catch {}
+            await _mod.DisposeAsync();
+        }
+        _selfRef?.Dispose();
+    }
+}
+
+<style>
+.ceg-root{position:fixed;inset:0;display:flex;flex-direction:column;background:linear-gradient(to bottom,#87CEEB 0%,#98FB98 70%,#8FBC8F 100%);font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+.ceg-bar,.ceg-foot{background:rgba(0,0,0,.8);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #ffd700}
+.ceg-foot{justify-content:center;border-bottom:none;border-top:2px solid #ffd700}
+.ceg-left{font-weight:700}
+.ceg-mid{display:flex;gap:16px;flex:1;justify-content:center}
+.ceg-right{display:flex;gap:8px}
+.ceg-btn{background:#666;border:none;color:#fff;padding:8px 14px;border-radius:18px;cursor:pointer;font-weight:600;touch-action:manipulation;min-height:44px;min-width:44px;transition:all 0.2s ease}
+.ceg-btn:hover{transform:translateY(-1px);box-shadow:0 4px 8px rgba(0,0,0,0.3)}
+.ceg-btn:active{transform:translateY(0)}
+.ceg-btn.primary{background:#ff6b35}
+.ceg-stage{position:relative;flex:1;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;transition:transform 0.1s ease}
+.ceg-instructions{position:absolute;inset:0;margin:auto;height:max-content;max-width:560px;background:rgba(255,255,255,.96);border:3px solid #ffd700;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);padding:24px;text-align:center}
+.ceg-instructions h2{margin:0 0 8px 0}
+.ceg-instructions ul{text-align:left;margin:8px auto;max-width:440px}
+.ceg-ctrls{display:flex;justify-content:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+
+/* Game Over Screen Styles */
+.ceg-game-over{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,0.8);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  transition:opacity 0.3s ease;
+  backdrop-filter:blur(10px);
+  z-index:1000;
+}
+.ceg-game-over.show{opacity:1}
+.ceg-game-over-content{
+  background:linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+  border:4px solid #ffd700;
+  border-radius:20px;
+  padding:40px;
+  text-align:center;
+  color:#fff;
+  box-shadow:0 20px 40px rgba(0,0,0,0.5);
+  transform:scale(0.8);
+  transition:transform 0.3s ease;
+  max-width:400px;
+  width:90%;
+}
+.ceg-game-over.show .ceg-game-over-content{transform:scale(1)}
+.ceg-game-over h2{
+  margin:0 0 20px 0;
+  font-size:2.5em;
+  text-shadow:2px 2px 4px rgba(0,0,0,0.5);
+  animation:pulse 2s infinite;
+}
+.ceg-score-display{margin:20px 0}
+.final-score,.high-score{
+  font-size:1.4em;
+  margin:10px 0;
+  font-weight:bold;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.5);
+}
+.new-high-score{
+  color:#ffd700;
+  font-size:1.2em;
+  font-weight:bold;
+  margin:15px 0;
+  animation:glow 1s ease-in-out infinite alternate;
+  display:none;
+}
+.ceg-game-over-buttons{
+  display:flex;
+  gap:15px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-top:25px;
+}
+.ceg-game-over-buttons .ceg-btn{
+  padding:12px 20px;
+  font-size:16px;
+  min-width:120px;
+}
+
+/* Animations */
+@@keyframes pulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.05)}
+}
+@@keyframes glow{
+  from{text-shadow:0 0 5px #ffd700,0 0 10px #ffd700,0 0 15px #ffd700}
+  to{text-shadow:0 0 10px #ffd700,0 0 20px #ffd700,0 0 25px #ffd700}
+}
+
+/* Responsive Design */
+@@media (max-width:600px){
+  .ceg-mid{gap:10px;font-size:14px}
+  .ceg-instructions{margin:16px;max-width:calc(100vw - 32px)}
+  .ceg-bar{flex-wrap:wrap;padding:8px 10px}
+  .ceg-left{order:1;width:100%;text-align:center;margin-bottom:8px}
+  .ceg-mid{order:2;justify-content:space-between;width:100%}
+  .ceg-right{order:3;width:100%;justify-content:center;margin-top:8px}
+  .ceg-btn{padding:10px 16px;font-size:14px}
+  .ceg-foot{font-size:12px;padding:8px;text-align:center}
+  .ceg-game-over-content{padding:30px 20px}
+  .ceg-game-over h2{font-size:2em}
+  .ceg-game-over-buttons{flex-direction:column;align-items:center}
+  .ceg-game-over-buttons .ceg-btn{width:100%;max-width:200px}
+}
+@@media (max-width:400px){
+  .ceg-mid{flex-direction:column;gap:4px;align-items:center}
+  .ceg-instructions{padding:16px}
+  .ceg-ctrls{flex-direction:column}
+  .ceg-btn{width:100%;max-width:200px}
+  .ceg-game-over-content{padding:25px 15px}
+  .final-score,.high-score{font-size:1.2em}
+}
+</style>
