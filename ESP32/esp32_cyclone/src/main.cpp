@@ -48,67 +48,66 @@ void setup()
   // wait for serial monitor to connect
   delay(8000);
 
-  setupWlan();
-  setupFileSystem();
-  setupGPS();
+  // setupWlan();
+  // setupFileSystem();
+  // setupGPS();
   setupMPU6050(mpu);
+  setupRPM();
 
   Serial.println("Setup complete. Starting main loop...");
 
   sensorData = (float *)malloc(RAM_ARR * sizeof(float));
   // initialize the buffer
   for (size_t i = 0; i < RAM_ARR; i++)
-        sensorData[i] = 0;
-  // pinMode(2, OUTPUT);
-
-  // digital input for rpm sensor (magnet sensor)
-  // pinMode(PIN_MAGNET, INPUT); // For an input with internal pull-up resistor
+    sensorData[i] = 0;
 }
 
 void loop()
 {
   if (recordOrUpload)
   {
-    getSpeed();
+    //getSpeed();
+    
     readGPSData(gps, gpsdata);
 
     currentTime = millis();
     dtTo200ms = currentTime - lastReadTime200ms;
     if (dtTo200ms >= 200)
     {
+      // reset timer
+      lastReadTime200ms = currentTime;
       // get data from accelerometer and temperature sensor (MPU6050)
       mpu.getEvent(&a, &g, &temp);
-      sensorData[bufferCounter] = temp.temperature;   
+      sensorData[bufferCounter] = temp.temperature;
       Serial.print("temp: ");
-      Serial.print(sensorData[bufferCounter]);    
-      sensorData[bufferCounter + 1] = (float)speed;
+      Serial.print(sensorData[bufferCounter]);
+      sensorData[bufferCounter + 1] = calculateSpeed();
       Serial.print(" speed: ");
-      Serial.print(sensorData[bufferCounter + 1]); 
-      sensorData[bufferCounter + 2] = gpsdata.latitude; 
+      Serial.print(sensorData[bufferCounter + 1]);
+      sensorData[bufferCounter + 2] = gpsdata.latitude;
       Serial.print(" lat: ");
-      Serial.print(sensorData[bufferCounter + 2]); 
+      Serial.print(sensorData[bufferCounter + 2]);
       sensorData[bufferCounter + 3] = gpsdata.longitude;
       Serial.print(" long: ");
-      Serial.print(sensorData[bufferCounter + 3]); 
+      Serial.print(sensorData[bufferCounter + 3]);
       sensorData[bufferCounter + 4] = gpsdata.height;
       Serial.print(" NN: ");
-      Serial.print(sensorData[bufferCounter + 4]); 
+      Serial.print(sensorData[bufferCounter + 4]);
       sensorData[bufferCounter + 5] = a.acceleration.x;
       Serial.print(" x: ");
-      Serial.print(sensorData[bufferCounter + 5]); 
+      Serial.print(sensorData[bufferCounter + 5]);
       sensorData[bufferCounter + 6] = a.acceleration.y;
       Serial.print(" y: ");
-      Serial.print(sensorData[bufferCounter + 6]); 
+      Serial.print(sensorData[bufferCounter + 6]);
       sensorData[bufferCounter + 7] = a.acceleration.z;
       Serial.print(" z: ");
-      Serial.println(sensorData[bufferCounter + 7]); 
-      
+      Serial.println(sensorData[bufferCounter + 7]);
+
       // create the checksum
       for (size_t i = 0; i < SENSOR_DATA_SIZE; i++)
         sensorData[bufferCounter + 8] += sensorData[i];
 
       bufferCounter += SENSOR_DATA_SIZE; // move the current index one sensor packet further (9 values)
-      lastReadTime200ms = currentTime;
     }
 
     // the buffer is full and needs to be saved to the sdcard
@@ -140,35 +139,6 @@ void loop()
     for (size_t i = 0; i < savedBufferToSdcardCount; i++)
       writeSensorDataBlock(sensorData, file, bufferCounter);
     uploadSensorDataToBackend(sensorData, file, savedBufferToSdcardCount, bufferCounter);
-  }
-
-  delay(5000);
-}
-
-void getSpeed()
-{
-  currentState = digitalRead(PIN_MAGNET);
-
-  dtTo1000ms = currentTime - lastReadTime1000ms;
-  // Check for negative flank
-  if (lastState == HIGH && currentState == LOW)
-    flankCount++;
-
-  lastState = currentState;
-
-  // negative flanks / second (rpm is flanks per minute)
-  if (dtTo1000ms >= 1000)
-  {
-    lastReadTime1000ms = currentTime;
-    rpm = flankCount * 60;
-    // calculate the speed
-    speed = (rpm * PI * WHEEL_DIAMETER) / 60 * 3.6;
-    Serial.print("Speed (RPM): ");
-    Serial.println(rpm);
-    Serial.print("Speed: ");
-    Serial.print(speed);
-    Serial.println(" km/h");
-    flankCount = 0;
   }
 }
 

@@ -18,5 +18,5 @@
 #define API_STOP_ACTIVITY "/api/sensor/stop-activity"
 
 // magnet sensor
-#define PIN_MAGNET 13
+#define PIN_MAGNET 21
 #define WHEEL_DIAMETER 0.6 // 26 inch wheel
