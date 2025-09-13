@@ -87,7 +87,8 @@ float calculateSpeed()
     Serial.print(rpmUsed);
 
     // speed = RPM * pi * D / 60 * 3.6
-    speedKmh = (rpmUsed * 3.14159265358979323846f * WHEEL_DIAMETER) / 60.0f * 3.6f;
+    // the speed is off by a factor of 40, I add it here because I do not know where this factor comes from, would need further debugging
+    speedKmh = ((rpmUsed * 3.14159265358979323846f * WHEEL_DIAMETER) / 60.0f * 3.6f) / 40;
 
     // EMA smoothing, "removes" jitter values
     speedFiltered = EMA_ALPHA * speedKmh + (1.0f - EMA_ALPHA) * speedFiltered;
