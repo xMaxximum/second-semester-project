@@ -8,3 +8,6 @@
 void setupWlan();
 // upload the accumulated sensor data from the sdcard to the backend
 void uploadSensorDataToBackend(float *sensorData, File & file, uint &savedBufferToSdcardCount, int bufferCounter);
+
+int postBytes(uint8_t *data, size_t bytes, const char *ca);
+void sendStop(const char *ca);

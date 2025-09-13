@@ -2,12 +2,11 @@
 #include <constants.h>
 #include <data.h>
 
-
-void uploadSensorDataToBackend(float *sensorData, File & file, uint &savedBufferToSdcardCount, int bufferCounter)
+void uploadSensorDataToBackend(float *sensorData, File &file, uint &savedBufferToSdcardCount, int bufferCounter)
 {
-  WiFiClientSecure client;
-  HTTPClient http;
   unsigned long timePoint1;
+  uint partialBufferSize = bufferCounter * sizeof(float);
+  uint bytes;
 
   const char *test_root_ca =
       "-----BEGIN CERTIFICATE-----\n"
@@ -49,42 +48,43 @@ void uploadSensorDataToBackend(float *sensorData, File & file, uint &savedBuffer
   {
     timePoint1 = millis();
     //  we want to upload the data to the backend now
-    // if the last buffer was not filled fully, read only a partial buffer and upload the data
-    if (bufferCounter == 0 && i == 1)
+    // the last buffer is never saved fully, switch can not be pulled exactly on buffer maximum, that is super luck
+    if (i != 1) // upload all the full buffers
     {
-      Serial.println("Read the data from sdcard to ram buffer...");
+      Serial.println("savedBufferToSdcardCount: ");
+      Serial.println(savedBufferToSdcardCount);
+      Serial.println("Read the full data buffer from sdcard to ram buffer...");
       file.read((uint8_t *)sensorData, RAM_ARR * sizeof(float));
-      Serial.println("Convert float buffer to csv string...");
+      bytes = RAM_ARR * sizeof(float);
     }
-    else
+    else // upload the last not full buffer
     {
-      Serial.println("Read the partial data from sdcard to ram buffer...");
-      file.read((uint8_t *)sensorData, bufferCounter * SENSOR_DATA_SIZE * sizeof(float));
-      Serial.println("Convert partial float buffer to csv string...");
+      Serial.println("savedBufferToSdcardCount: ");
+      Serial.println(savedBufferToSdcardCount);
+      Serial.println("Read the partial data that was saved after op mode changed from sdcard to ram buffer...");
+      file.read((uint8_t *)sensorData, partialBufferSize);
+      bytes = partialBufferSize;
     }
+/*
+    for (size_t i = 0; i < bufferCounter; i++)
+    {
+      Serial.println(sensorData[i]);
+    }*/
+    Serial.print("bufferCounter: ");
+    Serial.println(bufferCounter);
 
-    client.setCACert(test_root_ca);
-    Serial.println("Starting http transmission...");
-    http.begin(client, String(API_ENDPOINT) + String(API_APPEND_ACTIVITY));
-
-    // content-type headers
-    http.addHeader("Content-Type", "application/octet-stream");
-    http.addHeader("Authorization", "Bearer WJVVvXO7zj861hrHUEALrLRsC+YYH6kB0iQpa6KgMweYlwgxK2ShBmO3CiRIcIaZd6kZM1TRI5hkv58jQZTT4w==");
+    Serial.print("partial buffer size: ");
+    Serial.println(partialBufferSize);
 
     // convert the float array to a byte array, completely ignore the type
     uint8_t *byteData = reinterpret_cast<uint8_t *>(sensorData);
 
-    // Send HTTP POST request with byte data
-    int httpResponseCode = http.POST(byteData, RAM_ARR * sizeof(float));
-
     Serial.print("HTTP Response code: ");
-    Serial.println(httpResponseCode);
-    //  Free resources
-    http.end();
+    Serial.println(postBytes(byteData, bytes, test_root_ca));
     Serial.println("Upload finished.");
     // retreived a buffer from sdcard and uploaded it to backend
     savedBufferToSdcardCount--;
-    Serial.print("Time for converting to csv and upload to backend: ");
+    Serial.print("Time for upload to backend: ");
     Serial.println(millis() - timePoint1);
 
     // get free heap
@@ -92,16 +92,57 @@ void uploadSensorDataToBackend(float *sensorData, File & file, uint &savedBuffer
     Serial.print("Heap size: ");
     Serial.println(heapSize);
 
-    delay(3000);
+    delay(1000);
   }
+
+  sendStop(test_root_ca);
+  file.close();
+}
+
+void printFloats(const float *fdata, size_t count) {
+  for (size_t i = 0; i < count; ++i) {
+    Serial.println(fdata[i], 6); // 6 decimal places
+    Serial.println(i);
+  }
+}
+
+int postBytes(uint8_t *data, size_t bytes, const char *ca)
+{
+  WiFiClientSecure client;
+  client.setCACert(ca);
+
+  HTTPClient http;
+  const String url = String(API_ENDPOINT) + String(API_APPEND_ACTIVITY);
+  if (!http.begin(client, url))
+    return -1;
+
+  http.addHeader("Content-Type", "application/octet-stream");
+  http.addHeader("Authorization", "Bearer x50sPbCyrXc0JCL7G/ftX4LLNb907Gx5GvcAjJsb9cWp20/RRA5nTIzgsHlqC4+JhSLZLjbIMO9ooI0e59GxIw==");
+
+  Serial.println("bytearray: ");
+  //printFloats((float*)data, bytes / 4);
+  Serial.print("bytes to send: ");
+  Serial.println(bytes);
+  int code = http.sendRequest("POST", data, bytes);
+  Serial.println(http.getString());
+  http.end();
+  client.stop();
+  delay(1000);
+  return code;
+}
+
+void sendStop(const char *ca)
+{
+  WiFiClientSecure client;
+  client.setCACert(ca);
+  HTTPClient http;
   Serial.println("Starting stop-activity...");
   http.begin(client, String(API_ENDPOINT) + String(API_STOP_ACTIVITY));
 
   // content-type headers
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer WJVVvXO7zj861hrHUEALrLRsC+YYH6kB0iQpa6KgMweYlwgxK2ShBmO3CiRIcIaZd6kZM1TRI5hkv58jQZTT4w==");
+  http.addHeader("Authorization", "Bearer x50sPbCyrXc0JCL7G/ftX4LLNb907Gx5GvcAjJsb9cWp20/RRA5nTIzgsHlqC4+JhSLZLjbIMO9ooI0e59GxIw==");
 
-  // Send HTTP POST request with byte data
   int httpResponseCode = http.POST("{}");
 
   Serial.print("HTTP Response code: ");
@@ -109,6 +150,4 @@ void uploadSensorDataToBackend(float *sensorData, File & file, uint &savedBuffer
   //  Free resources
   http.end();
   Serial.println("Activity stopped.");
-
-  file.close();
 }
