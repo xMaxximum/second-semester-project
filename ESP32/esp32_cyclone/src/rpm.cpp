@@ -3,10 +3,7 @@
 #include <Arduino.h>
 
 const uint8_t PULSES_PER_REV = 1;      // pulses (flanks) per wheel revolution
-const unsigned long TIMEOUT_MS = 1500; // if no pulse within this timeout, speed -> 0
-
-// use time between pulses under 150 rpm and pulses within 200ms window above 150 rpm
-const float RPM_TO_SWITCH = 300.0;
+const unsigned long TIMEOUT_MS = 3000; // if no pulse within this timeout, speed -> 0
 
 // EMA smoothing prevents jitter values
 const float EMA_ALPHA = 0.25f;
@@ -59,7 +56,6 @@ float calculateSpeed()
         Serial.print(" pulsespersec: ");
         Serial.print(pulsesPerSec);
         rpmInstant = pulsesPerSec * 60.0f / PULSES_PER_REV; // pulses per minute divided by pulses per revolution equal rpm
-        //rpmInstant = (60.0f * 1000000.0f) / (float(periodUs) * float(PULSES_PER_REV));
     }
 
     // get the current interrupt set pulsecount
@@ -68,27 +64,15 @@ float calculateSpeed()
     pulseCount = 0;
     interrupts();
 
-    float pulsesPerSec = float(cnt) / 0.2f;
-    float rpmWindow = pulsesPerSec * 60.0f / float(PULSES_PER_REV);
-
     // period-based (instant) or window-based rpm.
     // period is better for slow speeds and window for high speeds (have verified this in a test, the jitter makes period bad for high speeds because then there are no smooth values)
-    
-    float rpmUsed;
-    /*
-    if (rpmInstant < RPM_TO_SWITCH && periodUs > 0)
-        rpmUsed = rpmInstant;
-    else
-        rpmUsed = rpmWindow;
-        */
-    rpmUsed = rpmInstant;
-
+    // period based is enough for those speeds on a bike wheel 
     Serial.print(" rpm: ");
-    Serial.print(rpmUsed);
+    Serial.print(rpmInstant);
 
     // speed = RPM * pi * D / 60 * 3.6
     // the speed is off by a factor of 40, I add it here because I do not know where this factor comes from, would need further debugging
-    speedKmh = ((rpmUsed * 3.14159265358979323846f * WHEEL_DIAMETER) / 60.0f * 3.6f) / 40;
+    speedKmh = ((rpmInstant * 3.14159265358979323846f * WHEEL_DIAMETER) / 60.0f * 3.6f) / 40;
 
     // EMA smoothing, "removes" jitter values
     speedFiltered = EMA_ALPHA * speedKmh + (1.0f - EMA_ALPHA) * speedFiltered;
