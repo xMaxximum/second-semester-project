@@ -8,16 +8,20 @@
             Ride Configuration
         </MudText>
 
-        <MudTabs Elevation="0" Rounded="true" Centered="true" @bind-ActivePanelIndex="ActiveTab">
+        <MudTabs Elevation="0" Rounded="true" Centered="true" 
+               ActivePanelIndex="ActiveTab" 
+               ActivePanelIndexChanged="@((int index) => { ActiveTab = index; ActiveTabChanged.InvokeAsync(index); })">
             <MudTabPanel Text="Distance">
                 <MudStack Spacing="3" Class="mt-4">
-                    <MudNumericField @bind-Value="RideDistance" 
+                    <MudNumericField Value="RideDistance" 
+                                   ValueChanged="@((double val) => { RideDistance = val; RideDistanceChanged.InvokeAsync(val); })"
                                    Label="Distance (km)" 
                                    Min="1" Max="500"
                                    Adornment="Adornment.End" 
                                    AdornmentText="km"
                                    Variant="Variant.Outlined" />
-                    <MudNumericField @bind-Value="AverageSpeed" 
+                    <MudNumericField Value="AverageSpeed" 
+                                   ValueChanged="@((double val) => { AverageSpeed = val; AverageSpeedChanged.InvokeAsync(val); })"
                                    Label="Expected Average Speed" 
                                    Min="10" Max="60"
                                    Adornment="Adornment.End" 
@@ -30,12 +34,14 @@
             </MudTabPanel>
             <MudTabPanel Text="Time">
                 <MudStack Spacing="3" Class="mt-4">
-                    <MudTextField @bind-Value="RideDurationInput" 
+                    <MudTextField Value="RideDurationInput" 
+                                ValueChanged="@((string val) => { RideDurationInput = val; RideDurationInputChanged.InvokeAsync(val); })"
                                 Label="Ride Duration (HH:MM)" 
                                 Placeholder="2:30"
                                 Variant="Variant.Outlined"
                                 HelperText="Format: Hours:Minutes (e.g., 2:30 for 2.5 hours)" />
-                    <MudNumericField @bind-Value="IntensityFactor" 
+                    <MudNumericField Value="IntensityFactor" 
+                                   ValueChanged="@((double val) => { IntensityFactor = val; IntensityFactorChanged.InvokeAsync(val); })"
                                    Label="Intensity Factor" 
                                    Min="0.5" Max="1.0" Step="0.05"
                                    Adornment="Adornment.End" 
@@ -50,13 +56,17 @@
 
         <MudText Typo="Typo.h6" Class="mb-3">Personal Settings</MudText>
         <MudStack Spacing="3">
-            <MudNumericField @bind-Value="BodyWeight" 
+            <MudNumericField Value="BodyWeight" 
+                           ValueChanged="@((double val) => { BodyWeight = val; BodyWeightChanged.InvokeAsync(val); })"
                            Label="Body Weight" 
                            Min="40" Max="150"
                            Adornment="Adornment.End" 
                            AdornmentText="kg"
                            Variant="Variant.Outlined" />
-            <MudSelect @bind-Value="FitnessLevel" Label="Fitness Level" Variant="Variant.Outlined">
+            <MudSelect Value="FitnessLevel" 
+                     ValueChanged="@((FitnessLevel val) => { FitnessLevel = val; FitnessLevelChanged.InvokeAsync(val); })"
+                     Label="Fitness Level" 
+                     Variant="Variant.Outlined">
                 <MudSelectItem Value="@FitnessLevel.Beginner">Beginner</MudSelectItem>
                 <MudSelectItem Value="@FitnessLevel.Intermediate">Intermediate</MudSelectItem>
                 <MudSelectItem Value="@FitnessLevel.Advanced">Advanced</MudSelectItem>
@@ -83,20 +93,42 @@
         </MudText>
         
         <MudStack Spacing="2">
-            <MudSwitch T="bool" @bind-Value="Preferences.AllowGels" Color="Color.Primary" Label="Energy Gels" />
-            <MudSwitch T="bool" @bind-Value="Preferences.AllowSportsDrinks" Color="Color.Primary" Label="Sports Drinks" />
-            <MudSwitch T="bool" @bind-Value="Preferences.AllowBananas" Color="Color.Primary" Label="Bananas" />
-            <MudSwitch T="bool" @bind-Value="Preferences.AllowEnergyBars" Color="Color.Primary" Label="Energy Bars" />
-            <MudSwitch T="bool" @bind-Value="Preferences.AllowDates" Color="Color.Primary" Label="Dates" />
-            <MudSwitch T="bool" @bind-Value="Preferences.PreferNaturalFoods" Color="Color.Primary" Label="Prefer Natural Foods" />
+            <MudSwitch T="bool" 
+                     Value="Preferences.AllowGels" 
+                     ValueChanged="@((bool val) => { Preferences.AllowGels = val; PreferencesChanged.InvokeAsync(Preferences); })"
+                     Color="Color.Primary" Label="Energy Gels" />
+            <MudSwitch T="bool" 
+                     Value="Preferences.AllowSportsDrinks" 
+                     ValueChanged="@((bool val) => { Preferences.AllowSportsDrinks = val; PreferencesChanged.InvokeAsync(Preferences); })"
+                     Color="Color.Primary" Label="Sports Drinks" />
+            <MudSwitch T="bool" 
+                     Value="Preferences.AllowBananas" 
+                     ValueChanged="@((bool val) => { Preferences.AllowBananas = val; PreferencesChanged.InvokeAsync(Preferences); })"
+                     Color="Color.Primary" Label="Bananas" />
+            <MudSwitch T="bool" 
+                     Value="Preferences.AllowEnergyBars" 
+                     ValueChanged="@((bool val) => { Preferences.AllowEnergyBars = val; PreferencesChanged.InvokeAsync(Preferences); })"
+                     Color="Color.Primary" Label="Energy Bars" />
+            <MudSwitch T="bool" 
+                     Value="Preferences.AllowDates" 
+                     ValueChanged="@((bool val) => { Preferences.AllowDates = val; PreferencesChanged.InvokeAsync(Preferences); })"
+                     Color="Color.Primary" Label="Dates" />
+            <MudSwitch T="bool" 
+                     Value="Preferences.PreferNaturalFoods" 
+                     ValueChanged="@((bool val) => { Preferences.PreferNaturalFoods = val; PreferencesChanged.InvokeAsync(Preferences); })"
+                     Color="Color.Primary" Label="Prefer Natural Foods" />
         </MudStack>
 
         <MudDivider Class="my-3" />
         
         <MudText Typo="Typo.subtitle2" Class="mb-2">Hydration Preferences</MudText>
         <MudStack Spacing="2">
-            <MudSwitch T="bool" @bind-Value="Preferences.IncludeElectrolytes" Color="Color.Primary" Label="Electrolyte Drinks" />
-            <MudNumericField @bind-Value="Preferences.FluidIntensity" 
+            <MudSwitch T="bool" 
+                     Value="Preferences.IncludeElectrolytes" 
+                     ValueChanged="@((bool val) => { Preferences.IncludeElectrolytes = val; PreferencesChanged.InvokeAsync(Preferences); })"
+                     Color="Color.Primary" Label="Electrolyte Drinks" />
+            <MudNumericField Value="Preferences.FluidIntensity" 
+                           ValueChanged="@((double val) => { Preferences.FluidIntensity = val; PreferencesChanged.InvokeAsync(Preferences); })"
                            Label="Hydration Intensity" 
                            Min="0.5" Max="2.0" Step="0.1"
                            Variant="Variant.Outlined"
