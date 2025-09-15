@@ -1,11 +1,7 @@
-#ifndef RPM_H
-#define RPM_H
+#pragma once
 
-// magnet sensor positive flank recognition (rpm)
-int lastState = LOW, currentState, flankCount = 0, rpm, speed;
-
-// calculate the speed based on rpm of the wheel with the magnet sensor
-void getSpeed();
-
-
-#endif
+// input pin pullup, use interrupt
+void setupRPM();
+// calculate the speed based on ticks per given time or time between ticks depending on the current rpm
+// hybrid solution to get the most out of the two scenarios
+float calculateSpeed();
