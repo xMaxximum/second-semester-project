@@ -37,19 +37,5 @@
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
-        <NotFound>
-            <PageTitle>Not found</PageTitle>
-            <LayoutView Layout="typeof(Layout.MainLayout)">
-                <div class="d-flex justify-center align-center" style="height: 100vh;">
-                    <MudPaper Class="pa-8 text-center">
-                        <MudText Typo="Typo.h6" GutterBottom="true">Page Not Found</MudText>
-                        <MudText Class="mb-4">Sorry, there's nothing at this address.</MudText>
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/">
-                            Go Home
-                        </MudButton>
-                    </MudPaper>
-                </div>
-            </LayoutView>
-        </NotFound>
     </Router>
 </CascadingAuthenticationState>
