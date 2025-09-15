@@ -4,6 +4,7 @@
 let cvs, ctx, dotnet;
 let rafId = 0;
 let running = false, paused = false, showHelp = true;
+let touchFeedback = { active: false, x: 0, y: 0, opacity: 0 };
 
 let lastTime = 0;
 const PX = { 
@@ -774,33 +775,55 @@ function checkCollisions() {
 }
 
 function drawHud() {
-  ctx.fillStyle = 'rgba(0,0,0,.75)';
-  ctx.fillRect(0,0,cvs.width, 56);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 18px Courier New, monospace';
-  ctx.fillText(`Score: ${score}`, 16, 34);
-  ctx.fillText(`Speed: ${speed.toFixed(1)}`, 180, 34);
+  // Remove duplicate stats bar - stats are shown in Blazor header
+  // Only keep power-ups display in a floating overlay
   
-  // Show active power-ups
-  let powerUpX = 520;
-  if (playerEffects.shield.active) {
-    ctx.fillStyle = '#00BFFF';
-    ctx.fillText(`🛡️ ${Math.ceil(playerEffects.shield.duration/1000)}s`, powerUpX, 34);
-    powerUpX += 80;
+  // Show active power-ups in floating overlay (top-right corner)
+  if (playerEffects.shield.active || playerEffects.multiplier.active || playerEffects.invincible.active) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(cvs.width - 300, 10, 290, 40);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px Courier New, monospace';
+    
+    let powerUpX = cvs.width - 290;
+    
+    if (playerEffects.shield.active) {
+      ctx.fillStyle = '#00BFFF';
+      ctx.fillText(`🛡️ ${Math.ceil(playerEffects.shield.duration/1000)}s`, powerUpX, 34);
+      powerUpX += 80;
+    }
+    if (playerEffects.multiplier.active) {
+      ctx.fillStyle = '#FFD700';
+      ctx.fillText(`⭐ ${playerEffects.multiplier.value}x ${Math.ceil(playerEffects.multiplier.duration/1000)}s`, powerUpX, 34);
+      powerUpX += 100;
+    }
+    if (playerEffects.invincible.active) {
+      ctx.fillStyle = '#FF69B4';
+      ctx.fillText(`💎 ${Math.ceil(playerEffects.invincible.duration/1000)}s`, powerUpX, 34);
+    }
   }
-  if (playerEffects.multiplier.active) {
+
+  // Draw touch feedback
+  if (touchFeedback.active && touchFeedback.opacity > 0) {
+    ctx.save();
+    ctx.globalAlpha = touchFeedback.opacity;
     ctx.fillStyle = '#FFD700';
-    ctx.fillText(`⭐ ${playerEffects.multiplier.value}x ${Math.ceil(playerEffects.multiplier.duration/1000)}s`, powerUpX, 34);
-    powerUpX += 100;
+    ctx.beginPath();
+    ctx.arc(touchFeedback.x, touchFeedback.y, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = touchFeedback.opacity * 0.6;
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(touchFeedback.x, touchFeedback.y, 50, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    
+    touchFeedback.opacity -= 0.05;
+    if (touchFeedback.opacity <= 0) {
+      touchFeedback.active = false;
+    }
   }
-  if (playerEffects.invincible.active) {
-    ctx.fillStyle = '#FF69B4';
-    ctx.fillText(`💎 ${Math.ceil(playerEffects.invincible.duration/1000)}s`, powerUpX, 34);
-  }
-  
-  ctx.fillStyle = '#fff';
-  const hs = `High: ${highScore}`;
-  ctx.fillText(hs, cvs.width - 16 - ctx.measureText(hs).width, 34);
 
   // Draw notifications (speed increase popups)
   for (let i = notifications.length - 1; i >= 0; i--) {
@@ -846,6 +869,11 @@ function drawHud() {
     ctx.fillText('⏸️ PAUSED', cvs.width/2, cvs.height/2 - 8);
     ctx.font = '24px Courier New';
     ctx.fillText('Press SPACE to continue', cvs.width/2, cvs.height/2 + 40);
+    
+    // Mobile pause instruction
+    ctx.font = '18px Courier New';
+    ctx.fillStyle = '#FFF';
+    ctx.fillText('Tap to resume', cvs.width/2, cvs.height/2 + 75);
     ctx.textAlign = 'start';
   }
 }
@@ -886,10 +914,38 @@ function jump() {
   }
 }
 
+function showTouchFeedback(x, y) {
+  touchFeedback.active = true;
+  touchFeedback.x = x;
+  touchFeedback.y = y;
+  touchFeedback.opacity = 1.0;
+  
+  // Haptic feedback if available
+  if (navigator.vibrate) {
+    navigator.vibrate(50); // Short vibration
+  }
+}
+
 function showHelpCard(show) {
   const el = document.getElementById("cycloneHelp");
   if (el) el.style.display = show ? 'block' : 'none';
   showHelp = show;
+  
+  // Show mobile touch hint when game starts (mobile devices only)
+  if (!show && running && 'ontouchstart' in window) {
+    showMobileTouchHint();
+  }
+}
+
+function showMobileTouchHint() {
+  const hintEl = document.getElementById("cycloneTouchHint");
+  if (hintEl) {
+    hintEl.style.display = 'flex';
+    // Hide after 4 seconds
+    setTimeout(() => {
+      if (hintEl) hintEl.style.display = 'none';
+    }, 4000);
+  }
 }
 
 function safeSendScore() {
@@ -952,16 +1008,32 @@ export function initCycloneGame(canvasRef, dotnetRef) {
   resize(); addClouds();
   window.addEventListener('resize', resize);
 
-  // keyboard
+  // Enhanced keyboard controls
   cvs.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') { e.preventDefault(); if (paused) resumeCycloneGame(); else jump(); }
-    else if (e.code === 'Escape') { e.preventDefault(); if (running) togglePause(); }
+    if (e.code === 'Space') { 
+      e.preventDefault(); 
+      if (!running) startCycloneGame();
+      else if (paused) resumeCycloneGame(); 
+      else jump(); 
+    }
+    else if (e.code === 'Escape') { 
+      e.preventDefault(); 
+      if (running && !showHelp && !gameOverScreen) togglePause(); 
+    }
   });
 
   // Enhanced mobile touch controls
   cvs.addEventListener('pointerdown', (e)=> {
     e.preventDefault();
     cvs.focus();
+    
+    // Get touch coordinates relative to canvas
+    const rect = cvs.getBoundingClientRect();
+    const touchX = e.clientX - rect.left;
+    const touchY = e.clientY - rect.top;
+    
+    showTouchFeedback(touchX, touchY);
+    
     if (!running) startCycloneGame();
     else if (paused) resumeCycloneGame();
     else jump();
@@ -971,26 +1043,70 @@ export function initCycloneGame(canvasRef, dotnetRef) {
   cvs.addEventListener('touchstart', (e) => {
     e.preventDefault();
     cvs.focus();
+    
+    if (e.touches.length > 0) {
+      const rect = cvs.getBoundingClientRect();
+      const touchX = e.touches[0].clientX - rect.left;
+      const touchY = e.touches[0].clientY - rect.top;
+      
+      showTouchFeedback(touchX, touchY);
+    }
+    
     if (!running) startCycloneGame();
     else if (paused) resumeCycloneGame();  
     else jump();
   }, { passive: false });
 
-  // Double tap for pause on mobile
+  // Improved double tap for pause on mobile
   let lastTap = 0;
+  let tapCount = 0;
   cvs.addEventListener('touchend', (e) => {
     const currentTime = Date.now();
     const tapLength = currentTime - lastTap;
-    if (tapLength < 300 && tapLength > 0) {
-      if (running) togglePause();
+    
+    // Reset tap count if too much time has passed
+    if (tapLength > 400) {
+      tapCount = 0;
     }
+    
+    tapCount++;
+    
+    // Double tap detection with better timing
+    if (tapCount === 2 && tapLength < 400 && tapLength > 0) {
+      if (running && !showHelp && !gameOverScreen) {
+        togglePause();
+        // Add haptic feedback for pause
+        if (navigator.vibrate) {
+          navigator.vibrate([100, 50, 100]); // Double vibration pattern
+        }
+      }
+      tapCount = 0;
+    }
+    
     lastTap = currentTime;
+    
+    // Reset tap count after delay
+    setTimeout(() => {
+      if (Date.now() - lastTap > 300) {
+        tapCount = 0;
+      }
+    }, 350);
   });
 
-  // prevent page scroll on space
+  // prevent page scroll on space and improve mobile experience
   document.addEventListener('keydown', (e)=> {
     if (e.code === 'Space') e.preventDefault();
   }, {capture:true});
+  
+  // Prevent context menu on long press for better mobile experience
+  cvs.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+  
+  // Prevent drag on mobile
+  cvs.addEventListener('dragstart', (e) => {
+    e.preventDefault();
+  });
 
   showHelpCard(true);
 }
