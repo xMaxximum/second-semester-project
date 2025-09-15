@@ -116,6 +116,37 @@ namespace Server.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Server.Models.Achievement", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AchievementId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EarnedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WeekIsoNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WeekIsoYear")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "AchievementId", "WeekIsoYear", "WeekIsoNumber")
+                        .IsUnique();
+
+                    b.ToTable("Achievements");
+                });
+
             modelBuilder.Entity("Server.Models.Activity", b =>
                 {
                     b.Property<long>("Id")

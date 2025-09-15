@@ -17,6 +17,7 @@ namespace Server.Data
         public DbSet<ActivityTagAssignment> ActivityTagAssignments { get; set; }
         public DbSet<ActivitySummary> ActivitySummaries { get; set; }
         public DbSet<Device> Devices { get; set; }
+        public DbSet<Achievement> Achievements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -132,6 +133,14 @@ namespace Server.Data
 
                 entity.HasIndex(e => e.UserId);
             });
+            //Configure Achievement entity
+            modelBuilder.Entity<Achievement>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.AchievementId).IsRequired().HasMaxLength(64);
+                entity.HasIndex(e => new { e.UserId, e.AchievementId, e.WeekIsoYear, e.WeekIsoNumber }).IsUnique();
+            });
+
         }
     }
 }

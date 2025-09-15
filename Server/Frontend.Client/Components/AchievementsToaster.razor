@@ -1,0 +1,216 @@
+﻿@using Shared.Models
+@inject ActivityService ActivityService
+@inject WeeklyGoalStorageService WeeklyGoalStorageService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@implements IDisposable
+
+@code {
+  [Parameter] public int PollSeconds { get; set; } = 30; 
+
+  private Dictionary<string, DateTime> _earned = new();
+  private System.Threading.Timer? _timer;
+  private bool _busy;
+  private int _openCounter = 0;
+
+  protected override async Task OnInitializedAsync()
+  {
+    await CheckOnce();
+
+    if (PollSeconds > 0)
+    {
+      _timer = new System.Threading.Timer(async _ =>
+      {
+        try { await InvokeAsync(CheckOnce); } catch { /* ignore */ }
+      }, null, TimeSpan.Zero, TimeSpan.FromSeconds(PollSeconds));
+    }
+  }
+
+  public void Dispose() => _timer?.Dispose();
+
+  private class WeeklyGoal
+  {
+    public string Name { get; set; } = "Weekly Goal";
+    public double DistanceKm { get; set; }
+    public double TimeHours { get; set; }
+    public double ElevationM { get; set; }
+  }
+
+  private sealed class BadgeDef
+  {
+    public string Id { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Description { get; init; } = "";
+    public string Icon { get; init; } = "🏆";
+    public Func<KpiDataResponse, WeeklyGoal?, bool> Condition { get; init; } = (_, _) => false;
+    public bool IsEasterEgg { get; init; }
+  }
+
+  private static BadgeDef Make(string id, string title, string desc, string icon,
+                               Func<KpiDataResponse, WeeklyGoal?, bool> cond, bool easterEgg = false)
+    => new() { Id=id, Title=title, Description=desc, Icon=icon, Condition=cond, IsEasterEgg=easterEgg };
+
+  private async Task CheckOnce()
+  {
+    if (_busy) return;
+    _busy = true;
+    try
+    {
+      var kpi = await ActivityService.GetKpiDataAsync();
+      if (kpi?.IsSuccess != true || kpi.Data is null) return;
+
+      var d = kpi.Data;
+      var goal = await WeeklyGoalStorageService.GetAsync<WeeklyGoal>("weekly-goal");
+      _earned = await ActivityService.GetWeeklyAchievementsMapAsync() ?? new();
+
+      var progress = CalcProgress(d, goal);
+
+      var badges = new[]
+      {
+        // Progress vs goal
+        Make("first-step","First Spin","Make any progress (>0%).","🌀",       (_,_) => progress > 0),
+        Make("twenty","Rolling Start","Reach 20% of your weekly goal.","🎯",  (_,_) => progress >= 20),
+        Make("halfway","Halfway Hero","Reach 50% of your weekly goal.","💥",  (_,_) => progress >= 50),
+        Make("ei_hty","Almost There","Reach 80% of your weekly goal.","🧗",   (_,_) => progress >= 80),
+        Make("_oal-_etter","Goal Getter","Hit 100% of your weekly goal.","🏁",(_,_) => progress >= 100),
+
+        // Distance
+        Make("d10","Warm Wheels","Ride 10 km this week.","🚲",         (k,_) => Km(k) >= 10),
+        Make("d25","Cruiser","Ride 25 km this week.","🚲💯",              (k,_) => Km(k) >= 25),
+        Make("d42","Marathon Rider","Ride 42 km this week.","🎖️",      (k,_) => Km(k) >= 42),
+        Make("d50","Fifty-Fifty","Ride 50 km this week.","5️⃣0️⃣",      (k,_) => Km(k) >= 50),
+        Make("d75","High Roller","Ride 75 km this week.","🎢",          (k,_) => Km(k) >= 75),
+        Make("d100","Century Rider","Ride 100 km this week.","💯",      (k,_) => Km(k) >= 100),
+        Make("d150","One-Fifty Club","Ride 150 km this week.","🥇",     (k,_) => Km(k) >= 150),
+
+        // Time
+        Make("t2h","Time On Saddle","Ride 2 hours this week.","⏱️",     (k,_) => H(k) >= 2),
+        Make("t5h","Time Lord","Ride 5 hours this week.","⏳",          (k,_) => H(k) >= 5),
+        Make("t8h","Endurance","Ride 8 hours this week.","🧭",          (k,_) => H(k) >= 8),
+
+        // Elevation
+        Make("e250","Hill Hopper","Climb 250 m this week.","🏞️",       (k,_) => Elev(k) >= 250),
+        Make("e500","Climber","Climb 500 m this week.","⛰️",           (k,_) => Elev(k) >= 500),
+        Make("e1000","Sky Chaser","Climb 1000 m this week.","🗻",       (k,_) => Elev(k) >= 1000),
+
+        // Goal composition
+        Make("minimalist","The Minimalist","Goal with exactly one metric.","🧘",  (_,g) => g is not null && CountPos(g) == 1),
+        Make("allrounder","All-Rounder","Goal includes distance, time, and elevation.","🔁", (_,g) => g is not null && CountPos(g) == 3),
+
+        // Easter eggs
+        Make("earlybird","Early Bird","Open the dashboard before 07:00.","🌅",           (_,_) => DateTime.Now.Hour < 7, true),
+        Make("nightowl","Night Owl","Open the dashboard after 23:00.","🦉",             (_,_) => DateTime.Now.Hour >= 23, true),
+        Make("monday","Monday Boost","Open on a Monday.","📅",                          (_,_) => DateTime.Now.DayOfWeek == DayOfWeek.Monday, true),
+        Make("friday","Friday Vibes","Open on a Friday.","🎉",                           (_,_) => DateTime.Now.DayOfWeek == DayOfWeek.Friday, true),
+        Make("unicorn","Bikeicorn","Your weekly goal name contains 🦄.","🦄",            (_,g) => (g?.Name ?? string.Empty).Contains("🦄", StringComparison.OrdinalIgnoreCase), true),
+        Make("secret-7","You Found It!","Open the achievements view 7 times in a row.","🕵️", (_,_) => IncrCounter() >= 7, true),
+        Make("sundaychill","Sunday Chill","Open on a Sunday.","☕",                      (_,_) => DateTime.Now.DayOfWeek == DayOfWeek.Sunday, true),
+        Make("rainyday","Rain Rider","Open on a Saturday morning.","🌧️",                (_,_) => DateTime.Now.DayOfWeek == DayOfWeek.Saturday && DateTime.Now.Hour < 12, true),
+        Make("streak3","3-Day Streak","Open on a day divisible by 3.","🔥",              (_,_) => DateTime.Now.Day % 3 == 0, true),
+        Make("newmonth","Fresh Start","Open on the 1st day of a month.","📆",            (_,_) => DateTime.Now.Day == 1, true),
+        Make("lastminute","Last Minute Rider","Open at 23:50 or later.","⌛",             (_,_) => DateTime.Now.Hour == 23 && DateTime.Now.Minute >= 50, true),
+        Make("devmode","Secret Dev Mode","Your weekly goal name contains 'dev'.","💻",    (_,g) => (g?.Name ?? string.Empty).Contains("dev", StringComparison.OrdinalIgnoreCase), true),
+        Make("beast","The Beast","Ride at least 99.9 km this week.","👹",                (k,_) => Km(k) >= 99.9, true),
+        Make("doubletime","Double Trouble","Ride 2.22 hours this week.","✌️",            (k,_) => H(k) >= 2.22, true),
+        Make("lucky7","Lucky Seven","7 km, 0.7 h, 77 m in one week.","🍀",               (k,_) => Km(k) >= 7 && H(k) >= 0.7 && Elev(k) >= 77, true),
+        Make("backtothefuture","Back to the Future","Visit from the far future (>2099).","🚀", (_,_) => DateTime.Now.Year > 2099, true),
+      };
+
+      foreach (var b in badges)
+      {
+        if (_earned.ContainsKey(b.Id)) continue;
+        if (!b.Condition(d, goal)) continue;
+
+        var ok = await ActivityService.GrantAchievementAsync(b.Id);
+        if (ok)
+        {
+          _earned[b.Id] = DateTime.UtcNow;
+          ShowUnlockToast(b.Title, b.Icon);
+        }
+      }
+    }
+    finally { _busy = false; }
+  }
+
+  private void ShowUnlockToast(string title, string icon)
+  {
+    var toast = (RenderFragment)(rb =>
+    {
+      rb.AddMarkupContent(0, $@"
+            <div class='achv-toast'>
+              <div class='achv-toast__badge'>{icon}</div>
+              <div class='achv-toast__text'>
+                <div class='achv-toast__title'>Achievement unlocked</div>
+                <div class='achv-toast__subtitle'>{title}</div>
+              </div>
+            </div>");
+    });
+    
+    var prevPos = Snackbar.Configuration.PositionClass;
+    var prevVar = Snackbar.Configuration.SnackbarVariant;
+    var prevNewest = Snackbar.Configuration.NewestOnTop;
+    var prevPrevent = Snackbar.Configuration.PreventDuplicates;
+
+    Snackbar.Configuration.PositionClass = MudBlazor.Defaults.Classes.Position.BottomRight;
+    Snackbar.Configuration.SnackbarVariant = MudBlazor.Variant.Filled;
+    Snackbar.Configuration.NewestOnTop = true;
+    Snackbar.Configuration.PreventDuplicates = true;
+
+    Snackbar.Add(toast, MudBlazor.Severity.Success, opt =>
+    {
+      opt.Action = "View";
+      opt.ActionColor = MudBlazor.Color.Primary;
+      opt.OnClick = (MudBlazor.Snackbar _) =>
+      {
+        Nav.NavigateTo("/app/achievements");
+        return Task.CompletedTask;
+      };
+    });
+
+    Snackbar.Configuration.PositionClass = prevPos;
+    Snackbar.Configuration.SnackbarVariant = prevVar;
+    Snackbar.Configuration.NewestOnTop = prevNewest;
+    Snackbar.Configuration.PreventDuplicates = prevPrevent;
+  }
+
+
+  // helpers
+  private static double Km(KpiDataResponse d) => ParseNumber(d.TotalDistance ?? "");
+  private static double Elev(KpiDataResponse d) => ParseNumber(d.TotalElevation ?? "");
+  private static double H(KpiDataResponse d)
+  {
+    var t = d.TotalTime ?? "";
+    if (t.IndexOf("min", StringComparison.OrdinalIgnoreCase) >= 0) return ParseNumber(t) / 60.0;
+    if (t.Contains(':'))
+    {
+      var p = t.Split(':');
+      if (p.Length >= 2 && int.TryParse(p[0], out var hh) && int.TryParse(p[1], out var mm)) return hh + (mm / 60.0);
+    }
+    return ParseNumber(t);
+  }
+  private static int CountPos(WeeklyGoal g){int c=0;if(g.DistanceKm>0)c++;if(g.TimeHours>0)c++;if(g.ElevationM>0)c++;return c;}
+  private static double ParseNumber(string s)
+  {
+    if (string.IsNullOrWhiteSpace(s)) return 0;
+    Span<char> buf = stackalloc char[s.Length];
+    int j = 0;
+    foreach (var ch in s) if ((ch >= '0' && ch <= '9') || ch == '.' || ch == ',') buf[j++] = ch;
+    if (j == 0) return 0;
+    var digits = new string(buf[..j]).Replace(',', '.');
+    return double.TryParse(digits, System.Globalization.NumberStyles.Any,
+      System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+  }
+  private static double Clamp01(double v) => v < 0 ? 0 : (v > 1 ? 1 : v);
+  private static double CalcProgress(KpiDataResponse d, WeeklyGoal? g)
+  {
+    if (g is null) return 0;
+    var km = Km(d); var h = H(d); var e = Elev(d);
+    double sum = 0; int n = 0;
+    if (g.DistanceKm > 0) { sum += Clamp01(km / g.DistanceKm) * 100; n++; }
+    if (g.TimeHours > 0)  { sum += Clamp01(h / g.TimeHours) * 100; n++; }
+    if (g.ElevationM > 0) { sum += Clamp01(e / g.ElevationM) * 100; n++; }
+    return n > 0 ? sum / n : 0;
+  }
+
+  private int IncrCounter() => ++_openCounter;
+}

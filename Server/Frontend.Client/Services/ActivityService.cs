@@ -113,5 +113,16 @@ public class ActivityService
         if (!resp.IsSuccessStatusCode) return null;
         return await resp.Content.ReadFromJsonAsync<ApiResponse<ActivityNavigationResponse>>();
     }
+    
+    public async Task<Dictionary<string, DateTime>> GetWeeklyAchievementsMapAsync()
+        => await _httpClient.GetFromJsonAsync<Dictionary<string, DateTime>>("api/activities/achievements/current")
+           ?? new Dictionary<string, DateTime>();
+
+    public async Task<bool> GrantAchievementAsync(string achievementId)
+    {
+        var resp = await _httpClient.PostAsync($"api/activities/achievements/grant/{achievementId}", null);
+        return resp.IsSuccessStatusCode;
+    }
+
 
 }
