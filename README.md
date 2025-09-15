@@ -7,10 +7,10 @@ Cyclone is a comprehensive cycling data tracking and analytics platform that com
 Cyclone consists of three main components:
 
 ### 1. **ESP32 Embedded System** (`/ESP32/`)
-- **Hardware**: ESP32-based GPS tracking device
-- **Framework**: nanoFramework (C# for embedded systems)
-- **Communication**: Serial communication with MQTT support
-- **Sensors**: GPS, accelerometer, temperature sensors
+- **Hardware**: ESP32-based, battery controller, sensors and sdcard reader
+- **Framework**: C++
+- **Communication**: REST API data upload and device registration
+- **Sensors**: GPS, accelerometer, temperature and magnet (for rpm) sensors
 
 ### 2. **Web Application** (`/Server/`)
 - **Backend**: ASP.NET Core Web API
@@ -26,10 +26,8 @@ Cyclone consists of three main components:
 ## 🛠️ Technology Stack
 
 ### Embedded System
-- **nanoFramework** - C# for ESP32 development
+- **FreeRTOS** - real-time operating system that runs the C++ program
 - **ESP32** - Microcontroller with WiFi/Bluetooth
-- **GPS Module** - Location tracking
-- **MQTT** - IoT communication protocol
 
 ### Backend
 - **ASP.NET Core 9.0** - Web API framework
@@ -50,7 +48,7 @@ Cyclone consists of three main components:
 
 ## 🚀 Quick Start (Production)
 
-> ⚠️ **Note**: The ESP (Embedded System Project) part is currently not included in this setup.
+> The ESP is flashed with PlatformIO vscode extension, open folder ESP32/esp32_cyclone and press flash button
 
 ### Prerequisites
 - [Docker](https://www.docker.com/get-started) installed
