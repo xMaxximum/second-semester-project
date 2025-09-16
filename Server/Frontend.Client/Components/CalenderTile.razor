@@ -5,91 +5,104 @@
 @inject ISnackbar Snackbar
 
 <style>
-    .mud-cal-toolbar{
-        display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
-        padding:16px;background:linear-gradient(135deg,var(--mud-palette-primary-lighten) 0%,var(--mud-palette-primary) 100%);
-        color:#fff;border-radius:0
+    .calendar-container{
+        border-radius:8px;overflow:hidden;box-shadow:var(--mud-elevation-6);
+        background:var(--mud-palette-surface);display:flex;flex-direction:column
     }
-    .mud-calendar{border-radius:0}
-
-    .calendar-container{border-radius:8px;overflow:hidden;box-shadow:var(--mud-elevation-6);
-        background:var(--mud-palette-surface);display:flex;flex-direction:column}
 
     .calendar-header{
         background:linear-gradient(135deg,var(--mud-palette-primary) 0%,var(--mud-palette-primary-darken) 100%);
-        padding:16px;color:#fff;text-align:center
+        color:#fff
     }
-
-    .activity-event{
-        cursor:pointer;transition:all .2s ease;border-radius:4px;padding:2px 6px;margin:1px 0;
-        font-size:.75rem;background:linear-gradient(135deg,var(--mud-palette-success-lighten) 0%,var(--mud-palette-success) 100%);
-        color:#fff;border:none
+    .toolbar-row{padding:10px 12px}
+    .month-pill{background:rgba(255,255,255,.12);padding:2px 10px;border-radius:999px}
+    
+    .mud-cal-toolbar{ display:none !important; }
+    
+    .calendar-body{
+        position:relative;flex:1;min-height:420px;
+        padding-right: var(--streakPad, 108px);
     }
-    .activity-event:hover{transform:translateY(-1px);box-shadow:var(--mud-elevation-4);filter:brightness(1.08)}
-
-    .calendar-body{position:relative;flex:1;min-height:420px}
-    .cal-fill{height:100%}.cal-fill .mud-calendar{height:100%}
-                          
+    .cal-fill{height:100%}
+    .cal-fill .mud-calendar{
+        height:100%;
+        margin-right: var(--streakPad, 108px);
+        box-sizing: border-box;
+    }
+    
     .week-streak-overlay{
-        position:absolute;top:var(--calTop,76px);bottom:var(--calBottom,56px);right:18px;
-        width:var(--streakW,40px);display:grid;grid-template-rows:repeat(var(--rows,6),1fr);
-        justify-items:end;align-items:center;gap:24px;pointer-events:none;z-index:5
+        position:absolute;top:var(--calTop,92px);bottom:var(--calBottom,56px);right:10px;
+        width:var(--streakW,46px);
+        display:grid;grid-template-rows:repeat(var(--rows,6),1fr);
+        justify-items:end;align-items:center;gap:22px;pointer-events:none;z-index:5
     }
-    .week-streak-overlay .chip-holder{pointer-events:auto;display:flex;align-items:center;justify-content:flex-end;width:100%}
+    .week-streak-overlay .chip-holder{pointer-events:auto}
+
     .week-streak-overlay .mud-chip{
-        min-width:34px;max-width:54px;padding:0 6px;border-radius:999px;box-shadow:0 4px 14px rgba(104,92,228,.18);
-        font-variant-numeric:tabular-nums
+        min-width:40px;max-width:46px;
+        padding:0 8px;
+        border-radius:999px;
+        box-shadow:0 4px 14px rgba(104,92,228,.18);
+        font-variant-numeric:tabular-nums;
+        font-size:.72rem; line-height:1.05;
+        display:inline-flex; align-items:center; justify-content:center;
+        white-space:nowrap;
     }
-    .week-streak-overlay .flame{margin-right:2px;line-height:1}
+    .week-streak-overlay .flame{margin-right:3px;line-height:1}
     .week-streak-overlay .boost{animation:achv-pop .35s ease-out}
     @@keyframes achv-pop{0%{transform:scale(.6);opacity:.2}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
-
-    .current-streak-chip{position:absolute;top:8px;right:8px;z-index:6;pointer-events:none}
-    .current-streak-chip .mud-chip{pointer-events:auto}
     
     .calendar-stats{
         display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
         padding:12px 16px;background:var(--mud-palette-grey-lighten-5);
-        border-top:1px solid var(--mud-palette-divider);border-bottom-left-radius:8px;border-bottom-right-radius:8px
+        border-top:1px solid var(--mud-palette-divider);
+        border-bottom-left-radius:8px;border-bottom-right-radius:8px
     }
     .stats-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .v-sep{width:1px;height:18px;background:var(--mud-palette-divider)}
     .stat-chip{font-variant-numeric:tabular-nums}
     .stat-chip .label{margin-left:6px;opacity:.9;font-size:.75rem}
 
-    @@media (max-width:600px){
-        .mud-popover{position:fixed !important;left:50% !important;transform:translateX(-50%) !important}
-        .calendar-stats{flex-direction:column;align-items:flex-start}
+    @@media (max-width:768px){
+    .calendar-body{ padding-right: var(--streakPadSm, 96px); }
+    .cal-fill .mud-calendar{ margin-right: var(--streakPadSm, 96px); }
     }
 </style>
 
 <div class="calendar-container">
+    
     <div class="calendar-header">
-        <MudText Typo="Typo.h6" Style="font-weight: 600; margin: 0;" Class="icon-header">
-            <MudIcon Icon="@Icons.Material.Filled.Event" Style="margin-right: 8px;" />
-            Activity Calendar
-        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="toolbar-row">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Inherit" OnClick="Prev" />
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Gap="2">
+                <MudIcon Icon="@Icons.Material.Filled.Event"/>
+                <MudText Typo="Typo.h6" Class="fw-bold">Activity Calendar</MudText>
+                <MudText Typo="Typo.caption" Class="month-pill">@_visibleDate.ToString("MMMM yyyy")</MudText>
+            </MudStack>
+
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Inherit" OnClick="Next" />
+        </MudStack>
     </div>
 
-    <div class="pa-0 calendar-body">
+    <!-- Kalender + Overlay -->
+    <div class="pa-0 calendar-body"
+         style="--streakW:46px; --streakPad:calc(var(--streakW) + 62px); --streakPadSm:calc(var(--streakW) + 50px);">
         <MudCalendar T="CalendarItem"
                      Class="pa-0 cal-fill"
                      Elevation="0"
-                     ShowDropdownViewSelector="true"
-                     ShowDatePicker="true"
+                     HideToolbar="true"
                      Items="calendarItems"
                      CellClicked="OnCellClicked"
                      ItemClicked="OnItemClicked"
-                     View="_view"
-                     ViewChanged="OnViewChanged" />
+                     @bind-CurrentDay="_visibleDate"
+                     View="CalendarView.Month" />
 
-        @if (_view == CalendarView.Month)
-        {
         <div class="week-streak-overlay"
-             style="@($"--rows:{_weekRowCount}; --calTop:{_calTop}px; --calBottom:{_calBottom}px; --streakW:40px;")">
+             style="@($"--rows:{_weekRowCount}; --calTop:{_calTop}px; --calBottom:{_calBottom}px;")">
             @for (var i = 0; i < _visibleWeeks.Count; i++)
             {
-            var row     = _visibleWeeks[i];
+            var row = _visibleWeeks[i];
             var boosted = i < _boostFlags.Count && _boostFlags[i];
             <div class="chip-holder">
                 <MudTooltip Text="@FormatWeek(row.WeekStart, row.WeekEnd)" Arrow="true" Placement="Placement.Left">
@@ -100,18 +113,9 @@
             </div>
             }
         </div>
-        }
-
-        @if (_view == CalendarView.Week || _view == CalendarView.Day)
-        {
-        <div class="current-streak-chip">
-            <MudChip T="int" Value="@_currentStreak" Color="Color.Primary" Variant="Variant.Filled" Dense="true" Size="Size.Small">
-                <span class="flame">🔥</span>@_currentStreak
-            </MudChip>
-        </div>
-        }
     </div>
 
+    <!-- Bottom-Stats -->
     <div class="calendar-stats">
         <div class="stats-left">
             <div class="d-flex align-items-center gap-2">
@@ -120,28 +124,20 @@
                     @_thisMonthCount activities this month
                 </MudText>
             </div>
-
             <div class="v-sep"></div>
-
             <MudChip T="int" Value="@_currentStreak" Class="stat-chip" Dense="true" Variant="Variant.Filled" Color="Color.Primary">
                 <span class="flame">🔥</span>@_currentStreak<span class="label">current</span>
             </MudChip>
-
             <MudChip T="int" Value="@_bestWeekStreak" Class="stat-chip" Dense="true" Variant="Variant.Outlined" Color="Color.Primary"
                      StartIcon="@Icons.Material.Filled.MilitaryTech">
                 @_bestWeekStreak<span class="label">best week</span>
             </MudChip>
-            
         </div>
-
         <div class="d-flex align-items-center gap-1">
-            @if (_loading)
-            {
+            @if (_loading) {
             <MudProgressCircular Size="Size.Small" Indeterminate="true" />
             <MudText Typo="Typo.caption">Loading…</MudText>
-            }
-            else
-            {
+            } else {
             <MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" />
             <MudText Typo="Typo.caption">Updated @_lastRefresh.ToString("HH:mm")</MudText>
             }
@@ -150,25 +146,25 @@
 </div>
 
 @code {
-
 private readonly List<CalendarItem> calendarItems = new();
 private readonly Dictionary<long, ActivityResponse> _activityLookup = new();
 
 private bool _loading = true;
 private DateTime _lastRefresh = DateTime.Now;
-private CalendarView _view = CalendarView.Month;
+
+private DateTime _visibleDate = DateTime.Today;
 
 private readonly List<WeekRow> _visibleWeeks = new();
 private readonly List<bool> _boostFlags = new();
 private readonly Dictionary<DateTime, int> _lastMaxPerWeekStart = new();
+
 private HashSet<DateTime> _activeDays = new();
 private int _weekRowCount = 6;
 private int _currentStreak = 0;
-private int _bestWeekStreak = 0;     
+private int _bestWeekStreak = 0;
 private int _thisMonthCount = 0;
 
-
-private int _calTop = 76;
+private int _calTop = 92;
 private int _calBottom = 56;
 
 private record WeekRow(DateTime WeekStart, DateTime WeekEnd, int MaxStreak);
@@ -176,7 +172,7 @@ private record WeekRow(DateTime WeekStart, DateTime WeekEnd, int MaxStreak);
 protected override async Task OnInitializedAsync()
 {
 await LoadActivities();
-RecomputeStreaksForCurrentMonth();
+RecomputeForVisibleDate();
 }
 
 public async Task RefreshAsync()
@@ -209,22 +205,16 @@ foreach (var a in unique)
 {
 calendarItems.Add(new CalendarItem
 {
-Text = string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name,
+Text  = string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name,
 Start = a.StartTime.ToLocalTime(),
-End = (a.EndTime ?? a.StartTime.AddHours(1)).ToLocalTime()
+End   = (a.EndTime ?? a.StartTime.AddHours(1)).ToLocalTime()
 });
 }
 
-_activeDays = calendarItems.Select(i => i.Start.Date).ToHashSet();
-
-var now = DateTime.Now;
-_thisMonthCount = calendarItems.Count(i =>
-(i.Start.Month == now.Month && i.Start.Year == now.Year) ||
-(i.End?.Month == now.Month && i.End?.Year == now.Year));
+_activeDays = calendarItems.Select(i => i.Start.Date).Distinct().ToHashSet();
 
 _lastRefresh = DateTime.Now;
-
-RecomputeStreaksForCurrentMonth();
+RecomputeForVisibleDate();
 }
 catch (Exception ex)
 {
@@ -236,27 +226,37 @@ _loading = false;
 }
 }
 
-private void OnViewChanged(CalendarView v)
+private void Prev()
 {
-_view = v;
-if (v == CalendarView.Month) RecomputeStreaksForCurrentMonth();
-else _currentStreak = ComputeCurrentStreak(_activeDays);
-StateHasChanged();
+_visibleDate = _visibleDate.AddMonths(-1);
+RecomputeForVisibleDate();
 }
 
-private void RecomputeStreaksForCurrentMonth()
+private void Next()
 {
-var now = DateTime.Now;
-var monthStart = new DateTime(now.Year, now.Month, 1);
+_visibleDate = _visibleDate.AddMonths(1);
+RecomputeForVisibleDate();
+}
+
+private void RecomputeForVisibleDate()
+{
+var monthStart = new DateTime(_visibleDate.Year, _visibleDate.Month, 1);
 var monthEnd   = monthStart.AddMonths(1).AddDays(-1);
 
-var firstWeekStart = WeekStartMonday(monthStart);
-var lastWeekStart  = WeekStartMonday(monthEnd);
-_weekRowCount = (int)((lastWeekStart - firstWeekStart).TotalDays / 7) + 1;
+_thisMonthCount = calendarItems.Count(i =>
+{
+var s = i.Start.Date;
+var e = (i.End ?? i.Start).Date;
+return s <= monthEnd && e >= monthStart;
+});
 
 _visibleWeeks.Clear();
 _boostFlags.Clear();
 _bestWeekStreak = 0;
+
+var firstWeekStart = WeekStartMonday(monthStart);
+var lastWeekStart  = WeekStartMonday(monthEnd);
+_weekRowCount = (int)((lastWeekStart - firstWeekStart).TotalDays / 7) + 1;
 
 for (int i = 0; i < _weekRowCount; i++)
 {
@@ -275,7 +275,7 @@ _visibleWeeks.Add(new WeekRow(ws, we, max));
 
 _currentStreak = ComputeCurrentStreak(_activeDays);
 
-_ = Task.Delay(1000).ContinueWith(_ =>
+_ = Task.Delay(900).ContinueWith(_ =>
 {
 for (int i = 0; i < _boostFlags.Count; i++) _boostFlags[i] = false;
 InvokeAsync(StateHasChanged);
