@@ -181,17 +181,17 @@
                      Variant="Variant.Filled"
                      Color="Color.Primary">
                 <span class="flame">🔥</span>
-                @_currentStreak<span class="label">current</span>
+                @_currentStreak<span class="label">Current</span>
             </MudChip>
 
             <MudChip T="int"
-                     Value="@_bestWeekStreak"
+                     Value="@_bestStreak"
                      Class="stat-chip"
                      Dense="true"
                      Variant="Variant.Outlined"
                      Color="Color.Primary"
                      StartIcon="@Icons.Material.Filled.MilitaryTech">
-                @_bestWeekStreak<span class="label">best week</span>
+                @_bestStreak<span class="label">Best</span>
             </MudChip>
         </div>
 
@@ -224,7 +224,7 @@
     private HashSet<DateTime> _activeDays = new();
     private int _weekRowCount = 6;
     private int _currentStreak = 0;
-    private int _bestWeekStreak = 0;
+    private int _bestStreak = 0;
     private int _thisMonthCount = 0;
     private int _calTop = 92;
     private int _calBottom = 56;
@@ -320,7 +320,7 @@
 
         _visibleWeeks.Clear();
         _boostFlags.Clear();
-        _bestWeekStreak = 0;
+        _bestStreak = 0;
 
         var firstWeekStart = WeekStartMonday(monthStart);
         var lastWeekStart = WeekStartMonday(monthEnd);
@@ -332,16 +332,15 @@
             var we = ws.AddDays(6);
             var max = MaxConsecutiveInRange(_activeDays, ws, we);
 
-            if (max > _bestWeekStreak)
-                _bestWeekStreak = max;
-
             var had = _lastMaxPerWeekStart.TryGetValue(ws, out var prev) ? prev : 0;
             _boostFlags.Add(max > had);
             _lastMaxPerWeekStart[ws] = max;
             _visibleWeeks.Add(new WeekRow(ws, we, max));
         }
 
-        _currentStreak = ComputeCurrentStreak(_activeDays);
+        // Calculate streaks using the same logic as calendar cells
+        _currentStreak = CalculateStreakFromDate(DateTime.Today);
+        _bestStreak = CalculateBestStreak();
 
         _ = Task.Delay(900).ContinueWith(async _ =>
         {
@@ -361,6 +360,35 @@
         for (var d = DateTime.Today; days.Contains(d); d = d.AddDays(-1))
             c++;
         return c;
+    }
+
+    private int CalculateStreakFromDate(DateTime date)
+    {
+        var streak = 0;
+        var currentDate = date.Date;
+        while (_activeDays.Contains(currentDate))
+        {
+            streak++;
+            currentDate = currentDate.AddDays(-1);
+        }
+        return streak;
+    }
+
+    private int CalculateBestStreak()
+    {
+        if (!_activeDays.Any()) return 0;
+
+        var bestStreak = 0;
+        var dates = _activeDays.OrderBy(d => d).ToList();
+
+        foreach (var date in dates)
+        {
+            var streak = CalculateStreakFromDate(date);
+            if (streak > bestStreak)
+                bestStreak = streak;
+        }
+
+        return bestStreak;
     }
 
     private static DateTime WeekStartMonday(DateTime d)
@@ -443,14 +471,7 @@
 
     private int CalculateDailyStreak(DateTime date)
     {
-        var streak = 0;
-        var currentDate = date.Date;
-        while (_activeDays.Contains(currentDate))
-        {
-            streak++;
-            currentDate = currentDate.AddDays(-1);
-        }
-        return streak;
+        return CalculateStreakFromDate(date);
     }
 }
 
