@@ -7,6 +7,20 @@
 
 <style>
     .calendar-container {
+        @@media (max-width: 480px) {
+            .stats-left {
+                flex-direction: column;
+                gap: 6px;
+            }
+    
+            .stat-chip .label {
+                font-size: .7rem;
+            }
+    
+            .stat-chip:first-of-type {
+                margin-left: 8px;
+            }
+    }
         border-radius: 8px;
         overflow: hidden;
         box-shadow: var(--mud-elevation-6);
@@ -24,10 +38,56 @@
         padding: 10px 12px;
     }
 
+    .calendar-title-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        justify-content: center;
+        min-width: 0;
+    }
+
+    .calendar-title-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .month-pill {
         background: rgba(255, 255, 255, .12);
-        padding: 2px 10px;
+        padding: 2px 8px;
         border-radius: 999px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 600px) {
+        .toolbar-row {
+            padding: 8px 10px;
+        }
+        
+        .calendar-title-section {
+            gap: 4px;
+        }
+        
+        .calendar-title-text {
+            font-size: 1rem !important;
+        }
+        
+        .month-pill {
+            padding: 1px 6px;
+            font-size: 0.7rem;
+        }
+    }
+
+    @@media (max-width: 400px) {
+        .calendar-title-section .mud-icon {
+            display: none;
+        }
+        
+        .calendar-title-text {
+            font-size: 0.9rem !important;
+        }
     }
 
     .mud-cal-toolbar {
@@ -72,6 +132,9 @@
         justify-content: space-between !important;
         align-items: center !important;
         padding-right: 8px !important;
+        @@media (max-width: 480px) {
+            gap: 10px;
+        }
     }
 
     .mud-cal-month-cell-title.mud-cal-month-cell-header::after {
@@ -112,6 +175,13 @@
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
+        flex: 1;
+    }
+
+    .month-activities {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .v-sep {
@@ -129,6 +199,40 @@
         opacity: .9;
         font-size: .75rem;
     }
+
+    @@media (max-width: 768px) {
+        .calendar-stats {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            padding: 10px 12px;
+        }
+        
+        .stats-left {
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .month-activities {
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+        
+        .v-sep {
+            display: none;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .stats-left {
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .stat-chip .label {
+            font-size: .7rem;
+        }
+    }
 </style>
 
 <div class="calendar-container">
@@ -137,13 +241,13 @@
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="toolbar-row">
             <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Inherit" OnClick="Prev" />
 
-            <MudStack Row="true" AlignItems="AlignItems.Center" Gap="2">
+            <div class="calendar-title-section">
                 <MudIcon Icon="@Icons.Material.Filled.Event" />
-                <MudText Typo="Typo.h6" Class="fw-bold"> Activity Calendar </MudText>
+                <MudText Typo="Typo.h6" Class="fw-bold calendar-title-text"> Activity Calendar </MudText>
                 <MudText Typo="Typo.caption" Class="month-pill">
                     @_visibleDate.ToString("MMMM yyyy")
                 </MudText>
-            </MudStack>
+            </div>
 
             <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Inherit" OnClick="Next" />
         </MudStack>
@@ -155,7 +259,7 @@
                      Class="pa-0 cal-fill"
                      Elevation="0"
                      HideToolbar="true"
-                     Items="calendarItems"
+                     Items="_calendarItems"
                      CellClicked="OnCellClicked"
                      ItemClicked="OnItemClicked"
                      @bind-CurrentDay="_visibleDate"
@@ -165,7 +269,7 @@
     <!-- Bottom Stats -->
     <div class="calendar-stats">
         <div class="stats-left">
-            <div class="d-flex align-items-center gap-2">
+            <div class="month-activities">
                 <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" />
                 <MudText Typo="Typo.caption" Style="font-weight: 500;">
                     @_thisMonthCount activities this month
@@ -181,7 +285,7 @@
                      Variant="Variant.Filled"
                      Color="Color.Primary">
                 <span class="flame">🔥</span>
-                @_currentStreak<span class="label">Current</span>
+                @_currentStreak<span class="label">Current Streak</span>
             </MudChip>
 
             <MudChip T="int"
@@ -191,7 +295,7 @@
                      Variant="Variant.Outlined"
                      Color="Color.Primary"
                      StartIcon="@Icons.Material.Filled.MilitaryTech">
-                @_bestStreak<span class="label">Best</span>
+                @_bestStreak<span class="label">Best Streak</span>
             </MudChip>
         </div>
 
@@ -213,7 +317,7 @@
 </div>
 
 @code {
-    private readonly List<CalendarItem> calendarItems = new();
+    private readonly List<CalendarItem> _calendarItems = new();
     private readonly Dictionary<long, ActivityResponse> _activityLookup = new();
     private bool _loading = true;
     private DateTime _lastRefresh = DateTime.Now;
@@ -265,10 +369,10 @@
             foreach (var a in unique)
                 _activityLookup[a.Id] = a;
 
-            calendarItems.Clear();
+            _calendarItems.Clear();
             foreach (var a in unique)
             {
-                calendarItems.Add(new CalendarItem
+                _calendarItems.Add(new CalendarItem
                 {
                     Text = string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name,
                     Start = a.StartTime.ToLocalTime(),
@@ -276,7 +380,7 @@
                 });
             }
 
-            _activeDays = calendarItems.Select(i => i.Start.Date).Distinct().ToHashSet();
+            _activeDays = _calendarItems.Select(i => i.Start.Date).Distinct().ToHashSet();
             _lastRefresh = DateTime.Now;
             RecomputeForVisibleDate();
         }
@@ -311,7 +415,7 @@
         var monthStart = new DateTime(_visibleDate.Year, _visibleDate.Month, 1);
         var monthEnd = monthStart.AddMonths(1).AddDays(-1);
 
-        _thisMonthCount = calendarItems.Count(i =>
+        _thisMonthCount = _calendarItems.Count(i =>
         {
             var s = i.Start.Date;
             var e = (i.End ?? i.Start).Date;
@@ -417,7 +521,7 @@
 
     private void OnCellClicked(DateTime date)
     {
-        var activitiesOnDate = calendarItems
+        var activitiesOnDate = _calendarItems
             .Where(item => item.Start.Date == date.Date || (item.End?.Date == date.Date))
             .ToList();
 
