@@ -3,117 +3,203 @@
 @inject ActivityService ActivityService
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 
 <style>
-    .mud-cal-toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-        background: linear-gradient(135deg, var(--mud-palette-primary-lighten) 0%, var(--mud-palette-primary) 100%);
-        border-radius: 0;
-        color: white;
-    }
-    
-    .mud-calendar {
-        border-radius: 0;
-    }
-
     .calendar-container {
         border-radius: 8px;
         overflow: hidden;
         box-shadow: var(--mud-elevation-6);
-        background: var(--mud-palette-surface); 
+        background: var(--mud-palette-surface);
+        display: flex;
+        flex-direction: column;
     }
-
 
     .calendar-header {
         background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-darken) 100%);
-        padding: 16px;
-        color: white;
+        color: #fff;
+    }
+
+    .toolbar-row {
+        padding: 10px 12px;
+    }
+
+    .month-pill {
+        background: rgba(255, 255, 255, .12);
+        padding: 2px 10px;
+        border-radius: 999px;
+    }
+
+    .mud-cal-toolbar {
+        display: none !important;
+    }
+
+    .calendar-body {
+        position: relative;
+        flex: 1;
+        min-height: 420px;
+    }
+
+    .cal-fill {
+        height: 100%;
+    }
+
+    .cal-fill .mud-calendar {
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    @@keyframes achv-pop {
+        0% {
+            transform: scale(.6);
+            opacity: .2;
+        }
+
+        60% {
+            transform: scale(1.06);
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    /* Calendar cell header customization for streaks */
+    .mud-cal-month-cell-title.mud-cal-month-cell-header {
+        position: relative;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding-right: 8px !important;
+    }
+
+    .mud-cal-month-cell-title.mud-cal-month-cell-header::after {
+        content: attr(data-streak);
+        font-size: 0.65rem;
+        color: var(--mud-palette-primary);
+        font-weight: 600;
+        background: rgba(var(--mud-palette-primary-rgb), 0.1);
+        padding: 1px 4px;
+        border-radius: 8px;
+        margin-left: auto;
+        min-width: 18px;
         text-align: center;
+        display: inline-block;
+        line-height: 1.2;
     }
 
-    .activity-event {
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border-radius: 4px;
-        padding: 2px 6px;
-        margin: 1px 0;
-        font-size: 0.75rem;
-        background: linear-gradient(135deg, var(--mud-palette-success-lighten) 0%, var(--mud-palette-success) 100%);
-        color: white;
-        border: none;
-    }
-
-    .activity-event:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--mud-elevation-4);
-        filter: brightness(1.1);
+    .mud-cal-month-cell-title.mud-cal-month-cell-header[data-streak=""]::after,
+    .mud-cal-month-cell-title.mud-cal-month-cell-header[data-streak="0"]::after {
+        display: none;
     }
 
     .calendar-stats {
-        padding: 12px 16px;
-        background: var(--mud-palette-grey-lighten-5);
-        border-top: 1px solid var(--mud-palette-divider);
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        background: var(--mud-palette-grey-lighten-5);
+        border-top: 1px solid var(--mud-palette-divider);
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
     }
 
-    @@media (max-width: 600px) {
-        .mud-popover {
-            position: fixed !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-        }
-        
-        .calendar-stats {
-            flex-direction: column;
-            gap: 8px;
-        }
+    .stats-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .v-sep {
+        width: 1px;
+        height: 18px;
+        background: var(--mud-palette-divider);
+    }
+
+    .stat-chip {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .stat-chip .label {
+        margin-left: 6px;
+        opacity: .9;
+        font-size: .75rem;
     }
 </style>
 
 <div class="calendar-container">
+    <!-- Header -->
     <div class="calendar-header">
-        <MudText Typo="Typo.h6" Style="font-weight: 600; margin: 0;" Class="icon-header">
-            <MudIcon Icon="@Icons.Material.Filled.Event" Style="margin-right: 8px;" />
-            Activity Calendar
-        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="toolbar-row">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Inherit" OnClick="Prev" />
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Gap="2">
+                <MudIcon Icon="@Icons.Material.Filled.Event" />
+                <MudText Typo="Typo.h6" Class="fw-bold"> Activity Calendar </MudText>
+                <MudText Typo="Typo.caption" Class="month-pill">
+                    @_visibleDate.ToString("MMMM yyyy")
+                </MudText>
+            </MudStack>
+
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Inherit" OnClick="Next" />
+        </MudStack>
     </div>
-    
-    <MudCalendar T="CalendarItem"
-                 Elevation="0"
-                 Class="pa-0"
-                 ShowDropdownViewSelector="true"
-                 ShowDatePicker="true"
-                 Items="calendarItems"
-                 CellClicked="OnCellClicked"
-                 ItemClicked="OnItemClicked" />
-    
+
+    <!-- Calendar -->
+    <div class="pa-0 calendar-body">
+        <MudCalendar T="CalendarItem"
+                     Class="pa-0 cal-fill"
+                     Elevation="0"
+                     HideToolbar="true"
+                     Items="calendarItems"
+                     CellClicked="OnCellClicked"
+                     ItemClicked="OnItemClicked"
+                     @bind-CurrentDay="_visibleDate"
+                     View="CalendarView.Month" />
+    </div>
+
+    <!-- Bottom Stats -->
     <div class="calendar-stats">
-        <div class="d-flex align-items-center gap-2">
-            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" />
-            <MudText Typo="Typo.caption" Style="font-weight: 500;">
-                @{
-                    var now = DateTime.Now;
-                    var thisMonthCount = calendarItems.Count(item =>
-                        item.Start.Month == now.Month && item.Start.Year == now.Year
-                        || (item.End?.Month == now.Month && item.End?.Year == now.Year)
-                    );
-                }
-                @thisMonthCount activities this month
-            </MudText>
+        <div class="stats-left">
+            <div class="d-flex align-items-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" />
+                <MudText Typo="Typo.caption" Style="font-weight: 500;">
+                    @_thisMonthCount activities this month
+                </MudText>
+            </div>
+
+            <div class="v-sep"></div>
+
+            <MudChip T="int"
+                     Value="@_currentStreak"
+                     Class="stat-chip"
+                     Dense="true"
+                     Variant="Variant.Filled"
+                     Color="Color.Primary">
+                <span class="flame">🔥</span>
+                @_currentStreak<span class="label">Current</span>
+            </MudChip>
+
+            <MudChip T="int"
+                     Value="@_bestStreak"
+                     Class="stat-chip"
+                     Dense="true"
+                     Variant="Variant.Outlined"
+                     Color="Color.Primary"
+                     StartIcon="@Icons.Material.Filled.MilitaryTech">
+                @_bestStreak<span class="label">Best</span>
+            </MudChip>
         </div>
-        
+
         <div class="d-flex align-items-center gap-1">
             @if (_loading)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                <MudText Typo="Typo.caption">Loading...</MudText>
+                <MudText Typo="Typo.caption">Loading.</MudText>
             }
             else
             {
@@ -127,14 +213,28 @@
 </div>
 
 @code {
-    private List<CalendarItem> calendarItems = new();
+    private readonly List<CalendarItem> calendarItems = new();
+    private readonly Dictionary<long, ActivityResponse> _activityLookup = new();
     private bool _loading = true;
     private DateTime _lastRefresh = DateTime.Now;
-    private Dictionary<long, ActivityResponse> _activityLookup = new();
+    private DateTime _visibleDate = DateTime.Today;
+    private readonly List<WeekRow> _visibleWeeks = new();
+    private readonly List<bool> _boostFlags = new();
+    private readonly Dictionary<DateTime, int> _lastMaxPerWeekStart = new();
+    private HashSet<DateTime> _activeDays = new();
+    private int _weekRowCount = 6;
+    private int _currentStreak = 0;
+    private int _bestStreak = 0;
+    private int _thisMonthCount = 0;
+    private int _calTop = 92;
+    private int _calBottom = 56;
+
+    private record WeekRow(DateTime WeekStart, DateTime WeekEnd, int MaxStreak);
 
     protected override async Task OnInitializedAsync()
     {
         await LoadActivities();
+        RecomputeForVisibleDate();
     }
 
     public async Task RefreshAsync()
@@ -148,18 +248,37 @@
         _loading = true;
         try
         {
-            var resp = await ActivityService.GetActivitiesAsync(page: 1, pageSize: 100);
-            if (resp?.IsSuccess == true)
+            var resp = await ActivityService.GetActivitiesAsync(page: 1, pageSize: 200);
+            if (resp?.IsSuccess != true || resp.Activities is null)
             {
-                _activityLookup = resp.Activities.ToDictionary(a => a.Id, a => a);
-                calendarItems = resp.Activities.Select(a => new CalendarItem
+                Snackbar.Add("Failed to load activities.", Severity.Error);
+                return;
+            }
+
+            var unique = resp.Activities
+                .GroupBy(a => a.Id)
+                .Select(g => g.First())
+                .OrderBy(a => a.StartTime)
+                .ToList();
+
+            _activityLookup.Clear();
+            foreach (var a in unique)
+                _activityLookup[a.Id] = a;
+
+            calendarItems.Clear();
+            foreach (var a in unique)
+            {
+                calendarItems.Add(new CalendarItem
                 {
                     Text = string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name,
                     Start = a.StartTime.ToLocalTime(),
                     End = (a.EndTime ?? a.StartTime.AddHours(1)).ToLocalTime()
-                }).ToList();
-                _lastRefresh = DateTime.Now;
+                });
             }
+
+            _activeDays = calendarItems.Select(i => i.Start.Date).Distinct().ToHashSet();
+            _lastRefresh = DateTime.Now;
+            RecomputeForVisibleDate();
         }
         catch (Exception ex)
         {
@@ -171,32 +290,213 @@
         }
     }
 
+    private void Prev()
+    {
+        _visibleDate = _visibleDate.AddMonths(-1);
+        RecomputeForVisibleDate();
+        _ = Task.Delay(200).ContinueWith(async _ =>
+            await InvokeAsync(async () => await InjectStreakDataIntoCalendar()));
+    }
+
+    private void Next()
+    {
+        _visibleDate = _visibleDate.AddMonths(1);
+        RecomputeForVisibleDate();
+        _ = Task.Delay(200).ContinueWith(async _ =>
+            await InvokeAsync(async () => await InjectStreakDataIntoCalendar()));
+    }
+
+    private void RecomputeForVisibleDate()
+    {
+        var monthStart = new DateTime(_visibleDate.Year, _visibleDate.Month, 1);
+        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+        _thisMonthCount = calendarItems.Count(i =>
+        {
+            var s = i.Start.Date;
+            var e = (i.End ?? i.Start).Date;
+            return s <= monthEnd && e >= monthStart;
+        });
+
+        _visibleWeeks.Clear();
+        _boostFlags.Clear();
+        _bestStreak = 0;
+
+        var firstWeekStart = WeekStartMonday(monthStart);
+        var lastWeekStart = WeekStartMonday(monthEnd);
+        _weekRowCount = (int)((lastWeekStart - firstWeekStart).TotalDays / 7) + 1;
+
+        for (int i = 0; i < _weekRowCount; i++)
+        {
+            var ws = firstWeekStart.AddDays(i * 7);
+            var we = ws.AddDays(6);
+            var max = MaxConsecutiveInRange(_activeDays, ws, we);
+
+            var had = _lastMaxPerWeekStart.TryGetValue(ws, out var prev) ? prev : 0;
+            _boostFlags.Add(max > had);
+            _lastMaxPerWeekStart[ws] = max;
+            _visibleWeeks.Add(new WeekRow(ws, we, max));
+        }
+
+        // Calculate streaks using the same logic as calendar cells
+        _currentStreak = CalculateStreakFromDate(DateTime.Today);
+        _bestStreak = CalculateBestStreak();
+
+        _ = Task.Delay(900).ContinueWith(async _ =>
+        {
+            for (int i = 0; i < _boostFlags.Count; i++)
+                _boostFlags[i] = false;
+
+            await InvokeAsync(StateHasChanged);
+
+            await Task.Delay(100);
+            await InvokeAsync(async () => await InjectStreakDataIntoCalendar());
+        });
+    }
+
+    private static int ComputeCurrentStreak(HashSet<DateTime> days)
+    {
+        int c = 0;
+        for (var d = DateTime.Today; days.Contains(d); d = d.AddDays(-1))
+            c++;
+        return c;
+    }
+
+    private int CalculateStreakFromDate(DateTime date)
+    {
+        var streak = 0;
+        var currentDate = date.Date;
+        while (_activeDays.Contains(currentDate))
+        {
+            streak++;
+            currentDate = currentDate.AddDays(-1);
+        }
+        return streak;
+    }
+
+    private int CalculateBestStreak()
+    {
+        if (!_activeDays.Any()) return 0;
+
+        var bestStreak = 0;
+        var dates = _activeDays.OrderBy(d => d).ToList();
+
+        foreach (var date in dates)
+        {
+            var streak = CalculateStreakFromDate(date);
+            if (streak > bestStreak)
+                bestStreak = streak;
+        }
+
+        return bestStreak;
+    }
+
+    private static DateTime WeekStartMonday(DateTime d)
+    {
+        var diff = (7 + (d.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return d.AddDays(-diff).Date;
+    }
+
+    private static int MaxConsecutiveInRange(HashSet<DateTime> days, DateTime start, DateTime end)
+    {
+        var max = 0;
+        var cur = 0;
+        for (var dt = start.Date; dt <= end.Date; dt = dt.AddDays(1))
+        {
+            if (days.Contains(dt))
+            {
+                if (++cur > max)
+                    max = cur;
+            }
+            else cur = 0;
+        }
+        return max;
+    }
+
+    private static string FormatWeek(DateTime s, DateTime e) => $"{s:dd.MM.}-{e:dd.MM.}";
+
     private void OnCellClicked(DateTime date)
     {
-        // Could add functionality to create new activity on this date
-        var activitiesOnDate = calendarItems.Where(item => 
-            item.Start.Date == date.Date || 
-            (item.End?.Date == date.Date)).ToList();
-        
+        var activitiesOnDate = calendarItems
+            .Where(item => item.Start.Date == date.Date || (item.End?.Date == date.Date))
+            .ToList();
+
         if (activitiesOnDate.Any())
-        {
-            Snackbar.Add($"Found {activitiesOnDate.Count} activities on {date:MMM dd}", Severity.Info);
-        }
+            Snackbar.Add($"Found {activitiesOnDate.Count} activities on {date:MMM dd}.", Severity.Info);
     }
 
     private void OnItemClicked(CalendarItem item)
     {
-        // Find activity by name since we can't store ID in CalendarItem
-        var activity = _activityLookup.Values.FirstOrDefault(a => 
+        var activity = _activityLookup.Values.FirstOrDefault(a =>
             (string.IsNullOrWhiteSpace(a.Name) ? $"Activity #{a.Id}" : a.Name) == item.Text);
-        
+
         if (activity != null)
-        {
             Nav.NavigateTo($"/activity/{activity.Id}");
-        }
         else
-        {
             Snackbar.Add($"Opening: {item.Text}", Severity.Info);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (_visibleWeeks.Any())
+        {
+            await InjectStreakDataIntoCalendar();
         }
     }
+
+    private async Task InjectStreakDataIntoCalendar()
+    {
+        try
+        {
+            var streakData = new Dictionary<string, int>();
+
+            var monthStart = new DateTime(_visibleDate.Year, _visibleDate.Month, 1);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+            for (var date = monthStart; date <= monthEnd; date = date.AddDays(1))
+            {
+                var dailyStreak = CalculateDailyStreak(date);
+                if (dailyStreak > 0)
+                    streakData[date.ToString("yyyy-MM-dd")] = dailyStreak;
+            }
+
+            await JSRuntime.InvokeVoidAsync("injectCalendarStreaks", streakData, _visibleDate.Year, _visibleDate.Month);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error injecting streak data: {ex.Message}");
+        }
+    }
+
+    private int CalculateDailyStreak(DateTime date)
+    {
+        return CalculateStreakFromDate(date);
+    }
 }
+
+<script>
+    window.injectCalendarStreaks = function (streakData, year, month) {
+        const headers = document.querySelectorAll('.mud-cal-month-cell-title.mud-cal-month-cell-header');
+        headers.forEach(header => {
+            header.removeAttribute('data-streak'); // clear any old streaks
+
+            const dayText = header.textContent.trim();
+            const dayNumber = parseInt(dayText);
+
+            if (isNaN(dayNumber)) return;
+
+            // 🚨 skip outside days
+            if (header.classList.contains('mud-cal-month-outside')) {
+                return;
+            }
+
+            // Build the dateKey for current month
+            const dateKey = `${year}-${month.toString().padStart(2, '0')}-${dayNumber.toString().padStart(2, '0')}`;
+
+            if (streakData[dateKey] && streakData[dateKey] > 0) {
+                header.setAttribute('data-streak', '🔥' + streakData[dateKey]);
+            }
+        });
+    };
+</script>

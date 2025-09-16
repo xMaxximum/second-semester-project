@@ -103,6 +103,9 @@ namespace Server
             
             // Register RouteService for route planning
             builder.Services.AddScoped<IRouteService, RouteService>();
+            
+            //Register AchivementService for saving Achievements in Db
+            builder.Services.AddScoped<IAchievementsService, AchievementsService>();
 
             // Add Authorization
             builder.Services.AddAuthorization();
