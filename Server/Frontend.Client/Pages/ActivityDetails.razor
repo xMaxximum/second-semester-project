@@ -591,6 +591,16 @@
     {
         _loading = true; _error = null;
 
+        // Reset map state when activity ID changes
+        if (_mapInstance != null)
+        {
+            await MapService.DisposeMapAsync();
+            _mapInstance = null;
+        }
+        _mapInitialized = false;
+        _initializingMap = false;
+        _mapError = null;
+
         _hasValidSensorData = await HasValidSensorData();
 
         _details = await ActivityService.GetActivityAsync(Id);
